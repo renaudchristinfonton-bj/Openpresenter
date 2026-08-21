@@ -264,6 +264,44 @@ try {
         w.dispatchEvent(new Event('change'));
     });
 
+    // S5b. Modes d'ADAPTATION pour écrans au ratio différent (étirés, bandes…).
+    console.log('▶ S5b. Modes d\'adaptation (écrans étirés / ratio différent)…');
+    await bibleCtrl.evaluate(() => {
+        const w = document.querySelector('[data-res-role="w"]');
+        const h = document.querySelector('[data-res-role="h"]');
+        const fit = document.querySelector('[data-res-role="fit"]');
+        w.value = '1920'; h.value = '432'; fit.value = 'stretch';
+        w.dispatchEvent(new Event('change'));
+    });
+    const linkStretch = await bibleCtrl.evaluate(() => document.querySelector('[data-res-role="link"]').innerText);
+    check('Lien écran étiré : res=1920x432&fit=stretch', /res=1920x432&fit=stretch/.test(linkStretch), linkStretch);
+
+    async function openObsState(url, label) {
+        const p = await ctxB.newPage();
+        trackErrors(p, label);
+        await p.goto(BASE + url, { waitUntil: 'load', timeout: 30000 });
+        await p.waitForTimeout(300);
+        const state = await p.evaluate(() => ({
+            sx: document.body.style.getPropertyValue('--obs-sx'),
+            sy: document.body.style.getPropertyValue('--obs-sy'),
+            bw: getComputedStyle(document.body).width
+        }));
+        await p.close();
+        return state;
+    }
+    const stretchState = await openObsState('/bible_control_display_pro.html?obs=true&res=1920x432&fit=stretch', 'bible-obs-stretch');
+    check('Étirer : scaleX=1, scaleY=0.4 — remplit exactement 1920×432', stretchState.sx === '1' && Math.abs(parseFloat(stretchState.sy) - 0.4) < 0.001 && stretchState.bw === '1920px', JSON.stringify(stretchState));
+    const fitState = await openObsState('/bible_control_display_pro.html?obs=true&res=1920x432', 'bible-obs-fit');
+    check('Sans &fit (défaut) : tout afficher — échelle uniforme 0.4 (aucun rognage)', Math.abs(parseFloat(fitState.sx) - 0.4) < 0.001 && fitState.sy === fitState.sx, JSON.stringify(fitState));
+    // Retour au défaut.
+    await bibleCtrl.evaluate(() => {
+        const w = document.querySelector('[data-res-role="w"]');
+        const h = document.querySelector('[data-res-role="h"]');
+        const fit = document.querySelector('[data-res-role="fit"]');
+        w.value = '1920'; h.value = '1080'; fit.value = 'fit';
+        w.dispatchEvent(new Event('change'));
+    });
+
     // ============ S6. DEUX VERSIONS DU MÊME VERSET EN DIRECT ============
     console.log('▶ S6. Bible : 2 versions côte à côte…');
     await bibleCtrl.evaluate(() => {
@@ -344,6 +382,32 @@ try {
         return (b && hl) ? true : false;
     }, { timeout: 8000 }).then(() => true).catch(() => false);
     check('OBS : le verset annoté est rendu (gras + surlignage visibles)', annRendered);
+    // Contraste intelligent : couleur de texte adaptée à la couleur de surlignage.
+    const contrast = await bibleCtrl.evaluate(() => ({
+        onYellow: bestTextColorFor('#fde047'),
+        onWhite: bestTextColorFor('#ffffff'),
+        onNavy: bestTextColorFor('#1e3a8a'),
+        onBlack: bestTextColorFor('#000000')
+    }));
+    check('Contraste : surlignage clair → texte sombre', contrast.onYellow === '#0f172a' && contrast.onWhite === '#0f172a', JSON.stringify(contrast));
+    check('Contraste : surlignage foncé → texte blanc', contrast.onNavy === '#ffffff' && contrast.onBlack === '#ffffff', JSON.stringify(contrast));
+    // Application réelle : surlignage sur tout le champ → texte contrasté appliqué.
+    const hlApplied = await bibleCtrl.evaluate(() => {
+        openVerseEditor(null, 'Livre E2E', 1, 1);
+        const field = document.getElementById('verse-editor-field');
+        field.innerHTML = 'mot a surligner';
+        const range = document.createRange();
+        range.selectNodeContents(field);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        const inp = document.querySelector('[data-fmt-color="hiliteColor"]');
+        inp.value = '#0f766e'; // surlignage foncé → texte blanc attendu
+        inp.dispatchEvent(new Event('input'));
+        const html = field.innerHTML;
+        closeVerseEditor();
+        return { dark: /background-color[^;]*0f766e|background-color[^;]*rgb\(15,\s*118,\s*110\)/i.test(html), whiteText: /#ffffff|rgb\(255,\s*255,\s*255\)/i.test(html) };
+    });
+    check('Surlignage appliqué ET texte automatiquement contrasté (blanc sur fond foncé)', hlApplied.dark && hlApplied.whiteText, JSON.stringify(hlApplied));
     // Nettoyage : retire l'annotation et le livre de test.
     await bibleCtrl.evaluate(() => {
         delete verseAnnotations['Livre E2E|1|1'];
@@ -353,47 +417,75 @@ try {
         renderBooksList(currentBooks());
     });
 
-    // ============ S8. DÉCOUPAGE DES VERSETS LONGS (modes bas) ============
-    console.log('▶ S8. Découpage des versets longs (bas centré / bas droite)…');
+    // ============ S8. DÉCOUPAGE DES VERSETS LONGS (sorties bas uniquement) ============
+    console.log('▶ S8. Découpage des versets longs (uniquement sorties bas centré / bas droite)…');
     await bibleCtrl.evaluate(() => {
         const longText = 'Au commencement Dieu crea le ciel et la terre, et la terre etait sans forme et vide, et les tenebres etaient sur la face de labime, et lesprit de Dieu se mouvait sur les eaux, et Dieu dit.';
         bibleVersions.find(v => v.id === currentVersionId).books.push({
             name: 'Livre E2E', totalVerses: 1,
             chapters: [{ num: 1, verses: [{ num: 1, text: longText }] }]
         });
-        document.getElementById('obs-mode-select').value = 'bottom';
         renderBooksList(currentBooks());
+        // Active l'option « ligne par ligne » (pilote du découpage). Le mode du
+        // contrôleur reste « plein écran » : le découpage ne doit PAS en dépendre.
+        displaySettings.lineMode = true;
+        document.getElementById('set-line-mode').checked = true;
     });
     await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], null));
     const split = await bibleCtrl.evaluate(() => ({
         parts: window.__capturedShow && window.__capturedShow.config.parts,
         partIndex: window.__capturedShow && window.__capturedShow.config.partIndex,
+        mode: window.__capturedShow && window.__capturedShow.config.mode,
         navVisible: !document.getElementById('verse-parts-nav').classList.contains('hidden'),
         indicator: document.getElementById('verse-parts-indicator').innerText
     }));
-    check('Verset long en mode bas : decoupe en plusieurs parties', !!(split.parts && split.parts.length >= 2), JSON.stringify(split.parts && split.parts.length));
+    check('Verset long + option ligne par ligne : parties diffusées (config.parts)', !!(split.parts && split.parts.length >= 2), JSON.stringify(split.parts && split.parts.length));
+    check('…même en mode plein écran au contrôleur (le découpage suit la SORTIE, pas le mode)', split.mode === 'full', split.mode);
     check('Indicateur x/y visible (1/N)', split.navVisible && split.indicator === '1/' + split.parts.length, split.indicator);
+    // Sortie GÉNÉRALE (suit le mode plein écran) : verset ENTIer, jamais découpé.
+    const fullOnGeneral = await bibleObs.waitForFunction(() => {
+        const el = document.querySelector('#obs-card-element .verse-text');
+        return el && el.innerText.indexOf('et Dieu dit') >= 0;
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Sortie plein écran : verset ENTIer affiché (non affectée)', fullOnGeneral);
+    // Sortie VERROUILLÉE bas centré : affiche une partie à la fois.
+    const bottomObs = await ctxB.newPage();
+    trackErrors(bottomObs, 'bible-obs-bottom');
+    await bottomObs.goto(BASE + '/bible_control_display_pro.html?obs=true&lockMode=bottom', { waitUntil: 'load', timeout: 30000 });
+    await bottomObs.waitForTimeout(400);
+    // La page vient de se charger : on lui renvoie l'affichage courant (les pages
+    // OBS ne rejouent pas les messages passés — comportement normal du projet).
+    await bibleCtrl.evaluate(() => relaunchLast());
+    const part1OnBottom = await bottomObs.waitForFunction(() => {
+        const el = document.querySelector('#obs-card-element .verse-text');
+        return el && el.innerText.length > 0 && el.innerText.length < 170 ? true : false;
+    }, { timeout: 10000 }).then(() => true).catch(() => false);
+    const bottomTxt = part1OnBottom ? await bottomObs.evaluate(() => document.querySelector('#obs-card-element .verse-text').innerText) : '';
+    check('Sortie bas centré verrouillée : seule la partie 1 est affichée', part1OnBottom && bottomTxt.indexOf('et Dieu dit') < 0, bottomTxt.slice(0, 40));
+    // Navigation : la sortie bas passe à la partie 2, la sortie plein écran reste entière.
     await bibleCtrl.evaluate(() => navigatePart(1));
-    const nav = await bibleCtrl.evaluate(() => ({
-        idx: onAir.partIndex,
-        ind: document.getElementById('verse-parts-indicator').innerText,
-        cap: window.__capturedShow.config.partIndex
-    }));
-    check('navigatePart(1) : partie suivante diffusede', nav.idx === 1 && nav.cap === 1 && nav.ind === '2/' + split.parts.length, JSON.stringify(nav));
-    const part2OnObs = await bibleObs.waitForFunction((start) => {
+    const part2OnBottom = await bottomObs.waitForFunction((start) => {
         const el = document.querySelector('#obs-card-element .verse-text');
         return el && el.innerText.indexOf(start) >= 0 && el.innerText.length < 170;
-    }, split.parts[1].slice(0, 14), { timeout: 8000 }).then(() => true).catch(() => false);
-    check('OBS : seule la partie courante est affichee', part2OnObs);
+    }, split.parts[1].slice(0, 14), { timeout: 10000 }).then(() => true).catch(() => false);
+    check('navigatePart(1) : la sortie bas affiche la partie 2', part2OnBottom);
+    const fullStillFull = await bibleObs.evaluate(() => {
+        const el = document.querySelector('#obs-card-element .verse-text');
+        return el && el.innerText.indexOf('et Dieu dit') >= 0;
+    });
+    check('…tandis que la sortie plein écran affiche toujours le verset entier', !!fullStillFull);
+    await bottomObs.close();
+    // Option désactivée : plus aucun découpage, navigation masquée.
     await bibleCtrl.evaluate(() => {
-        document.getElementById('obs-mode-select').value = 'full';
+        displaySettings.lineMode = false;
+        document.getElementById('set-line-mode').checked = false;
         triggerDisplay('Livre E2E', 1, [1], null);
     });
     const noSplit = await bibleCtrl.evaluate(() => ({
         parts: window.__capturedShow.config.parts,
         navVisible: !document.getElementById('verse-parts-nav').classList.contains('hidden')
     }));
-    check('Mode plein ecran : pas de decoupage, navigation masquee', !noSplit.parts && !noSplit.navVisible, JSON.stringify(noSplit));
+    check('Option ligne par ligne désactivée : aucun découpage, navigation masquée', !noSplit.parts && !noSplit.navVisible, JSON.stringify(noSplit));
     await bibleCtrl.evaluate(() => {
         const v = bibleVersions.find(x => x.id === currentVersionId);
         v.books = v.books.filter(b => b.name !== 'Livre E2E');

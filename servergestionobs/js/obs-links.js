@@ -4,19 +4,25 @@
 // Construit le panneau "liens OBS" (lien général + liens à mode fixe) et gère la
 // copie dans le presse-papier. Auparavant dupliqué dans Bible, Paroles et Lower Third.
 //
-// + Sorties personnalisées (axe A) : résolution d'écran de sortie LIBRE (WxH).
+// + Sorties personnalisées (axe A) : résolution d'écran de sortie LIBRE (WxH)
+//   et MODE D'ADAPTATION, pour que TOUT soit toujours visible et s'adapte à
+//   n'importe quel écran — y compris étiré (ratio différent de 16:9).
 //   - getOutputResolution()/setOutputResolution() : choix persisté (localStorage
 //     ET dossier data/ via OpenStore — suit la portabilité du projet).
-//   - resQuery() : suffixe '&res=WxH' (vide si 1920×1080 → rien ne change pour
-//     l'existant).
-//   - initResolutionPanel() : branche les champs largeur×hauteur + lien + copier.
-//   - applyObsResolution() : en mode OBS (?res=WxH), dimensionne body et met le
-//     rendu interne 1920×1080 à l'échelle pour remplir la sortie demandée.
+//   - resQuery() : suffixe '&res=WxH' (+ '&fit=...' si mode non par défaut).
+//   - initResolutionPanel() : branche largeur×hauteur, mode d'adaptation,
+//     lien et bouton copier.
+//   - applyObsResolution() : en mode OBS (?res=WxH), dimensionne body et met
+//     le rendu interne 1920×1080 à l'échelle selon le mode d'adaptation :
+//       fit     → tout afficher (par défaut ; bandes noires si ratio différent)
+//       fill    → remplir (peut rogner les bords)
+//       stretch → étirer (remplit EXACTEMENT un écran au ratio différent)
 (function () {
     'use strict';
 
-    const DEFAULT_RES = { w: 1920, h: 1080 };
+    const DEFAULT_RES = { w: 1920, h: 1080, fit: 'fit' };
     const RES_KEY = 'output_res', RES_NS = 'settings';
+    const FITS = ['fit', 'fill', 'stretch'];
 
     // ---- Résolution de sortie (persistée : localStorage + dossier data/) ----
     function getOutputResolution() {
@@ -25,12 +31,18 @@
             if (window.OpenStore) r = window.OpenStore.get(RES_NS, RES_KEY, null);
             else r = JSON.parse(localStorage.getItem(RES_NS + ':' + RES_KEY) || 'null');
         } catch (e) { r = null; }
-        if (!r || !r.w || !r.h) return { w: DEFAULT_RES.w, h: DEFAULT_RES.h };
-        return { w: Math.round(r.w), h: Math.round(r.h) };
+        if (!r || !r.w || !r.h) return { w: DEFAULT_RES.w, h: DEFAULT_RES.h, fit: DEFAULT_RES.fit };
+        return {
+            w: Math.round(r.w), h: Math.round(r.h),
+            fit: FITS.indexOf(r.fit) >= 0 ? r.fit : DEFAULT_RES.fit
+        };
     }
 
-    function setOutputResolution(w, h) {
-        const val = { w: Math.round(w), h: Math.round(h) };
+    function setOutputResolution(w, h, fit) {
+        const val = {
+            w: Math.round(w), h: Math.round(h),
+            fit: FITS.indexOf(fit) >= 0 ? fit : DEFAULT_RES.fit
+        };
         try {
             if (window.OpenStore) window.OpenStore.set(RES_NS, RES_KEY, val); // local + serveur (non bloquant)
             else localStorage.setItem(RES_NS + ':' + RES_KEY, JSON.stringify(val));
@@ -40,8 +52,10 @@
     // Suffixe d'URL pour la résolution choisie ('' si résolution par défaut).
     function resQuery() {
         const r = getOutputResolution();
-        if (r.w === DEFAULT_RES.w && r.h === DEFAULT_RES.h) return '';
-        return '&res=' + r.w + 'x' + r.h;
+        let q = '';
+        if (r.w !== DEFAULT_RES.w || r.h !== DEFAULT_RES.h) q += '&res=' + r.w + 'x' + r.h;
+        if (q && r.fit !== DEFAULT_RES.fit) q += '&fit=' + r.fit;
+        return q;
     }
 
     // Construit le lien général (qui suit le mode en direct) et un lien par mode fixe
@@ -89,7 +103,7 @@
         }
     }
 
-    // ---- Panneau de saisie largeur × hauteur + lien personnalisé + copier ----
+    // ---- Panneau largeur × hauteur + adaptation + lien personnalisé + copier ----
     // Options : { obsParam: '?obs=true' (défaut) ou '?obs=1' (Lower Third) }
     function initResolutionPanel(options) {
         const opts = options || {};
@@ -97,6 +111,7 @@
         const hEl = document.querySelector('[data-res-role="h"]');
         if (!wEl || !hEl) return;
 
+        const fitEl = document.querySelector('[data-res-role="fit"]');
         const linkEl = document.querySelector('[data-res-role="link"]');
         const copyBtn = document.querySelector('[data-res-role="copy"]');
         const obsParam = opts.obsParam || '?obs=true';
@@ -110,16 +125,18 @@
 
         const cur = getOutputResolution();
         wEl.value = cur.w; hEl.value = cur.h;
+        if (fitEl) fitEl.value = cur.fit;
 
         const onChange = () => {
             let w = parseInt(wEl.value, 10), h = parseInt(hEl.value, 10);
             if (!w || w < 64 || w > 7680) { w = DEFAULT_RES.w; wEl.value = w; }
             if (!h || h < 64 || h > 4320) { h = DEFAULT_RES.h; hEl.value = h; }
-            setOutputResolution(w, h);
+            setOutputResolution(w, h, fitEl ? fitEl.value : undefined);
             refresh();
         };
         if (!wEl.__obpBound) { wEl.__obpBound = true; wEl.addEventListener('change', onChange); }
         if (!hEl.__obpBound) { hEl.__obpBound = true; hEl.addEventListener('change', onChange); }
+        if (fitEl && !fitEl.__obpBound) { fitEl.__obpBound = true; fitEl.addEventListener('change', onChange); }
         if (copyBtn && !copyBtn.__obpBound) {
             copyBtn.__obpBound = true;
             copyBtn.addEventListener('click', () => copyToClipboard(buildLink(), copyBtn));
@@ -127,10 +144,10 @@
         refresh();
     }
 
-    // ---- En mode OBS : applique ?res=WxH au rendu ----
+    // ---- En mode OBS : applique ?res=WxH (et ?fit=…) au rendu ----
     // Le rendu interne est conçu en 1920×1080 ; on dimensionne body à la taille
-    // demandée (--cw/--ch) et on met le conteneur à l'échelle pour REMPLIR la
-    // sortie (centré). Sans ?res= : rien ne change (1920×1080 en haut à gauche).
+    // demandée (--cw/--ch) et on met le conteneur à l'échelle selon le mode
+    // d'adaptation. Sans ?res= : rien ne change (1920×1080 en haut à gauche).
     function applyObsResolution() {
         try {
             const p = new URLSearchParams(window.location.search);
@@ -140,11 +157,21 @@
             if (!m) return false;
             const w = Math.max(64, Math.min(7680, parseInt(m[1], 10)));
             const h = Math.max(64, Math.min(4320, parseInt(m[2], 10)));
+            const fitParam = p.get('fit');
+            const fit = FITS.indexOf(fitParam) >= 0 ? fitParam : DEFAULT_RES.fit;
+
             const body = document.body;
             body.style.setProperty('--cw', w + 'px');
             body.style.setProperty('--ch', h + 'px');
-            const scale = Math.max(w / 1920, h / 1080); // "remplir" la taille demandée
-            body.style.setProperty('--obs-scale', String(scale));
+
+            const sx = w / 1920, sy = h / 1080;
+            let kx, ky;
+            if (fit === 'stretch') { kx = sx; ky = sy; }        // écran étiré : remplissage exact
+            else if (fit === 'fill') { kx = ky = Math.max(sx, sy); } // remplit, peut rogner
+            else { kx = ky = Math.min(sx, sy); }                // tout afficher (défaut)
+            body.style.setProperty('--obs-sx', String(kx));
+            body.style.setProperty('--obs-sy', String(ky));
+            body.style.setProperty('--obs-scale', String(Math.min(kx, ky)));
             body.classList.add('res-custom');
             return true;
         } catch (e) { return false; }

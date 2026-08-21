@@ -47,7 +47,7 @@
         /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille demandée
            (--cw/--ch) et le rendu interne 1920×1080 est mis à l'échelle pour remplir. */
         body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
-        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-scale, 1)); }
+        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-sx, var(--obs-scale, 1)), var(--obs-sy, var(--obs-scale, 1))); }
 
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 
@@ -287,6 +287,14 @@
                                 <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
                                 <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-res-role="copy">Copier le lien</button>
                             </div>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="text-[9px] text-slate-500 shrink-0">Adaptation :</span>
+                                <select data-res-role="fit" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-white text-[10px] rounded px-1 py-1" title="Comment le rendu s'adapte à cette taille d'écran">
+                                    <option value="fit">Tout afficher (bandes si ratio différent)</option>
+                                    <option value="fill">Remplir (peut rogner les bords)</option>
+                                    <option value="stretch">Étirer (écran étiré : remplit exactement)</option>
+                                </select>
+                            </div>
                             <p class="text-[10px] text-amber-400 truncate font-mono mt-1" data-res-role="link">...</p>
                             <p class="text-[9px] text-slate-500 mt-0.5">Défaut 1920×1080. Dans OBS, réglez la Source Navigateur à la même taille.</p>
                         </div>
@@ -357,7 +365,7 @@
                 </div>
                 <div class="flex items-center gap-2 mt-6">
                     <input type="checkbox" id="set-line-mode" class="w-5 h-5 accent-amber-500">
-                    <label for="set-line-mode" class="text-sm text-slate-300">Afficher ligne par ligne (versets longs)</label>
+                    <label for="set-line-mode" class="text-sm text-slate-300" title="Versets longs : affichage ligne par ligne. Sur les sorties « bas centré » et « bas droite » uniquement, un verset trop long est en plus découpé en plusieurs affichages successifs (boutons ← →). Les autres sorties ne sont pas affectées.">Afficher ligne par ligne (versets longs)</label>
                 </div>
             </div>
 
@@ -1839,14 +1847,17 @@
 
             const combinedText = texts.join(' ');
 
-            // Découpage des versets longs (UNIQUEMENT en modes « bas centré » /
-            // « bas droite ») : le verset est affiché en plusieurs parties,
-            // navigables une par une. Ne s'applique pas aux versets annotés
-            // (leur HTML enrichi ne doit pas être coupé au milieu d'une balise).
-            const displayMode = document.getElementById('obs-mode-select').value;
+            // Découpage des versets longs — piloté par l'OPTION « ligne par ligne »,
+            // PAS par le mode du contrôleur : les parties sont calculées et diffusées
+            // dès que le verset est long, mais SEULES les sorties « bas centré » /
+            // « bas droite » (lien général en mode bas, ou liens verrouillés
+            // ?lockMode=bottom / bottom-right) affichent une partie à la fois ; les
+            // autres sorties (plein écran, 80%, ruban) affichent toujours le verset
+            // ENTIER et ne sont en aucun cas affectées.
+            // Ne s'applique pas aux versets annotés (leur HTML enrichi ne doit pas
+            // être coupé au milieu d'une balise).
             let parts = null;
-            if ((displayMode === 'bottom' || displayMode === 'bottom-right')
-                && combinedText.length > VERSE_SPLIT_THRESHOLD && !annotatedHtml) {
+            if (displaySettings.lineMode && combinedText.length > VERSE_SPLIT_THRESHOLD && !annotatedHtml) {
                 parts = splitVerseIntoParts(combinedText, VERSE_SPLIT_MAX_CHARS);
                 if (parts.length < 2) parts = null;
             }
@@ -1975,6 +1986,19 @@
         // Mise en forme d'un verset AVANT projection : l'éditeur produit du HTML
         // (gras/italique/couleurs) stocké par verset (clé livre|chap|verset),
         // persisté en local ET dans le dossier data/ du projet.
+
+        // Couleur de texte la plus lisible sur un fond donné (luminance perceptive
+        // relative W3C) : noir sur fond clair, blanc sur fond foncé.
+        function bestTextColorFor(hexColor) {
+            try {
+                const m = String(hexColor).replace('#', '');
+                const ch = (i) => parseInt(m.substr(i * 2, 2), 16) / 255;
+                const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+                const L = 0.2126 * lin(ch(0)) + 0.7152 * lin(ch(1)) + 0.0722 * lin(ch(2));
+                return L > 0.35 ? '#0f172a' : '#ffffff';
+            } catch (e) { return '#ffffff'; }
+        }
+
         let verseAnnotations = {};
 
         function annotationKey(bookName, chapterNum, verseNum) {
@@ -2048,8 +2072,15 @@
             modal.querySelectorAll('[data-fmt-color]').forEach((inp) => {
                 inp.addEventListener('input', () => {
                     field.focus();
-                    try { document.execCommand(inp.getAttribute('data-fmt-color'), false, inp.value); } catch (e) {
+                    const cmd = inp.getAttribute('data-fmt-color');
+                    try { document.execCommand(cmd, false, inp.value); } catch (e) {
                         try { document.execCommand('backColor', false, inp.value); } catch (e2) { /* silencieux */ }
+                    }
+                    // Contraste intelligent : quand on SURLIGNE, la couleur du texte
+                    // s'adapte automatiquement (noir sur surlignage clair, blanc sur
+                    // surlignage foncé) pour rester toujours lisible.
+                    if (cmd === 'hiliteColor' || cmd === 'backColor') {
+                        try { document.execCommand('foreColor', false, bestTextColorFor(inp.value)); } catch (e) { /* silencieux */ }
                     }
                 });
             });

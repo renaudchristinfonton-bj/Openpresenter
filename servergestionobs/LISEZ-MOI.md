@@ -172,9 +172,17 @@ Dans chaque outil (Bible, Paroles, Médias, Lower Third), saisissez une taille
 **libre** `largeur × hauteur` dans le panneau « Résolution de sortie » : le lien
 OBS devient `...?obs=true&res=1280x720` (Lower Third : `?obs=1&res=...`), avec
 bouton **Copier**. La page OBS dimensionne l'écran à cette taille et met le rendu
-(conçu en 1920×1080) à l'échelle pour le remplir. Le choix est mémorisé (et suit
-le dossier `data/` du projet) ; par défaut 1920×1080 — donc rien ne change si
-vous n'y touchez pas. Dans OBS, réglez la Source Navigateur à la même taille.
+(conçu en 1920×1080) à l'échelle selon le **mode d'adaptation** choisi :
+
+- **Tout afficher** (par défaut) : tout le contenu est toujours visible ; bandes
+  noires si le ratio de l'écran est différent de 16:9 ;
+- **Remplir** : couvre tout l'écran, peut rogner les bords ;
+- **Étirer** : pour un écran **étiré** (ratio quelconque, ex. bandeau LED) — le
+  rendu remplit EXACTEMENT la surface.
+
+Le choix (taille + adaptation) est mémorisé (et suit le dossier `data/` du
+projet) ; par défaut 1920×1080 — donc rien ne change si vous n'y touchez pas.
+Dans OBS, réglez la Source Navigateur à la même taille.
 
 ## Deux versions du même verset en direct (Bible)
 
@@ -188,17 +196,27 @@ dans la seconde version, l'affichage reste simple.
 
 Bouton **✏️** sur chaque verset : sélectionnez un mot dans l'éditeur, puis
 **B** (gras), *I* (italique), 🖍 surlignage, 🎨 couleur du texte, ou effacez le
-format. La mise en forme est enregistrée par verset (et suit le dossier `data/`)
-et apparaît telle quelle à la projection. Le bouton ✏️ passe en orange quand un
-verset est annoté.
+format. **Contraste intelligent** : quand vous surlignez, la couleur du texte
+s'adapte automatiquement (noir sur un surlignage clair, blanc sur un surlignage
+foncé) pour rester toujours lisible. La mise en forme est enregistrée par verset
+(et suit le dossier `data/`) et apparaît telle quelle à la projection. Le bouton
+✏️ passe en orange quand un verset est annoté.
 
-## Découpage des versets longs (modes « bas » uniquement)
+## Découpage des versets longs (uniquement les sorties « bas »)
 
-En mode **Bas centré** ou **Bas droite**, un verset de plus de ~160 caractères
-est automatiquement découpé en parties lisibles (~150 caractères, coupure à
-l'espace). Des boutons **← →** et un indicateur **x/y** apparaissent alors dans
-la barre d'actions (ainsi que les flèches du clavier) pour diffuser les parties
-une par une. Jamais en modes plein écran / 80% / ruban, ni pour un verset annoté.
+Le découpage est piloté par l'option **« Afficher ligne par ligne (versets
+longs) »** des réglages d'affichage — pas par le mode du contrôleur. Quand elle
+est active et qu'un verset dépasse ~160 caractères, il est découpé en parties
+lisibles (~150 caractères, coupure à l'espace) et des boutons **← →** avec un
+indicateur **x/y** apparaissent (aussi les flèches du clavier).
+
+**Seules les sorties « Bas centré » et « Bas droite » affichent une partie à la
+fois** : le lien général quand le mode sélectionné est « bas », ou les liens
+verrouillés `?obs=true&lockMode=bottom` / `lockMode=bottom-right` du panneau de
+liens. Toutes les autres sorties (plein écran, 80%, ruban défiler) affichent
+toujours le verset **ENTIER** et ne sont en aucun cas affectées — vous pouvez
+donc diffuser en même temps un verset complet au plein écran et par parties en
+bandeau bas. Un verset annoté (✏️) n'est jamais découpé.
 
 ## Sauvegardes globales (Command Center)
 

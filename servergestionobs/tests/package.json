@@ -1,0 +1,16 @@
+{
+  "name": "openpresenter-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tests automatisés d'OpenPresenter : syntaxe des pages, exclusion mutuelle (unitaire) et intégration navigateur complète (serveur relais + Chromium).",
+  "scripts": {
+    "check:syntax": "bash check-syntax.sh",
+    "test:unit": "node test-live-mutex.mjs",
+    "test:integration": "node test-integration.mjs",
+    "test": "npm run check:syntax && npm run test:unit && npm run test:integration"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "playwright": "^1.62.1"
+  }
+}

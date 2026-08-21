@@ -11,6 +11,7 @@
     <script src="js/ui.js"></script>
     <script src="js/obs-links.js"></script>
     <script src="js/remote-channel.js"></script>
+    <script src="js/live-mutex.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -704,20 +705,10 @@
         // Canal de communication avec OBS (local + relais réseau)
         const bc = new RemoteChannel('obs_lyrics_channel');
         bc.onStatusChange(updateSyncBadge);
-        // Canal partagé d'exclusion mutuelle avec la Bible : quand les Paroles s'affichent,
-        // elles le signalent pour que l'autre outil se coupe automatiquement.
-        const mutex = new RemoteChannel('obs_mutex_channel');
-        // Si la Bible s'affiche, on coupe les Paroles. Robuste en mode contrôleur ET OBS.
-        mutex.onmessage = (ev) => {
-            if (ev.data && ev.data.action === 'show' && ev.data.source === 'bible') {
-                if (isObsMode) {
-                    const c = document.getElementById('obs-container');
-                    if (c) c.style.opacity = '0';
-                } else {
-                    clearOBS();
-                }
-            }
-        };
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // gérée par le module partagé js/live-mutex.js, installé plus bas, JUSTE
+        // APRÈS la détection du mode — plus aucune variable utilisée avant sa
+        // déclaration (c'est ce type d'erreur qui avait cassé le module Médias).
 
         let lastRenderCtx = null;
 
@@ -745,8 +736,26 @@
             initObsMode();
         } else {
             document.getElementById('controller-mode-ui').classList.remove('hidden');
-            initControllerMode();
+            // Filet de sécurité : une erreur d'initialisation ne doit jamais laisser
+            // la page muette — elle est tracée (et affichée) pour être corrigée.
+            Promise.resolve(initControllerMode()).catch((err) => {
+                console.error('[Paroles] Erreur d\'initialisation :', err);
+            });
         }
+
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // quand les Paroles passent à l'antenne, les deux autres se masquent, et
+        // réciproquement. Le Lower Third reste permanent (hors exclusion).
+        // Déclaré ici, APRÈS la détection du mode : isObsMode et clearOBS()
+        // existent déjà à ce stade.
+        const mutex = LiveMutex.claim('lyrics', () => {
+            if (isObsMode) {
+                const c = document.getElementById('obs-container');
+                if (c) c.style.opacity = '0';
+            } else {
+                clearOBS();
+            }
+        });
 
         function initObsMode() {
             const container = document.getElementById('obs-container');
@@ -1474,8 +1483,8 @@
 
             // 1. Envoyer à OBS via BroadcastChannel (le Blob du fond est cloné vers l'autre onglet)
             bc.postMessage({ action: 'show', config });
-            // Exclusion mutuelle : signaler à la Bible de se couper.
-            mutex.postMessage({ action: 'show', source: 'lyrics' });
+            // Exclusion mutuelle : signaler aux autres outils (Bible, Médias) de se couper.
+            mutex.show();
 
             // 2. Mettre à jour la Preview Locale
             const pContainer = document.getElementById('preview-container');

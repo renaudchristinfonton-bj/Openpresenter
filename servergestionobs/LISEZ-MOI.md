@@ -127,3 +127,41 @@ second PC apparaîtra en direct dans OBS sur le premier PC.
 - Vos 3 outils continuent de fonctionner exactement comme avant même sans ce serveur
   (en ouvrant les fichiers directement) — c'est juste que dans ce cas, vous retombez
   dans la limitation d'origine (obligé de tout garder dans les docks OBS).
+
+## Exclusion mutuelle des 3 outils (Bible / Paroles / Médias)
+
+**La règle :** si l'un des trois outils « plein écran » passe à l'antenne, les deux
+autres se coupent automatiquement. Exemple : un verset s'affiche → le média en cours
+disparaît ; vous relancez un média → la Bible s'efface. Le **Lower Third, lui, reste
+permanent** : il n'est jamais coupé par cette règle (il est conçu pour rester à
+l'écran en même temps que les autres).
+
+- Ça marche **entre le contrôleur et OBS**, mais aussi **entre plusieurs PC**
+  (l'événement transite par le même relais réseau que le reste).
+- C'est géré par un petit module partagé : `js/live-mutex.js`. Il est volontairement
+  défensif : aucune erreur dans ce module ne peut casser une page (chaque callback
+  est protégée, et un outil ne peut jamais se masquer lui-même).
+
+## Tests automatisés (dossier `tests/`)
+
+Pour vérifier que tout marche **avant/après chaque modification** (règle d'or du
+projet : ne rien casser) :
+
+```
+cd servergestionobs/tests
+npm install        # une seule fois (télécharge Playwright + Chromium)
+npm test           # syntaxe des pages + exclusion mutuelle + intégration navigateur
+```
+
+- `check-syntax.sh` : vérifie la syntaxe JavaScript de tous les blocs `<script>`
+  des pages (une coquille de syntaxe dans une page = page muette).
+- `test-live-mutex.mjs` : test unitaire du module d'exclusion mutuelle
+  (14 vérifications : doublons, messages malformés, callback fautive…).
+- `test-integration.mjs` : démarre le serveur relais + un vrai Chromium, ouvre les
+  3 contrôleurs et les 3 sorties OBS **dans deux contextes séparés** (tout passe
+  donc par le relais réseau, comme entre deux PC), puis vérifie : ajout de médias,
+  ajout de chant, exclusion mutuelle dans les 4 sens, chargement de toutes les
+  pages sans erreur. C'est le test qui a validé la correction du bug d'ajout.
+
+**Après chaque modification du code, relancez `npm test`.** Si vous touchez à
+l'ajout de médias ou de paroles, c'est la garantie que ça marche toujours.

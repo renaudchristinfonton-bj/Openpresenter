@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
+    <script src="js/live-mutex.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
@@ -138,6 +139,26 @@
     </div>
 
     <script>
+// ============================================================================
+// DIAGNOSTIQUES — toute erreur JavaScript non capturée de cette page est tracée
+// en console avec le marqueur [OpenPresenter/Media] (et le premier toast rouge)
+// pour pouvoir la signaler telle quelle. Objectif : plus jamais de page muette.
+// ============================================================================
+window.addEventListener('error', (e) => {
+    try {
+        const where = e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno})` : '';
+        console.error('[OpenPresenter/Media]', e.message, where);
+        if (!window.__openPresenterFirstErrShown) {
+            window.__openPresenterFirstErrShown = true;
+            const t = document.createElement('div');
+            t.style.cssText = 'position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:.5rem 1rem;border-radius:.5rem;font:bold 12px sans-serif;z-index:99999;max-width:80%;';
+            t.textContent = 'Erreur Médias : ' + e.message + where;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 8000);
+        }
+    } catch (err) { /* silencieux */ }
+});
+
 // ============================================================================
 // Parseur PPTX minimal (texte + images + groupes + héritage de mise en page)
 // ============================================================================
@@ -522,10 +543,16 @@ async function idbDeleteItem(id) {
 
 // Portabilité : sauvegarde la bibliothèque (avec les fichiers blobs) vers le dossier
 // du projet /data/media/items.json. Appelée après chaque ajout/modification/suppression.
+// NON BLOQUANTE : l'envoi est différé (regroupé) puis s'exécute en arrière-plan ;
+// l'interface et l'ajout de médias restent instantanés même avec une grosse
+// bibliothèque (un envoi direct et répété ici est ce qui gelait la page).
+let _syncItemsTimer = null;
 function syncItemsToServer() {
-    if (window.OpenStore) {
+    if (!window.OpenStore) return;
+    clearTimeout(_syncItemsTimer);
+    _syncItemsTimer = setTimeout(() => {
         try { OpenStore.saveHeavy('media', 'items', items); } catch (e) { /* silencieux */ }
-    }
+    }, 1200);
 }
 
 // ============================================================
@@ -540,8 +567,34 @@ if (isObsMode) {
     initObsMode();
 } else {
     document.getElementById('controller-mode-ui').classList.remove('hidden');
-    initControllerMode();
+    // Filet de sécurité : une erreur d'initialisation ne doit JAMAIS laisser la
+    // page muette (c'est le symptôme du bug d'ajout de médias) — elle est tracée
+    // en console ET affichée à l'écran pour être signalée et corrigée.
+    Promise.resolve(initControllerMode()).catch((err) => {
+        console.error('[Médias] Erreur d\'initialisation :', err);
+        try { showToast("Erreur à l'initialisation : " + ((err && err.message) || err), true); } catch (e) { /* silencieux */ }
+    });
 }
+
+// Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+// quand un média passe à l'antenne, la Bible et les Paroles se masquent, et
+// réciproquement. Le Lower Third reste permanent (hors exclusion).
+// Déclaré ici, APRÈS la détection du mode — plus aucune variable utilisée avant
+// sa déclaration (c'est exactement l'erreur qui avait cassé ce module par le
+// passé : isObsMode référencé avant sa déclaration par le gestionnaire mutex).
+const mutex = LiveMutex.claim('media', () => {
+    if (isObsMode) {
+        const c = document.getElementById('obs-container');
+        if (c) c.style.opacity = '0';
+        try {
+            const stage = document.getElementById('obs-stage');
+            if (stage) { stopMediaIn(stage); stage.innerHTML = ''; }
+            videoEls.obs = null;
+        } catch (e) { /* ne jamais casser la page */ }
+    } else {
+        clearOBS();
+    }
+});
 
 function initObsMode() {
     const container = document.getElementById('obs-container');
@@ -1280,6 +1333,9 @@ function pushLive(item, extra) {
     const config = buildMediaConfig(item, extra);
     onAir = { itemId: item.id, config };
     bc.postMessage({ action: 'show', config });
+    // Exclusion mutuelle : un média à l'antenne coupe la Bible et les Paroles
+    // (et réciproquement). Fire-and-forget : ne bloque jamais l'affichage.
+    mutex.show();
 
     const pContainer = document.getElementById('preview-container');
     const pStage = document.getElementById('preview-stage');

@@ -551,7 +551,10 @@
         function log(m) { if (logEl) logEl.textContent += (logEl.textContent ? '\n' : '') + m; }
         function clear() { if (logEl) logEl.textContent = ''; }
 
-        var LS_KEYS = ['bibleFavs', 'bibleCurrentVersionId', 'bibleLastPosition', 'bibleDisplaySettings', 'lyricsDisplaySettings', 'lyricsLastSongId', 'lt_presets', 'cue_list', 'media_groups_list'];
+        var LS_KEYS = ['bibleFavs', 'bibleCurrentVersionId', 'bibleLastPosition', 'bibleDisplaySettings', 'lyricsDisplaySettings', 'lyricsLastSongId', 'lt_presets', 'cue_list', 'media_groups_list',
+            // Préférences des fonctionnalités récentes : 2 versions Bible, annotations
+            // de versets, résolution de sortie personnalisée (incluse dans les sauvegardes).
+            'bibleDualEnabled', 'bibleDualVersionId', 'bibleVerseAnnotations', 'settings:output_res'];
         var DBS = [
             { name: 'bibleProStorage', stores: ['versions'] },
             { name: 'lyricsProStorage', stores: ['songs', 'media'] },

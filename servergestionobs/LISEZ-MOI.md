@@ -165,3 +165,44 @@ npm test           # syntaxe des pages + exclusion mutuelle + intégration navig
 
 **Après chaque modification du code, relancez `npm test`.** Si vous touchez à
 l'ajout de médias ou de paroles, c'est la garantie que ça marche toujours.
+
+## Résolution de sortie personnalisée (tous les outils)
+
+Dans chaque outil (Bible, Paroles, Médias, Lower Third), saisissez une taille
+**libre** `largeur × hauteur` dans le panneau « Résolution de sortie » : le lien
+OBS devient `...?obs=true&res=1280x720` (Lower Third : `?obs=1&res=...`), avec
+bouton **Copier**. La page OBS dimensionne l'écran à cette taille et met le rendu
+(conçu en 1920×1080) à l'échelle pour le remplir. Le choix est mémorisé (et suit
+le dossier `data/` du projet) ; par défaut 1920×1080 — donc rien ne change si
+vous n'y touchez pas. Dans OBS, réglez la Source Navigateur à la même taille.
+
+## Deux versions du même verset en direct (Bible)
+
+Cochez **« 2 versions »** dans la barre des versions et choisissez la seconde
+traduction : à l'affichage, le verset apparaît **côte à côte** dans les deux
+versions (nom de chacune au-dessus, séparateur central) — en préview comme sur
+OBS, et ça se rafraîchit en direct. Si un livre n'existe pas sous le même nom
+dans la seconde version, l'affichage reste simple.
+
+## Annoter un verset avant projection (Bible)
+
+Bouton **✏️** sur chaque verset : sélectionnez un mot dans l'éditeur, puis
+**B** (gras), *I* (italique), 🖍 surlignage, 🎨 couleur du texte, ou effacez le
+format. La mise en forme est enregistrée par verset (et suit le dossier `data/`)
+et apparaît telle quelle à la projection. Le bouton ✏️ passe en orange quand un
+verset est annoté.
+
+## Découpage des versets longs (modes « bas » uniquement)
+
+En mode **Bas centré** ou **Bas droite**, un verset de plus de ~160 caractères
+est automatiquement découpé en parties lisibles (~150 caractères, coupure à
+l'espace). Des boutons **← →** et un indicateur **x/y** apparaissent alors dans
+la barre d'actions (ainsi que les flèches du clavier) pour diffuser les parties
+une par une. Jamais en modes plein écran / 80% / ruban, ni pour un verset annoté.
+
+## Sauvegardes globales (Command Center)
+
+Sur la page d'accueil (`/`) : **⬇️ Sauvegarder tout** télécharge UN fichier
+contenant tout (favoris, réglages, présets, file, groupes, 2 versions, annotations,
+résolution, bibliothèques IndexedDB avec les médias, données du dossier `data/`).
+**⬆️ Restaurer** remet tout en place (sur n'importe quel PC).

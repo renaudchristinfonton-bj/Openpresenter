@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File de déroulement — OpenPresenter</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="store.js"></script>
+<style>
+    :root {
+        --bg: #0b1120; --panel: #111a2e; --panel2: #172033; --border: #1e293b;
+        --text: #f8fafc; --muted: #94a3b8;
+        --bible: #f59e0b; --lyrics: #8b5cf6; --media: #2dd4bf; --lt: #6366f1;
+        --green: #22c55e; --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+        font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+        background: var(--panel); border-bottom: 1px solid var(--border);
+        padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .header .logo { font-size: 20px; }
+    .header h1 { font-size: 16px; margin: 0; font-weight: 800; }
+    .header .sub { font-size: 11.5px; color: var(--muted); }
+    .header .spacer { flex: 1; }
+
+    /* Now / Next panel */
+    .stage {
+        background: var(--panel2); border-bottom: 1px solid var(--border);
+        padding: 14px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+    }
+    .now-box, .next-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+    .now-box { border-left: 4px solid var(--green); }
+    .next-box { border-left: 4px solid var(--muted); opacity: .85; }
+    .box-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 4px; }
+    .now-box .box-label { color: var(--green); }
+    .box-main { font-size: 17px; font-weight: 800; }
+    .box-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .kind-pill {
+        display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+        margin-right: 8px; vertical-align: 1px; text-transform: uppercase; letter-spacing: .4px;
+    }
+
+    /* Transport (boutons tactiles) */
+    .transport {
+        padding: 12px 14px; display: flex; gap: 10px; flex-shrink: 0;
+        border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .btn-big {
+        flex: 1; border: none; cursor: pointer; border-radius: 14px;
+        padding: 18px 12px; font-family: inherit; font-weight: 800; font-size: 15px;
+        transition: filter .12s ease, transform .06s ease; color: #0b1120;
+    }
+    .btn-big:active { transform: scale(.98); filter: brightness(1.1); }
+    .btn-advance { background: var(--green); flex: 1.4; }
+    .btn-replay { background: #38bdf8; }
+    .btn-clear  { background: #f43f5e; color: #fff; }
+
+    /* Toolbar */
+    .toolbar {
+        padding: 8px 14px; display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .btn-small {
+        background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+        font-family: inherit; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 9px; cursor: pointer;
+    }
+    .btn-small:hover { border-color: #334155; }
+    .btn-add { background: var(--lt); color: #fff; border-color: var(--lt); }
+    .btn-del { background: #1e1b4b; color: #fca5a5; border-color: #3b2f3b; }
+
+    /* Cue list */
+    .cues { flex: 1; overflow-y: auto; padding: 10px 14px 20px; }
+    .cue {
+        display: flex; align-items: center; gap: 10px; background: var(--panel);
+        border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    }
+    .cue.active { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+    .cue .idx { width: 22px; height: 22px; border-radius: 50%; background: var(--panel2); color: var(--muted);
+        display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+    .cue .info { flex: 1; min-width: 0; }
+    .cue .info .main { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cue .info .sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cue .fire { background: var(--green); color: #0b1120; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 800; cursor: pointer; font-size: 12px; }
+    .cue .rm { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 4px; }
+    .cue .rm:hover { color: var(--red); }
+
+    .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 20px; }
+
+    /* Add modal */
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+        align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+        background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+        width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; padding: 18px;
+    }
+    .modal h3 { margin: 0 0 14px; font-size: 16px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 5px; }
+    .field select, .field input {
+        width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+        border-radius: 8px; padding: 9px 10px; font-family: inherit; font-size: 13px;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .modal-actions button { padding: 10px 16px; border-radius: 9px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .btn-cancel { background: var(--panel2); color: var(--muted); border: 1px solid var(--border) !important; }
+    .btn-confirm { background: var(--lt); color: #fff; }
+
+    /* Hidden iframes */
+    #tool-frames { display: none; }
+
+    /* Toast */
+    #toast {
+        position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: #1e293b; color: #fff; border: 1px solid #334155; padding: 10px 16px; border-radius: 8px;
+        font-size: 13px; opacity: 0; transition: all .25s ease; z-index: 100; max-width: 90vw; text-align: center; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.err { border-color: var(--red); }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="logo">📋</span>
+        <div>
+            <h1>File de déroulement</h1>
+            <div class="sub">Enchaînez les éléments du service en une touche</div>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn-small" onclick="location.href='index.html'">🏠 Accueil</button>
+    </div>
+
+    <!-- Iframes cachées des 4 outils (réutilisent leurs fonctions de diffusion) -->
+    <div id="tool-frames">
+        <iframe id="frame-bible" src="bible_control_display_pro.html"></iframe>
+        <iframe id="frame-lyrics" src="lyrics_control_display_pro.html"></iframe>
+        <iframe id="frame-media" src="media_control_display_pro.html"></iframe>
+        <iframe id="frame-lt" src="obs_lower_third_ultimate_studio.html"></iframe>
+    </div>
+
+    <div class="stage">
+        <div class="now-box" id="now-box">
+            <div class="box-label">▶ En cours</div>
+            <div class="box-main" id="now-main">—</div>
+            <div class="box-sub" id="now-sub"></div>
+        </div>
+        <div class="next-box">
+            <div class="box-label">Suivant</div>
+            <div class="box-main" id="next-main">—</div>
+            <div class="box-sub" id="next-sub"></div>
+        </div>
+    </div>
+
+    <div class="transport">
+        <button class="btn-big btn-advance" onclick="advance()">▶ Avancer</button>
+        <button class="btn-big btn-replay" onclick="replay()">↻</button>
+        <button class="btn-big btn-clear" onclick="clearAll()">■</button>
+    </div>
+
+    <div class="toolbar">
+        <button class="btn-small btn-add" onclick="openAdd()">+ Ajouter un élément</button>
+        <span style="flex:1"></span>
+        <span style="font-size:11px; color:var(--muted);">Espace / → : avancer</span>
+    </div>
+
+    <div class="cues" id="cues-list"></div>
+
+    <!-- Modal d'ajout -->
+    <div class="modal-overlay" id="add-overlay">
+        <div class="modal">
+            <h3>Ajouter un élément au service</h3>
+            <div class="field">
+                <label>Type</label>
+                <select id="add-kind">
+                    <option value="bible">📖 Verset biblique</option>
+                    <option value="lyrics">🎤 Paroles / section</option>
+                    <option value="media">🖼️ Média</option>
+                    <option value="lt">🏷️ Lower third (présentateur)</option>
+                    <option value="clear">⬛ Écran noir / couper</option>
+                </select>
+            </div>
+            <!-- Bible -->
+            <div class="field add-f f-bible"><label>Livre</label><select id="b-book"></select></div>
+            <div class="field add-f f-bible"><label>Chapitre</label><select id="b-chap"></select></div>
+            <div class="field add-f f-bible"><label>Verset</label><select id="b-verse"></select></div>
+            <!-- Lyrics -->
+            <div class="field add-f f-lyrics"><label>Chant</label><select id="l-song"></select></div>
+            <div class="field add-f f-lyrics"><label>Section</label><select id="l-sec"></select></div>
+            <!-- Media -->
+            <div class="field add-f f-media"><label>Média</label><select id="m-item"></select></div>
+            <!-- LT -->
+            <div class="field add-f f-lt"><label>Présentateur (design)</label><select id="t-preset"></select></div>
+            <div class="field add-f f-lt"><label>Texte du titre (facultatif, vide = design tel quel)</label><input id="t-text"></div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeAdd()">Annuler</button>
+                <button class="btn-confirm" onclick="confirmAdd()">Ajouter</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // ============================================================
+        // ÉTAT
+        // ============================================================
+        let cues = [];
+        let currentIndex = -1;   // index de la cue actuellement affichée (ou -1)
+        let editing = false;
+
+        const NS = 'cue';
+        const KEY = 'list';
+
+        const KIND_COLOR = { bible: 'var(--bible)', lyrics: 'var(--lyrics)', media: 'var(--media)', lt: 'var(--lt)', clear: 'var(--muted)' };
+        const KIND_ICON = { bible: '📖', lyrics: '🎤', media: '🖼️', lt: '🏷️', clear: '⬛' };
+        const KIND_NAME = { bible: 'Bible', lyrics: 'Paroles', media: 'Média', lt: 'Titre', clear: 'Couper' };
+
+        // Accès aux iframes
+        const frames = {
+            bible: () => document.getElementById('frame-bible').contentWindow,
+            lyrics: () => document.getElementById('frame-lyrics').contentWindow,
+            media: () => document.getElementById('frame-media').contentWindow,
+            lt: () => document.getElementById('frame-lt').contentWindow,
+        };
+        const frameEls = {
+            bible: document.getElementById('frame-bible'),
+            lyrics: document.getElementById('frame-lyrics'),
+            media: document.getElementById('frame-media'),
+            lt: document.getElementById('frame-lt'),
+        };
+
+        // ============================================================
+        // PERSISTANCE (via OpenStore + localStorage)
+        // ============================================================
+        function save() {
+            try { localStorage.setItem('cue_list', JSON.stringify(cues)); } catch (e) {}
+            if (window.OpenStore) { try { OpenStore.set(NS, KEY, { cues, currentIndex }); } catch (e) {} }
+        }
+        function loadLocal() {
+            try { const raw = localStorage.getItem('cue_list'); cues = raw ? JSON.parse(raw) : []; }
+            catch (e) { cues = []; }
+            currentIndex = -1;
+        }
+        function refreshAll() {
+            renderCues();
+            renderStage();
+        }
+
+        // ============================================================
+        // DÉCLENCHEMENT D'UNE CUE (réutilise les fonctions des outils)
+        // ============================================================
+        function toast(msg, isErr) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.toggle('err', !!isErr);
+            t.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => t.classList.remove('show'), 2600);
+        }
+
+        function fireCue(cue) {
+            try {
+                if (cue.kind === 'clear') { clearAll(); return; }
+                if (cue.kind === 'bible') {
+                    const w = frames.bible();
+                    if (typeof w.triggerDisplay === 'function') w.triggerDisplay(cue.bookName, cue.chapterNum, [cue.verseNum], cue.text);
+                } else if (cue.kind === 'lyrics') {
+                    const w = frames.lyrics();
+                    if (typeof w.triggerDisplay === 'function') w.triggerDisplay(cue.songId, [cue.sectionId]);
+                } else if (cue.kind === 'media') {
+                    const w = frames.media();
+                    if (typeof w.activateItem === 'function') w.activateItem(cue.itemId);
+                } else if (cue.kind === 'lt') {
+                    const w = frames.lt();
+                    // Applique le design choisi, puis le diffuse
+                    if (typeof w.applyPreset === 'function' && cue.presetName) w.applyPreset(cue.presetName);
+                    if (typeof w.cmdPlay === 'function') {
+                        // petit délai pour laisser applyPreset s'appliquer
+                        setTimeout(() => { try { w.cmdPlay(); } catch (e) {} }, 60);
+                    }
+                }
+            } catch (e) {
+                toast('Impossible de déclencher : ' + (e.message || e), true);
+            }
+        }
+
+        // Coupe toutes les sorties OBS
+        function clearAll() {
+            ['bible', 'lyrics', 'media', 'lt'].forEach(k => {
+                try {
+                    const w = frames[k]();
+                    if (typeof w.clearOBS === 'function') w.clearOBS();
+                    else if (typeof w.cmdStop === 'function') w.cmdStop();
+                } catch (e) {}
+            });
+        }
+
+        // Avance d'une cue et la déclenche
+        function advance() {
+            if (cues.length === 0) { toast('La file est vide. Ajoutez des éléments.', true); return; }
+            const next = currentIndex + 1;
+            if (next >= cues.length) { toast('Fin de la file.'); return; }
+            currentIndex = next;
+            save();
+            fireCue(cues[currentIndex]);
+            refreshAll();
+        }
+        // Rejoue la cue en cours
+        function replay() {
+            if (currentIndex < 0 || currentIndex >= cues.length) { toast('Aucune cue en cours.'); return; }
+            fireCue(cues[currentIndex]);
+        }
+
+        // ============================================================
+        // RENDU
+        // ============================================================
+        function cueLabel(cue) {
+            if (cue.kind === 'clear') return 'Écran noir / couper tout';
+            if (cue.kind === 'bible') return (cue.bookName || '') + ' ' + (cue.chapterNum || '') + ':' + (cue.verseNum || '');
+            if (cue.kind === 'lyrics') return cue.songName || cue.songId || 'Chant';
+            if (cue.kind === 'media') return cue.itemName || cue.itemId || 'Média';
+            if (cue.kind === 'lt') return (cue.presetName || 'Lower third');
+            return 'Cue';
+        }
+        function cueSub(cue) {
+            if (cue.kind === 'bible') return cue.text ? cue.text.slice(0, 60) : 'Verset biblique';
+            if (cue.kind === 'lyrics') return 'Section : ' + (cue.sectionName || cue.sectionId || '');
+            if (cue.kind === 'media') return 'Média de la bibliothèque';
+            if (cue.kind === 'lt') return 'Bandeau / présentation';
+            return '';
+        }
+
+        function renderCues() {
+            const list = document.getElementById('cues-list');
+            list.innerHTML = '';
+            if (cues.length === 0) {
+                list.innerHTML = '<div class="empty">File vide. Cliquez sur « + Ajouter un élément » pour composer votre ordre de service.<br>Puis utilisez le bouton vert <b>Avancer</b> (ou Espace / →) pour enchaîner.</div>';
+                return;
+            }
+            cues.forEach((cue, i) => {
+                const color = KIND_COLOR[cue.kind] || 'var(--muted)';
+                const div = document.createElement('div');
+                div.className = 'cue' + (i === currentIndex ? ' active' : '');
+                div.innerHTML = `
+                    <span class="idx">${i + 1}</span>
+                    <span class="kind-pill" style="background:${color}22; color:${color};">${KIND_ICON[cue.kind]}</span>
+                    <div class="info">
+                        <div class="main">${cueLabel(cue)}</div>
+                        <div class="sub">${cueSub(cue)}</div>
+                    </div>
+                    <button class="fire" title="Déclencher">▶</button>
+                    <button class="rm" title="Supprimer">✕</button>
+                `;
+                div.querySelector('.fire').addEventListener('click', e => { e.stopPropagation(); fireCue(cue); });
+                div.querySelector('.rm').addEventListener('click', e => { e.stopPropagation(); cues.splice(i, 1); if (currentIndex >= i) currentIndex = Math.max(-1, currentIndex - 1); save(); refreshAll(); });
+                div.addEventListener('click', () => { currentIndex = i; save(); renderCues(); renderStage(); });
+                list.appendChild(div);
+            });
+        }
+
+        function renderStage() {
+            const nowMain = document.getElementById('now-main');
+            const nowSub = document.getElementById('now-sub');
+            const nextMain = document.getElementById('next-main');
+            const nextSub = document.getElementById('next-sub');
+            const now = currentIndex >= 0 && currentIndex < cues.length ? cues[currentIndex] : null;
+            const nxt = currentIndex >= 0 && currentIndex + 1 < cues.length ? cues[currentIndex + 1] : (currentIndex < 0 && cues.length > 0 ? cues[0] : null);
+            if (now) {
+                const c = KIND_COLOR[now.kind];
+                nowMain.innerHTML = `<span class="kind-pill" style="background:${c}22; color:${c};">${KIND_ICON[now.kind]} ${KIND_NAME[now.kind]}</span>` + cueLabel(now);
+                nowSub.textContent = cueSub(now);
+            } else {
+                nowMain.textContent = '—';
+                nowSub.textContent = currentIndex < 0 && cues.length > 0 ? 'Prêt à démarrer (Avancer)' : '';
+            }
+            if (nxt) {
+                const c = KIND_COLOR[nxt.kind];
+                nextMain.innerHTML = `<span class="kind-pill" style="background:${c}22; color:${c};">${KIND_ICON[nxt.kind]} ${KIND_NAME[nxt.kind]}</span>` + cueLabel(nxt);
+                nextSub.textContent = cueSub(nxt);
+            } else {
+                nextMain.textContent = '—';
+                nextSub.textContent = '';
+            }
+        }
+
+        // ============================================================
+        // ÉDITEUR (dropdowns alimentés depuis les outils)
+        // ============================================================
+        let picks = { book: null, chap: null, verse: null, song: null, sec: null, item: null, preset: null };
+
+        function openAdd() {
+            document.getElementById('add-overlay').classList.add('show');
+            updateKindUI();
+            populateAll();
+        }
+        function closeAdd() {
+            document.getElementById('add-overlay').classList.remove('show');
+        }
+
+        function updateKindUI() {
+            const k = document.getElementById('add-kind').value;
+            document.querySelectorAll('.add-f').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.f-' + k).forEach(el => el.style.display = 'block');
+        }
+
+        // Remplit tous les sélecteurs (avec retries car les iframes chargent en async)
+        function populateAll() {
+            populateBible();
+            populateLyrics();
+            populateMedia();
+            populatePresets();
+        }
+        function retry(fn, n) {
+            let tries = 0;
+            (function go() {
+                if (fn()) return;
+                tries++;
+                if (tries < (n || 20)) setTimeout(go, 150);
+            })();
+        }
+
+        function populateBible() {
+            retry(function () {
+                try {
+                    const w = frames.bible();
+                    if (typeof w.currentBooks !== 'function') return false;
+                    const books = w.currentBooks();
+                    if (!books || !books.length) return false;
+                    const sel = document.getElementById('b-book');
+                    sel.innerHTML = books.map((b, i) => `<option value="${i}">${b.name}</option>`).join('');
+                    sel.onchange = () => { picks.book = books[+sel.value]; loadChapters(); };
+                    picks.book = books[0]; loadChapters();
+                    return true;
+                } catch (e) { return false; }
+            });
+        }
+        function loadChapters() {
+            if (!picks.book) return;
+            const chapSel = document.getElementById('b-chap');
+            chapSel.innerHTML = picks.book.chapters.map((c, i) => `<option value="${i}">Chapitre ${c.num}</option>`).join('');
+            chapSel.onchange = () => { picks.chap = picks.book.chapters[+chapSel.value]; loadVerses(); };
+            picks.chap = picks.book.chapters[0]; loadVerses();
+        }
+        function loadVerses() {
+            if (!picks.chap) return;
+            const vSel = document.getElementById('b-verse');
+            vSel.innerHTML = picks.chap.verses.map((v, i) => `<option value="${i}">${v.num} — ${String(v.text).slice(0, 50)}</option>`).join('');
+            picks.verse = picks.chap.verses[0];
+        }
+
+        function populateLyrics() {
+            retry(function () {
+                try {
+                    const w = frames.lyrics();
+                    if (typeof w.songs === 'undefined' || !Array.isArray(w.songs) || !w.songs.length) return false;
+                    const sel = document.getElementById('l-song');
+                    sel.innerHTML = w.songs.map((s, i) => `<option value="${i}">${s.title}</option>`).join('');
+                    sel.onchange = () => loadSections();
+                    loadSections();
+                    return true;
+                } catch (e) { return false; }
+            });
+        }
+        function loadSections() {
+            try {
+                const w = frames.lyrics();
+                const idx = +document.getElementById('l-song').value;
+                const song = w.songs[idx];
+                if (!song) return;
+                const secSel = document.getElementById('l-sec');
+                secSel.innerHTML = song.sections.map((s, i) => `<option value="${i}">${s.label}</option>`).join('');
+                picks.song = song;
+            } catch (e) {}
+        }
+
+        function populateMedia() {
+            retry(function () {
+                try {
+                    const w = frames.media();
+                    if (typeof w.items === 'undefined' || !Array.isArray(w.items) || !w.items.length) return false;
+                    const sel = document.getElementById('m-item');
+                    sel.innerHTML = w.items.map((it, i) => `<option value="${i}">${it.name} (${it.type})</option>`).join('');
+                    return true;
+                } catch (e) { return false; }
+            });
+        }
+
+        function populatePresets() {
+            retry(function () {
+                try {
+                    const raw = localStorage.getItem('lt_presets') || '{}';
+                    const presets = JSON.parse(raw);
+                    const names = Object.keys(presets);
+                    if (!names.length) return false;
+                    const sel = document.getElementById('t-preset');
+                    sel.innerHTML = names.map(n => `<option>${n}</option>`).join('');
+                    return true;
+                } catch (e) { return false; }
+            });
+        }
+
+        function confirmAdd() {
+            const k = document.getElementById('add-kind').value;
+            let cue = null;
+            if (k === 'bible') {
+                if (!picks.book || !picks.chap || !picks.verse) { toast('Chargement des versets…', true); return; }
+                cue = { kind: 'bible', bookName: picks.book.name, chapterNum: picks.chap.num, verseNum: picks.verse.num, text: picks.verse.text };
+            } else if (k === 'lyrics') {
+                try {
+                    const w = frames.lyrics();
+                    const song = w.songs[+document.getElementById('l-song').value];
+                    const secIdx = +document.getElementById('l-sec').value;
+                    const sec = song.sections[secIdx];
+                    cue = { kind: 'lyrics', songId: song.id, songName: song.title, sectionId: sec.id, sectionName: sec.label };
+                } catch (e) { toast('Chant indisponible.', true); return; }
+            } else if (k === 'media') {
+                try {
+                    const w = frames.media();
+                    const item = w.items[+document.getElementById('m-item').value];
+                    cue = { kind: 'media', itemId: item.id, itemName: item.name };
+                } catch (e) { toast('Média indisponible.', true); return; }
+            } else if (k === 'lt') {
+                cue = { kind: 'lt', presetName: document.getElementById('t-preset').value };
+            } else { // clear
+                cue = { kind: 'clear' };
+            }
+            if (cue) { cues.push(cue); save(); refreshAll(); }
+            closeAdd();
+        }
+
+        // ============================================================
+        // RACCOURCIS CLAVIER + INIT
+        // ============================================================
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('add-overlay').classList.contains('show')) {
+                if (e.key === 'Escape') closeAdd();
+                return;
+            }
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); advance(); }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); if (currentIndex > 0) { currentIndex--; save(); refreshAll(); } }
+        });
+
+        document.getElementById('add-kind').addEventListener('change', updateKindUI);
+
+        function init() {
+            loadLocal();
+            // Rapatrie la file depuis le serveur si le stockage local est vide (axe A)
+            if (window.OpenStore) {
+                OpenStore.pullIfLocalEmpty(NS, KEY, o => o && Array.isArray(o.cues) && o.cues.length > 0)
+                    .then(changed => {
+                        if (changed) {
+                            const srv = OpenStore.get(NS, KEY, null);
+                            if (srv && Array.isArray(srv.cues)) { cues = srv.cues; currentIndex = srv.currentIndex || -1; }
+                            refreshAll();
+                        }
+                    }).catch(() => {});
+            }
+            refreshAll();
+        }
+        init();
+    </script>
+</body>
+</html>

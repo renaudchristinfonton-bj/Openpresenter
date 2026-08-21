@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate OBS Lower Third Studio</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Montserrat:wght@400;700;900&family=Bebas+Neue&family=Oswald:wght@400;700&family=Poppins:wght@400;600;800&family=Rajdhani:wght@500;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="store.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        appBg: '#0e0e11',
+                        panelBg: '#18181b',
+                        inputBg: '#27272a',
+                        accent: '#6366f1',
+                        accentHover: '#4f46e5'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            /* Variables par défaut - écrasées par JS */
+            --g-scale: 1; --g-posx: 50%; --g-posy: 85%; --g-text-align: flex-start;
+            --t-bg1: rgba(15, 23, 42, 0.9); --t-bg2: rgba(30, 58, 138, 0.9); --t-col: #ffffff;
+            --t-offset-x: 0px; --t-offset-y: 0px;
+            --s-bg1: rgba(30, 41, 59, 0.9); --s-bg2: rgba(15, 23, 42, 0.9); --s-col: #94a3b8;
+            --l-bg: #ffffff;
+        }
+
+        body.obs-mode {
+            background-color: transparent !important;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        body.controller-mode {
+            background-color: #0e0e11;
+            color: #e4e4e7;
+            overflow: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        .lt-stage {
+            position: absolute;
+            left: var(--g-posx);
+            top: var(--g-posy);
+            transform: translate(-50%, -50%) scale(var(--g-scale));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 50;
+            will-change: transform, opacity;
+            opacity: 0; /* Caché par défaut */
+        }
+        /* Wrapper neutre, sans transform propre, qui reçoit les classes d'animation
+           d'entrée/sortie. Les animations CSS remplacent entièrement la propriété
+           "transform" de l'élément animé (elles ne s'additionnent pas à une règle
+           statique) : si on animait .lt-stage directement, l'animation écraserait
+           son translate(-50%,-50%) qui centre le bloc sur son point d'ancrage — le
+           bloc se retrouverait alors positionné par son coin, pas par son centre,
+           une fois l'animation terminée. En isolant l'animation sur ce wrapper
+           intermédiaire, .lt-stage garde son centrage intact en toutes circonstances. */
+        .lt-anim-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-mode .lt-stage {
+            opacity: 1 !important;
+            transition: all 0.2s ease;
+        }
+        /* En mode preview (admin), on autorise le clic sur le bloc pour le faire glisser
+           à la souris. En sortie OBS (obs-stage), pointer-events reste à "none" (hérité de
+           .lt-stage), donc rien n'est cliquable dans OBS. */
+        .preview-mode .lt-stage, .preview-mode .lt-composer {
+            pointer-events: auto;
+        }
+        .preview-mode .lt-composer {
+            cursor: move;
+        }
+        .preview-mode .lt-composer:active {
+            cursor: grabbing;
+        }
+        /* Poignée visuelle placée exactement sur le point d'ancrage (--g-posx / --g-posy).
+           Comme .lt-stage est déjà centré sur ce point via translate(-50%,-50%), ce point
+           EST le milieu du bloc (logo + titre + sous-titre compris) et pas un de ses coins :
+           en faisant glisser cette poignée, on déplace donc le bloc par son centre. */
+        .lt-drag-handle {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: var(--g-posx);
+            top: var(--g-posy);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.9);
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.25);
+            cursor: grab;
+            z-index: 60;
+        }
+        .lt-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .lt-composer {
+            display: flex;
+            align-items: center;
+            position: relative;
+            padding: 50px; 
+        }
+
+        /* --- LOGO LAYER --- */
+        .lt-layer-logo {
+            position: absolute;
+            left: calc(50px + var(--l-offset-x, -30px));
+            top: calc(50% + var(--l-offset-y, 0px));
+            transform: translateY(-50%) rotate(var(--l-rot, 0deg));
+            width: var(--l-size, 100px);
+            height: var(--l-size, 100px);
+            background: var(--l-bg, transparent);
+            border-radius: var(--l-rad, 50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--l-z, 10);
+            box-shadow: var(--l-shadow, 0 10px 25px rgba(0,0,0,0.5));
+            border: var(--l-border-w, 0px) solid var(--l-border-c, #ffffff);
+            overflow: hidden;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(var(--l-blur, 0px));
+        }
+
+        .lt-layer-logo img, .lt-layer-logo video {
+            width: 100%; height: 100%; object-fit: contain;
+            transform: scale(var(--l-img-scale, 0.8));
+        }
+
+        /* --- TEXT GROUPS --- */
+        .lt-text-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: var(--g-text-align, flex-start);
+            gap: var(--g-gap, 0px);
+            position: relative;
+            z-index: 5;
+            margin-left: var(--g-margin-l, 60px);
+        }
+
+        .lt-block {
+            position: relative;
+            backdrop-filter: blur(var(--g-blur, 10px));
+            -webkit-backdrop-filter: blur(var(--g-blur, 10px));
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .lt-block-inner {
+            transform: skewX(calc(var(--skew, 0deg) * -1));
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- TITLE LAYER --- */
+        .lt-layer-title {
+            background: linear-gradient(var(--t-deg, 90deg), var(--t-bg1), var(--t-bg2));
+            border-radius: var(--t-r-tl, 8px) var(--t-r-tr, 8px) var(--t-r-br, 8px) var(--t-r-bl, 8px);
+            transform: skewX(var(--t-skew, 0deg)) translate(var(--t-offset-x, 0px), var(--t-offset-y, 0px));
+            padding: var(--t-pad-y, 15px) var(--t-pad-x, 30px);
+            border-left: var(--t-border-l, 0px) solid var(--t-border-c, #fff);
+            border-bottom: var(--t-border-b, 0px) solid var(--t-border-c, #fff);
+            z-index: 2;
+        }
+
+        .lt-title-text {
+            color: var(--t-col);
+            font-size: var(--t-size, 3rem);
+            font-family: var(--t-font, 'Inter'), sans-serif;
+            font-weight: var(--t-weight, 800);
+            letter-spacing: var(--t-space, 0px);
+            text-transform: var(--t-transform, uppercase);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            white-space: nowrap;
+            line-height: 1;
+        }
+
+        /* --- SUBTITLE LAYER --- */
+        .lt-layer-sub {
+            background: linear-gradient(var(--s-deg, 90deg), var(--s-bg1), var(--s-bg2));
+            border-radius: var(--s-r-tl, 8px) var(--s-r-tr, 8px) var(--s-r-br, 8px) var(--s-r-bl, 8px);
+            transform: skewX(var(--s-skew, 0deg)) translateX(var(--s-offset-x, 0px));
+            padding: var(--s-pad-y, 8px) var(--s-pad-x, 30px);
+            z-index: 1;
+            margin-top: var(--s-offset-y, 0px);
+        }
+
+        .lt-sub-text {
+            color: var(--s-col);
+            font-size: var(--s-size, 1.5rem);
+            font-family: var(--s-font, 'Inter'), sans-serif;
+            font-weight: var(--s-weight, 400);
+            letter-spacing: var(--s-space, 2px);
+            text-transform: var(--s-transform, uppercase);
+            text-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            white-space: nowrap;
+            line-height: 1;
+        }
+
+        
+        /* Animations IN */
+        @keyframes slInL { from { transform: translateX(-100%); opacity: 0; filter: blur(10px); } to { transform: translateX(0); opacity: 1; filter: blur(0); } }
+        @keyframes slInR { from { transform: translateX(100%); opacity: 0; filter: blur(10px); } to { transform: translateX(0); opacity: 1; filter: blur(0); } }
+        @keyframes slInU { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slInD { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes popIn { 0% { transform: scale(0.8) translateY(20px); opacity: 0; } 70% { transform: scale(1.05) translateY(0); opacity: 1; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        @keyframes revealMask { from { clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); opacity:0;} to { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity:1;} }
+        @keyframes zoomIn { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes flipIn { from { transform: perspective(600px) rotateX(90deg); opacity: 0; } to { transform: perspective(600px) rotateX(0deg); opacity: 1; } }
+        @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); opacity: 1; } 70% { transform: scale(0.9); } 100% { transform: scale(1); opacity: 1; } }
+        
+        .anim-slInL { animation: slInL 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-slInR { animation: slInR 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-slInU { animation: slInU 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-slInD { animation: slInD 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-popIn { animation: popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-reveal { animation: revealMask 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-zoomIn { animation: zoomIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-flipIn { animation: flipIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-bounceIn { animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Animations OUT */
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); filter: blur(5px); } }
+        @keyframes slOutL { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100%); opacity: 0; } }
+        @keyframes slOutR { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        @keyframes slOutD { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
+        @keyframes slOutU { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+        @keyframes zoomOut { from { transform: scale(1); opacity: 1; } to { transform: scale(0.5); opacity: 0; } }
+        @keyframes flipOut { from { transform: perspective(600px) rotateX(0deg); opacity: 1; } to { transform: perspective(600px) rotateX(90deg); opacity: 0; } }
+        
+        .anim-out-fade { animation: fadeOut 0.6s ease-in forwards; }
+        .anim-out-slOutL { animation: slOutL 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .anim-out-slOutR { animation: slOutR 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .anim-out-slOutD { animation: slOutD 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .anim-out-slOutU { animation: slOutU 0.6s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .anim-out-zoomOut { animation: zoomOut 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .anim-out-flipOut { animation: flipOut 0.6s ease-in forwards; }
+
+        .checkerboard {
+            background-color: #0e0e11;
+            background-image: linear-gradient(45deg, #18181b 25%, transparent 25%), linear-gradient(-45deg, #18181b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #18181b 75%), linear-gradient(-45deg, transparent 75%, #18181b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+        .ctrl-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #a1a1aa; display: flex; justify-content: space-between;}
+        .ctrl-val { color: #6366f1; font-family: monospace; }
+        
+        .input-text { background: #27272a; border: 1px solid #3f3f46; color: white; padding: 6px 10px; border-radius: 6px; font-size: 13px; outline: none; transition: border 0.2s; width: 100%;}
+        .input-text:focus { border-color: #6366f1; }
+        
+        .input-color { -webkit-appearance: none; border: none; width: 100%; height: 28px; border-radius: 6px; cursor: pointer; padding: 0; overflow: hidden; }
+        .input-color::-webkit-color-swatch-wrapper { padding: 0; }
+        .input-color::-webkit-color-swatch { border: 1px solid #3f3f46; border-radius: 6px; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 12px;}
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #6366f1; cursor: pointer; margin-top: -5px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #3f3f46; border-radius: 2px; }
+        input[type=range]:focus::-webkit-slider-thumb { background: #818cf8; outline: 2px solid rgba(99, 102, 241, 0.3); }
+
+        .tab-btn { padding: 10px 16px; font-size: 13px; font-weight: 600; color: #a1a1aa; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap;}
+        .tab-btn:hover { color: white; }
+        .tab-btn.active { color: #6366f1; border-bottom-color: #6366f1; }
+        .tab-content { display: none; padding: 20px; animation: fadeInTab 0.3s ease; }
+        .tab-content.active { display: block; }
+        
+        @keyframes fadeInTab { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .radius-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #18181b; padding: 10px; border-radius: 8px; border: 1px solid #3f3f46; position: relative;}
+        .radius-icon { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; border: 2px solid #52525b; border-radius: 4px; pointer-events: none;}
+
+        /* --- Modale de saisie maison ---
+           Le navigateur embarqué dans OBS (CEF) ne supporte pas window.prompt/alert/confirm.
+           On remplace donc ces dialogues natifs par une modale HTML classique, qui fonctionne
+           aussi bien dans un navigateur normal que dans une fenêtre "Interagir" d'OBS. */
+        #custom-modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+            align-items: center; justify-content: center; z-index: 9999;
+        }
+        #custom-modal-box {
+            background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 20px;
+            width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        #custom-modal-title { font-size: 14px; font-weight: 700; color: #e4e4e7; margin-bottom: 12px; }
+        #custom-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .modal-btn { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid #3f3f46; }
+        .modal-btn-cancel { background: #27272a; color: #d4d4d8; }
+        .modal-btn-cancel:hover { background: #3f3f46; }
+        .modal-btn-ok { background: #6366f1; color: white; border-color: #6366f1; }
+        .modal-btn-ok:hover { background: #4f46e5; }
+
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            background: #18181b; border: 1px solid #3f3f46; border-left: 3px solid #6366f1; color: #e4e4e7;
+            padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            animation: toastIn 0.25s ease;
+        }
+        .toast.error { border-left-color: #ef4444; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
+    </style>
+</head>
+<body id="app">
+
+    <div id="obs-view" class="hidden w-full h-full relative">
+        <div class="lt-stage" id="obs-stage">
+            <div class="lt-anim-wrap" id="obs-anim-wrap">
+            <div id="obs-composer" class="lt-composer">
+                <div class="lt-layer-logo" id="obs-logo" style="display: none;"></div>
+                <div class="lt-text-stack">
+                    <div class="lt-block lt-layer-title" id="obs-title-bg">
+                        <div class="lt-block-inner"><div class="lt-title-text" id="obs-title"></div></div>
+                    </div>
+                    <div class="lt-block lt-layer-sub" id="obs-sub-bg">
+                        <div class="lt-block-inner"><div class="lt-sub-text" id="obs-sub"></div></div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controller-view" class="hidden h-screen flex flex-col">
+        
+        <!-- HeaderBar -->
+        <header class="h-14 bg-panelBg border-b border-gray-800 flex items-center justify-between px-6 shrink-0 z-20 shadow-md">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 bg-gradient-to-tr from-indigo-600 to-purple-500 rounded-lg shadow-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+                </div>
+                <h1 class="font-bold text-lg tracking-wide">ULTIMATE <span class="text-indigo-400">LT STUDIO</span></h1>
+                <span id="sync-badge" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 ml-2 border border-gray-700">
+                    <span id="sync-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500 shrink-0"></span>
+                    <span id="sync-label">Local uniquement</span>
+                </span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="bg-appBg px-3 py-1.5 rounded-md border border-gray-800 flex items-center gap-2">
+                    <span class="text-xs text-gray-400">Lien OBS:</span>
+                    <code id="obs-url" class="text-xs text-indigo-300 font-mono select-all max-w-[200px] truncate"></code>
+                    <button onclick="copyUrl()" class="text-gray-400 hover:text-white" title="Copier"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                    <button onclick="toggleObsResHelp()" class="text-amber-400 hover:text-amber-300 shrink-0" title="Important : résolution de la Source Navigateur">⚠️</button>
+                </div>
+                <button onclick="saveDesign()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-1.5 rounded text-sm font-semibold transition border border-gray-700">💾 Sauvegarder</button>
+                <div class="w-px h-6 bg-gray-700 mx-1"></div>
+                <button onclick="cmdPlay()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-1.5 rounded shadow-lg shadow-indigo-500/20 text-sm font-bold flex items-center gap-2 transition">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg> LIVE
+                </button>
+                <button onclick="cmdStop()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded shadow-lg text-sm font-bold transition">STOP</button>
+            </div>
+        </header>
+
+        <div id="obs-res-help" class="hidden bg-amber-900/30 border-b border-amber-700/50 text-amber-200 text-xs px-6 py-2 flex items-center justify-between gap-4">
+            <div>
+                ⚠️ <strong>Pour que la position X/Y (ex: 50% = centré) corresponde exactement à votre écran de sortie</strong>,
+                réglez la Source Navigateur OBS à la <strong>même résolution que votre Canvas</strong>
+                (OBS &gt; Paramètres &gt; Vidéo &gt; Résolution de base — souvent 1920 x 1080), dans les propriétés
+                de la Source Navigateur (champs Largeur/Hauteur). Si la source garde sa taille par défaut
+                (souvent 800 x 600), "50%" centre le bloc dans ce petit rectangle, pas sur tout l'écran.
+                Astuce : ajoutez <code class="bg-black/30 px-1 rounded">&amp;debug=1</code> à la fin du lien OBS pour
+                afficher temporairement, en bas à droite, la résolution que la page détecte réellement — pratique pour vérifier
+                qu'elle correspond bien à votre Canvas.
+            </div>
+            <button onclick="toggleObsResHelp()" class="shrink-0 text-amber-300 hover:text-white">✕</button>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar Gauche: Bibliothèque -->
+            <aside class="w-64 bg-panelBg border-r border-gray-800 flex flex-col shrink-0">
+                <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <span class="text-sm font-semibold text-gray-300">Bibliothèque</span>
+                    <div class="flex items-center gap-3">
+                        <button onclick="exportPresets()" title="Exporter tous les designs (fichier .json)" class="text-gray-400 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"></path></svg>
+                        </button>
+                        <button onclick="triggerImport()" title="Importer des designs (fichier .json)" class="text-gray-400 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 8l5-5 5 5M12 3v12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="import-file-input" accept="application/json" class="hidden" onchange="importPresets(event)">
+                <div id="preset-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                    <!-- Presets injectés par JS -->
+                </div>
+            </aside>
+
+            <main class="flex-1 flex flex-col relative bg-appBg">
+                <div class="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur px-3 py-1 rounded text-xs font-mono text-gray-400 border border-gray-800">PREVIEW (Canevas OBS)</div>
+                <div class="flex-1 checkerboard relative overflow-hidden preview-mode shadow-inner" id="preview-area">
+                    
+                    <div class="absolute inset-0 pointer-events-none opacity-20">
+                        <div class="absolute top-1/2 left-0 w-full h-px bg-indigo-500"></div>
+                        <div class="absolute top-0 left-1/2 w-px h-full bg-indigo-500"></div>
+                        <div class="absolute bottom-[10%] left-[5%] right-[5%] h-px border-b border-dashed border-red-500"></div>
+                    </div>
+
+                    <!-- PREVIEW STAGE -->
+                    <div class="lt-stage" id="prev-stage">
+                        <div id="prev-composer" class="lt-composer">
+                            <div class="lt-layer-logo" id="prev-logo" style="display: none;"></div>
+                            <div class="lt-text-stack">
+                                <div class="lt-block lt-layer-title" id="prev-title-bg">
+                                    <div class="lt-block-inner"><div class="lt-title-text" id="prev-title"></div></div>
+                                </div>
+                                <div class="lt-block lt-layer-sub" id="prev-sub-bg">
+                                    <div class="lt-block-inner"><div class="lt-sub-text" id="prev-sub"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lt-drag-handle" id="prev-drag-handle" title="Glisser pour déplacer le bloc (ce point est son centre)"></div>
+                </div>
+            </main>
+
+            <aside class="w-[380px] bg-panelBg border-l border-gray-800 flex flex-col shrink-0 shadow-[-10px_0_20px_rgba(0,0,0,0.3)] z-10">
+                
+                <div class="flex overflow-x-auto border-b border-gray-800 bg-appBg shrink-0 no-scrollbar">
+                    <div class="tab-btn active" onclick="switchTab('tab-global', this)">Global</div>
+                    <div class="tab-btn" onclick="switchTab('tab-title', this)">Titre</div>
+                    <div class="tab-btn" onclick="switchTab('tab-sub', this)">Sous-titre</div>
+                    <div class="tab-btn" onclick="switchTab('tab-media', this)">Média / Logo</div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto" oninput="updateLive()">
+                    
+                    <!-- TAB 1: GLOBAL -->
+                    <div id="tab-global" class="tab-content active space-y-6">
+                        
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-white border-b border-gray-700 pb-2">Textes Rapides</h3>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Nom / Titre</label>
+                                <input type="text" id="t_text" class="input-text text-base font-bold" value="LANCEMENT DU LIVE">
+                            </div>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Rôle / Sous-titre (Laissez vide pour cacher)</label>
+                                <input type="text" id="s_text" class="input-text" value="INSTALLEZ-VOUS CONFORTABLEMENT">
+                            </div>
+                        </div>
+
+                        <!-- Bloc Configuration du Temps et Animation -->
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-white border-b border-gray-700 pb-2">Temps d'affichage & Animations</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group col-span-2">
+                                    <label class="ctrl-label text-indigo-300">Durée d'affichage (0 = reste indéfiniment)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="g_dur" class="input-text w-full" value="5" min="0" title="Nombre de secondes avant de disparaître">
+                                        <span class="text-xs text-gray-400">secondes</span>
+                                    </div>
+                                </div>
+                                <div class="ctrl-group">
+                                    <label class="ctrl-label">Anim Entrée</label>
+                                    <select id="g_in" class="input-text">
+                                        <option value="slInL" selected>Glisser Gauche</option>
+                                        <option value="slInR">Glisser Droite</option>
+                                        <option value="slInU">Glisser Haut</option>
+                                        <option value="slInD">Glisser Bas</option>
+                                        <option value="popIn">Pop In</option>
+                                        <option value="reveal">Révélation</option>
+                                        <option value="zoomIn">Zoom In</option>
+                                        <option value="flipIn">Flip 3D</option>
+                                        <option value="bounceIn">Rebond (Bounce)</option>
+                                    </select>
+                                </div>
+                                <div class="ctrl-group">
+                                    <label class="ctrl-label">Anim Sortie</label>
+                                    <select id="g_out" class="input-text">
+                                        <option value="fade" selected>Fondu</option>
+                                        <option value="slOutL">Glisser Gauche</option>
+                                        <option value="slOutR">Glisser Droite</option>
+                                        <option value="slOutD">Glisser Bas</option>
+                                        <option value="slOutU">Glisser Haut</option>
+                                        <option value="zoomOut">Zoom Out</option>
+                                        <option value="flipOut">Flip 3D Out</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-white border-b border-gray-700 pb-2">Position & Dimensions</h3>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Préréglages rapides <span class="text-gray-500 normal-case font-normal">(ou glissez le point sur l'aperçu)</span></label>
+                                <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+                                    <button type="button" onclick="setBlockPosX(10)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">⟵ Gauche</button>
+                                    <button type="button" onclick="setBlockPosX(50)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">Centré</button>
+                                    <button type="button" onclick="setBlockPosX(90)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">Droite ⟶</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1.5">
+                                    <button type="button" onclick="setBlockPosY(15)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">⟵ Haut</button>
+                                    <button type="button" onclick="setBlockPosY(50)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">Milieu</button>
+                                    <button type="button" onclick="setBlockPosY(85)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-xs border border-gray-700">Bas ⟶</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Position X <span class="ctrl-val" id="g_posx_v">50%</span></label><input type="range" id="g_posx" min="0" max="100" value="50"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Position Y <span class="ctrl-val" id="g_posy_v">85%</span></label><input type="range" id="g_posy" min="0" max="100" value="85"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Taille (Échelle) <span class="ctrl-val" id="g_scale_v">1x</span></label><input type="range" id="g_scale" min="0.4" max="2" step="0.1" value="1"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-white border-b border-gray-700 pb-2">Composition Globale</h3>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Alignement Titre / Sous-titre</label>
+                                <select id="g_align" class="input-text">
+                                    <option value="flex-start" selected>Gauche</option>
+                                    <option value="center">Centré</option>
+                                    <option value="flex-end">Droite</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Marge Média <span class="ctrl-val" id="g_marginl_v">60px</span></label><input type="range" id="g_marginl" min="0" max="200" value="60"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Écart Titre/Sous <span class="ctrl-val" id="g_gap_v">0px</span></label><input type="range" id="g_gap" min="-20" max="50" value="0"></div>
+                                <div class="ctrl-group col-span-2"><label class="ctrl-label">Flou d'arrière-plan (Glass) <span class="ctrl-val" id="g_blur_v">10px</span></label><input type="range" id="g_blur" min="0" max="40" value="10"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: TITRE -->
+                    <div id="tab-title" class="tab-content space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Typographie</label>
+                                <select id="t_font" class="input-text"><option value="Inter">Inter</option><option value="Montserrat">Montserrat</option><option value="Bebas Neue">Bebas Neue</option><option value="Oswald">Oswald</option><option value="Rajdhani">Rajdhani (Tech)</option><option value="Poppins">Poppins</option></select>
+                            </div>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Graisse</label>
+                                <select id="t_weight" class="input-text"><option value="400">Normal</option><option value="600">Semi-Bold</option><option value="800" selected>Extra-Bold</option><option value="900">Black</option></select>
+                            </div>
+                            <div class="ctrl-group"><label class="ctrl-label">Taille (rem) <span class="ctrl-val" id="t_size_v">3</span></label><input type="range" id="t_size" min="1" max="6" step="0.1" value="3"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Espacement <span class="ctrl-val" id="t_space_v">0px</span></label><input type="range" id="t_space" min="-5" max="20" value="0"></div>
+                        </div>
+
+                        <div class="p-3 bg-appBg rounded border border-gray-800 space-y-3">
+                            <h4 class="text-xs font-bold text-gray-400">COULEURS & FOND</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="ctrl-group"><label class="ctrl-label">Texte</label><input type="color" id="t_col" class="input-color" value="#ffffff"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Fond G</label><input type="color" id="t_bg1" class="input-color" value="#0f172a"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Fond D</label><input type="color" id="t_bg2" class="input-color" value="#1e3a8a"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Opacité Fond <span class="ctrl-val" id="t_opa_v">0.9</span></label><input type="range" id="t_opa" min="0" max="1" step="0.05" value="0.9"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Angle Dégradé <span class="ctrl-val" id="t_deg_v">90°</span></label><input type="range" id="t_deg" min="0" max="360" value="90"></div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-appBg rounded border border-gray-800 space-y-4">
+                            <h4 class="text-xs font-bold text-indigo-400">STUDIO DE FORME</h4>
+                            <div class="ctrl-group"><label class="ctrl-label">Inclinaison (Skew) <span class="ctrl-val" id="t_skew_v">0°</span></label><input type="range" id="t_skew" min="-45" max="45" value="0"></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Décalage X <span class="ctrl-val" id="t_offx_v">0px</span></label><input type="range" id="t_offx" min="-150" max="150" value="0"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Décalage Y <span class="ctrl-val" id="t_offy_v">0px</span></label><input type="range" id="t_offy" min="-100" max="100" value="0"></div>
+                            </div>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label mb-1">Rayon des coins (px)</label>
+                                <div class="radius-grid">
+                                    <div class="radius-icon"></div>
+                                    <input type="number" id="t_r_tl" class="input-text text-center text-xs" value="8" title="Haut Gauche">
+                                    <input type="number" id="t_r_tr" class="input-text text-center text-xs" value="8" title="Haut Droite">
+                                    <input type="number" id="t_r_bl" class="input-text text-center text-xs" value="8" title="Bas Gauche">
+                                    <input type="number" id="t_r_br" class="input-text text-center text-xs" value="8" title="Bas Droite">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Padding X <span class="ctrl-val" id="t_padx_v">30px</span></label><input type="range" id="t_padx" min="10" max="100" value="30"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Padding Y <span class="ctrl-val" id="t_pady_v">15px</span></label><input type="range" id="t_pady" min="5" max="50" value="15"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Bordure Gauche <span class="ctrl-val" id="t_bordl_v">0px</span></label><input type="range" id="t_bordl" min="0" max="20" value="0"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Couleur Bord</label><input type="color" id="t_bordc" class="input-color" value="#6366f1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: SOUS-TITRE -->
+                    <div id="tab-sub" class="tab-content space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Typographie</label>
+                                <select id="s_font" class="input-text"><option value="Inter">Inter</option><option value="Montserrat">Montserrat</option><option value="Oswald">Oswald</option><option value="Poppins">Poppins</option></select>
+                            </div>
+                            <div class="ctrl-group"><label class="ctrl-label">Graisse</label><select id="s_weight" class="input-text"><option value="400" selected>Normal</option><option value="600">Semi-Bold</option></select></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Taille (rem) <span class="ctrl-val" id="s_size_v">1.5</span></label><input type="range" id="s_size" min="0.8" max="4" step="0.1" value="1.5"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Espacement <span class="ctrl-val" id="s_space_v">2px</span></label><input type="range" id="s_space" min="0" max="20" value="2"></div>
+                        </div>
+
+                        <div class="p-3 bg-appBg rounded border border-gray-800 space-y-3">
+                            <h4 class="text-xs font-bold text-gray-400">COULEURS & FOND</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="ctrl-group"><label class="ctrl-label">Texte</label><input type="color" id="s_col" class="input-color" value="#94a3b8"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Fond G</label><input type="color" id="s_bg1" class="input-color" value="#1e293b"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Fond D</label><input type="color" id="s_bg2" class="input-color" value="#0f172a"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Opacité Fond <span class="ctrl-val" id="s_opa_v">0.9</span></label><input type="range" id="s_opa" min="0" max="1" step="0.05" value="0.9"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Angle Dégradé <span class="ctrl-val" id="s_deg_v">90°</span></label><input type="range" id="s_deg" min="0" max="360" value="90"></div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-appBg rounded border border-gray-800 space-y-4">
+                            <h4 class="text-xs font-bold text-indigo-400">STUDIO DE FORME</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Inclinaison <span class="ctrl-val" id="s_skew_v">0°</span></label><input type="range" id="s_skew" min="-45" max="45" value="0"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Décalage Y <span class="ctrl-val" id="s_offy_v">0px</span></label><input type="range" id="s_offy" min="-50" max="50" value="0"></div>
+                                <div class="ctrl-group col-span-2"><label class="ctrl-label">Décalage X (Retrait) <span class="ctrl-val" id="s_offx_v">0px</span></label><input type="range" id="s_offx" min="-100" max="200" value="0"></div>
+                            </div>
+                            <div class="ctrl-group">
+                                <label class="ctrl-label mb-1">Rayon des coins (px)</label>
+                                <div class="radius-grid">
+                                    <div class="radius-icon"></div>
+                                    <input type="number" id="s_r_tl" class="input-text text-center text-xs" value="8">
+                                    <input type="number" id="s_r_tr" class="input-text text-center text-xs" value="8">
+                                    <input type="number" id="s_r_bl" class="input-text text-center text-xs" value="8">
+                                    <input type="number" id="s_r_br" class="input-text text-center text-xs" value="8">
+                                </div>
+                            </div>
+                             <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Padding X <span class="ctrl-val" id="s_padx_v">30px</span></label><input type="range" id="s_padx" min="10" max="100" value="30"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Padding Y <span class="ctrl-val" id="s_pady_v">8px</span></label><input type="range" id="s_pady" min="2" max="30" value="8"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-media" class="tab-content space-y-6">
+                        <div class="ctrl-group">
+                            <label class="ctrl-label">Image ou vidéo du logo</label>
+                            <div class="flex items-center gap-2">
+                                <label class="shrink-0 cursor-pointer bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded text-xs font-semibold border border-gray-700 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    Choisir un fichier...
+                                    <input type="file" id="l_file" accept="image/*,video/*" class="hidden" onchange="handleLogoFileSelect(event)">
+                                </label>
+                                <span class="text-xs text-gray-400 truncate flex-1" id="l_file_name">Aucun fichier choisi</span>
+                                <button type="button" onclick="clearLogoMedia()" class="shrink-0 text-gray-500 hover:text-red-400 text-xs" title="Retirer l'image/vidéo">✕</button>
+                            </div>
+                            <p class="text-[10px] text-gray-500 mt-1">Ou collez directement un lien d'image/vidéo ci-dessous (ex: une URL commençant par https://) :</p>
+                            <input type="text" id="l_url" class="input-text" placeholder="Laissez vide pour désactiver, ou collez un lien d'image/vidéo">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="ctrl-group"><label class="ctrl-label">Taille Conteneur <span class="ctrl-val" id="l_size_v">100px</span></label><input type="range" id="l_size" min="40" max="250" value="100"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Échelle Image <span class="ctrl-val" id="l_imgsc_v">0.8</span></label><input type="range" id="l_imgsc" min="0.2" max="1.5" step="0.1" value="0.8"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Décalage X <span class="ctrl-val" id="l_offx_v">-30px</span></label><input type="range" id="l_offx" min="-150" max="150" value="-30"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Décalage Y <span class="ctrl-val" id="l_offy_v">0px</span></label><input type="range" id="l_offy" min="-100" max="100" value="0"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Z-Index (Profondeur)</label><input type="number" id="l_z" class="input-text" value="10"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Rotation <span class="ctrl-val" id="l_rot_v">0°</span></label><input type="range" id="l_rot" min="-180" max="180" value="0"></div>
+                            <div class="ctrl-group"><label class="ctrl-label">Arrondi (Border-radius) <span class="ctrl-val" id="l_rad_v">50%</span></label><input type="range" id="l_rad" min="0" max="50" value="50"></div>
+                        </div>
+
+                        <div class="p-3 bg-appBg rounded border border-gray-800 space-y-4">
+                            <h4 class="text-xs font-bold text-indigo-400">STYLES CONTENEUR</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="ctrl-group"><label class="ctrl-label">Couleur de fond</label><input type="color" id="l_bg" class="input-color" value="#ffffff"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Bordure <span class="ctrl-val" id="l_bordw_v">0px</span></label><input type="range" id="l_bordw" min="0" max="20" value="0"></div>
+                                <div class="ctrl-group"><label class="ctrl-label">Couleur Bordure</label><input type="color" id="l_bordc" class="input-color" value="#ffffff"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Modale de saisie maison (remplace prompt/confirm, non supportés dans OBS) -->
+    <div id="custom-modal-overlay" style="display:none;">
+        <div id="custom-modal-box">
+            <div id="custom-modal-title"></div>
+            <input type="text" id="custom-modal-input" class="input-text hidden" placeholder="">
+            <div id="custom-modal-actions">
+                <button type="button" class="modal-btn modal-btn-cancel" onclick="closeCustomModal(null)">Annuler</button>
+                <button type="button" class="modal-btn modal-btn-ok" onclick="closeCustomModal(true)">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+
+    <script>
+        const isOBS = new URLSearchParams(window.location.search).get('obs') === '1';
+        
+        // Timer de masquage automatique
+        let autoHideTimer = null; 
+
+        // Variables pour gérer la diffusion entre onglets
+        // ============================================================
+        // RemoteChannel — pont réseau optionnel au-dessus de BroadcastChannel
+        // ============================================================
+        // BroadcastChannel ne fonctionne qu'entre pages ouvertes dans le MÊME processus
+        // navigateur (ex: un Dock OBS + une Source Navigateur OBS, car tous deux tournent
+        // dans le moteur Chromium interne à OBS). Il NE fonctionne PAS entre un navigateur
+        // externe (Chrome, Edge...) et OBS, ni entre deux PC différents.
+        //
+        // RemoteChannel garde BroadcastChannel comme transport local (gratuit, zéro
+        // config, marche toujours), et ajoute EN PLUS une connexion WebSocket vers un petit
+        // serveur relais local (sync-relay-server.js) quand la page est chargée depuis ce
+        // serveur (via une adresse http://..., pas en ouvrant le fichier directement). Cela
+        // permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
+        // sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
+        // fonctionnement de l'application.
+        
+
+        
+
+        // Canal de communication avec OBS (local + relais réseau)
+        const bc = new RemoteChannel('obs_lt_channel');
+        bc.onStatusChange(updateSyncBadge);
+
+        function hexToRgba(hex, alpha) {
+            let r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // --- Modale de saisie maison (remplace prompt/confirm) ---
+        // Le navigateur embarqué dans OBS (CEF) ne supporte pas window.prompt/alert/confirm :
+        // ils ne s'affichent jamais et retournent immédiatement une valeur vide, ce qui causait
+        // l'échec silencieux de la sauvegarde. On implémente donc notre propre boîte de dialogue.
+        let _modalResolve = null;
+        function closeCustomModal(confirmed) {
+            const overlay = document.getElementById('custom-modal-overlay');
+            const input = document.getElementById('custom-modal-input');
+            overlay.style.display = 'none';
+            if (!_modalResolve) return;
+            const resolve = _modalResolve;
+            _modalResolve = null;
+            if (confirmed === null) { resolve(null); return; }
+            if (!input.classList.contains('hidden')) { resolve(input.value.trim() || null); }
+            else { resolve(true); }
+        }
+        function showPromptModal(title, defaultValue = '') {
+            return new Promise(resolve => {
+                _modalResolve = resolve;
+                const overlay = document.getElementById('custom-modal-overlay');
+                const input = document.getElementById('custom-modal-input');
+                document.getElementById('custom-modal-title').innerText = title;
+                input.classList.remove('hidden');
+                input.value = defaultValue;
+                overlay.style.display = 'flex';
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') closeCustomModal(true);
+                    if (e.key === 'Escape') closeCustomModal(null);
+                };
+                setTimeout(() => { input.focus(); input.select(); }, 30);
+            });
+        }
+        function showConfirmModal(title) {
+            return new Promise(resolve => {
+                _modalResolve = resolve;
+                const overlay = document.getElementById('custom-modal-overlay');
+                const input = document.getElementById('custom-modal-input');
+                document.getElementById('custom-modal-title').innerText = title;
+                input.classList.add('hidden');
+                overlay.style.display = 'flex';
+            });
+        }
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.innerText = message;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // --- Centrage sur le centre VISUEL réel (logo + texte), pas juste le bloc texte ---
+        // Le logo est positionné en `position: absolute` pour rester ajustable librement, ce qui
+        // veut dire qu'il ne compte pas dans les dimensions du conteneur (.lt-composer) utilisées
+        // par le centrage CSS (transform: translate(-50%,-50%)). Résultat : si le logo dépasse du
+        // bloc de texte, le "centre" utilisé pour positionner le lower third n'est PAS le centre
+        // visuel de l'ensemble (logo + texte), et les réglages de position (X/Y) semblent décalés.
+        // On calcule ici l'union des boîtes (logo ∪ bloc de texte) en coordonnées locales
+        // (offsetLeft/offsetWidth, non affectées par le zoom --g-scale, contrairement à
+        // getBoundingClientRect), puis on translate le conteneur pour aligner le centre visuel
+        // réel sur le point ciblé par --g-posx / --g-posy.
+        function centerComposer(prefix) {
+            const composer = document.getElementById(`${prefix}composer`);
+            if (!composer) return;
+            const logo = document.getElementById(`${prefix}logo`);
+            const textStack = composer.querySelector('.lt-text-stack');
+            if (!textStack) return;
+
+            let left = textStack.offsetLeft;
+            let right = textStack.offsetLeft + textStack.offsetWidth;
+            let top = textStack.offsetTop;
+            let bottom = textStack.offsetTop + textStack.offsetHeight;
+
+            if (logo && logo.style.display !== 'none' && logo.offsetWidth > 0) {
+                left = Math.min(left, logo.offsetLeft);
+                right = Math.max(right, logo.offsetLeft + logo.offsetWidth);
+                top = Math.min(top, logo.offsetTop);
+                bottom = Math.max(bottom, logo.offsetTop + logo.offsetHeight);
+            }
+
+            const unionCenterX = (left + right) / 2;
+            const unionCenterY = (top + bottom) / 2;
+            const composerCenterX = composer.offsetWidth / 2;
+            const composerCenterY = composer.offsetHeight / 2;
+
+            const dx = composerCenterX - unionCenterX;
+            const dy = composerCenterY - unionCenterY;
+            composer.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+
+        // Les polices web (Rajdhani, Bebas Neue...) se chargent de façon asynchrone : si elles
+        // finissent de charger APRÈS le premier calcul de centrage, les dimensions du texte
+        // changent et le centrage doit être recalculé.
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                centerComposer('obs-');
+                centerComposer('prev-');
+            });
+        }
+
+        // Récupère toutes les valeurs du panneau d'admin
+        function getDesignConfig() {
+            return {
+                texts: { t: document.getElementById('t_text').value, s: document.getElementById('s_text').value },
+                media: { url: document.getElementById('l_url').value },
+                global: {
+                    posx: document.getElementById('g_posx').value, posy: document.getElementById('g_posy').value,
+                    scale: document.getElementById('g_scale').value, gap: document.getElementById('g_gap').value,
+                    marginl: document.getElementById('g_marginl').value, blur: document.getElementById('g_blur').value,
+                    animIn: document.getElementById('g_in').value, animOut: document.getElementById('g_out').value,
+                    duration: document.getElementById('g_dur').value, align: document.getElementById('g_align').value
+                },
+                title: {
+                    font: document.getElementById('t_font').value, weight: document.getElementById('t_weight').value,
+                    size: document.getElementById('t_size').value, space: document.getElementById('t_space').value,
+                    col: document.getElementById('t_col').value, bg1: document.getElementById('t_bg1').value,
+                    bg2: document.getElementById('t_bg2').value, opa: document.getElementById('t_opa').value,
+                    deg: document.getElementById('t_deg').value, skew: document.getElementById('t_skew').value,
+                    rtl: document.getElementById('t_r_tl').value, rtr: document.getElementById('t_r_tr').value,
+                    rbl: document.getElementById('t_r_bl').value, rbr: document.getElementById('t_r_br').value,
+                    padx: document.getElementById('t_padx').value, pady: document.getElementById('t_pady').value,
+                    bordl: document.getElementById('t_bordl').value, bordc: document.getElementById('t_bordc').value,
+                    offx: document.getElementById('t_offx').value, offy: document.getElementById('t_offy').value
+                },
+                sub: {
+                    font: document.getElementById('s_font').value, weight: document.getElementById('s_weight').value,
+                    size: document.getElementById('s_size').value, space: document.getElementById('s_space').value,
+                    col: document.getElementById('s_col').value, bg1: document.getElementById('s_bg1').value,
+                    bg2: document.getElementById('s_bg2').value, opa: document.getElementById('s_opa').value,
+                    deg: document.getElementById('s_deg').value, skew: document.getElementById('s_skew').value,
+                    offx: document.getElementById('s_offx').value, offy: document.getElementById('s_offy').value,
+                    rtl: document.getElementById('s_r_tl').value, rtr: document.getElementById('s_r_tr').value,
+                    rbl: document.getElementById('s_r_bl').value, rbr: document.getElementById('s_r_br').value,
+                    padx: document.getElementById('s_padx').value, pady: document.getElementById('s_pady').value
+                },
+                logo: {
+                    size: document.getElementById('l_size').value, imgsc: document.getElementById('l_imgsc').value,
+                    offx: document.getElementById('l_offx').value, offy: document.getElementById('l_offy').value,
+                    z: document.getElementById('l_z').value, rot: document.getElementById('l_rot').value,
+                    rad: document.getElementById('l_rad').value, bg: document.getElementById('l_bg').value,
+                    bordw: document.getElementById('l_bordw').value, bordc: document.getElementById('l_bordc').value
+                }
+            };
+        }
+
+        function applyConfig(cfg, isPreview = false) {
+            const prefix = isPreview ? 'prev-' : 'obs-';
+            const root = isPreview ? document.getElementById('preview-area') : document.documentElement;
+            
+            if(!isPreview) {
+                // Application des variables CSS à la racine pour OBS
+                const r = root.style;
+                const c = cfg;
+                
+                r.setProperty('--g-scale', c.global.scale);
+                r.setProperty('--g-posx', c.global.posx + '%');
+                r.setProperty('--g-posy', c.global.posy + '%');
+                r.setProperty('--g-gap', c.global.gap + 'px');
+                r.setProperty('--g-margin-l', c.global.marginl + 'px');
+                r.setProperty('--g-blur', c.global.blur + 'px');
+                r.setProperty('--g-text-align', c.global.align || 'flex-start');
+                
+                r.setProperty('--t-font', `"${c.title.font}"`);
+                r.setProperty('--t-weight', c.title.weight);
+                r.setProperty('--t-size', c.title.size + 'rem');
+                r.setProperty('--t-space', c.title.space + 'px');
+                r.setProperty('--t-col', c.title.col);
+                r.setProperty('--t-bg1', hexToRgba(c.title.bg1, c.title.opa));
+                r.setProperty('--t-bg2', hexToRgba(c.title.bg2, c.title.opa));
+                r.setProperty('--t-deg', c.title.deg + 'deg');
+                r.setProperty('--t-skew', c.title.skew + 'deg');
+                r.setProperty('--t-r-tl', c.title.rtl + 'px'); r.setProperty('--t-r-tr', c.title.rtr + 'px');
+                r.setProperty('--t-r-bl', c.title.rbl + 'px'); r.setProperty('--t-r-br', c.title.rbr + 'px');
+                r.setProperty('--t-pad-x', c.title.padx + 'px'); r.setProperty('--t-pad-y', c.title.pady + 'px');
+                r.setProperty('--t-border-l', c.title.bordl + 'px'); r.setProperty('--t-border-c', c.title.bordc);
+                r.setProperty('--t-offset-x', (c.title.offx || 0) + 'px'); r.setProperty('--t-offset-y', (c.title.offy || 0) + 'px');
+                
+                r.setProperty('--s-font', `"${c.sub.font}"`);
+                r.setProperty('--s-weight', c.sub.weight);
+                r.setProperty('--s-size', c.sub.size + 'rem');
+                r.setProperty('--s-space', c.sub.space + 'px');
+                r.setProperty('--s-col', c.sub.col);
+                r.setProperty('--s-bg1', hexToRgba(c.sub.bg1, c.sub.opa));
+                r.setProperty('--s-bg2', hexToRgba(c.sub.bg2, c.sub.opa));
+                r.setProperty('--s-deg', c.sub.deg + 'deg');
+                r.setProperty('--s-skew', c.sub.skew + 'deg');
+                r.setProperty('--s-offset-x', c.sub.offx + 'px'); r.setProperty('--s-offset-y', c.sub.offy + 'px');
+                r.setProperty('--s-r-tl', c.sub.rtl + 'px'); r.setProperty('--s-r-tr', c.sub.rtr + 'px');
+                r.setProperty('--s-r-bl', c.sub.rbl + 'px'); r.setProperty('--s-r-br', c.sub.rbr + 'px');
+                r.setProperty('--s-pad-x', c.sub.padx + 'px'); r.setProperty('--s-pad-y', c.sub.pady + 'px');
+
+                r.setProperty('--l-size', c.logo.size + 'px');
+                r.setProperty('--l-img-scale', c.logo.imgsc);
+                r.setProperty('--l-offset-x', c.logo.offx + 'px');
+                r.setProperty('--l-offset-y', c.logo.offy + 'px');
+                r.setProperty('--l-z', c.logo.z);
+                r.setProperty('--l-rot', c.logo.rot + 'deg');
+                r.setProperty('--l-rad', c.logo.rad + '%');
+                r.setProperty('--l-bg', c.logo.bg);
+                r.setProperty('--l-border-w', c.logo.bordw + 'px');
+                r.setProperty('--l-border-c', c.logo.bordc);
+                
+                // Mettre à jour l'ID global d'animation (pour être relu lors du play)
+                window.currentAnimIn = c.global.animIn;
+                window.currentAnimOut = c.global.animOut;
+                window.currentDuration = parseFloat(c.global.duration) || 0;
+            } else {
+                // On met à jour l'UI labels
+                ['g_posx', 'g_posy', 'g_scale', 'g_marginl', 'g_gap', 'g_blur',
+                 't_size', 't_space', 't_deg', 't_skew', 't_opa', 't_padx', 't_pady', 't_bordl', 't_offx', 't_offy',
+                 's_size', 's_space', 's_deg', 's_skew', 's_opa', 's_offx', 's_offy', 's_padx', 's_pady',
+                 'l_size', 'l_imgsc', 'l_offx', 'l_offy', 'l_rot', 'l_rad', 'l_bordw'].forEach(id => {
+                     let el = document.getElementById(id + '_v');
+                     if(el) {
+                         let val = document.getElementById(id).value;
+                         if(id.includes('opa') || id.includes('scale') || id.includes('imgsc')) el.innerText = val;
+                         else if(id.includes('deg') || id.includes('skew')) el.innerText = val + '°';
+                         else if(id.includes('pos')) el.innerText = val + '%';
+                         else if(id.includes('rad')) el.innerText = val + '%';
+                         else el.innerText = val + 'px';
+                     }
+                 });
+                 
+                // Application rapide à la zone de preview via les mêmes variables CSS (portée locale)
+                const pr = root.style;
+                pr.setProperty('--g-scale', cfg.global.scale);
+                pr.setProperty('--g-posx', cfg.global.posx + '%');
+                pr.setProperty('--g-posy', cfg.global.posy + '%');
+                pr.setProperty('--g-gap', cfg.global.gap + 'px');
+                pr.setProperty('--g-margin-l', cfg.global.marginl + 'px');
+                pr.setProperty('--g-blur', cfg.global.blur + 'px');
+                pr.setProperty('--g-text-align', cfg.global.align || 'flex-start');
+                pr.setProperty('--t-font', `"${cfg.title.font}"`);
+                pr.setProperty('--t-weight', cfg.title.weight);
+                pr.setProperty('--t-size', cfg.title.size + 'rem');
+                pr.setProperty('--t-space', cfg.title.space + 'px');
+                pr.setProperty('--t-col', cfg.title.col);
+                pr.setProperty('--t-bg1', hexToRgba(cfg.title.bg1, cfg.title.opa));
+                pr.setProperty('--t-bg2', hexToRgba(cfg.title.bg2, cfg.title.opa));
+                pr.setProperty('--t-deg', cfg.title.deg + 'deg');
+                pr.setProperty('--t-skew', cfg.title.skew + 'deg');
+                pr.setProperty('--t-r-tl', cfg.title.rtl + 'px'); pr.setProperty('--t-r-tr', cfg.title.rtr + 'px');
+                pr.setProperty('--t-r-bl', cfg.title.rbl + 'px'); pr.setProperty('--t-r-br', cfg.title.rbr + 'px');
+                pr.setProperty('--t-pad-x', cfg.title.padx + 'px'); pr.setProperty('--t-pad-y', cfg.title.pady + 'px');
+                pr.setProperty('--t-border-l', cfg.title.bordl + 'px'); pr.setProperty('--t-border-c', cfg.title.bordc);
+                pr.setProperty('--t-offset-x', (cfg.title.offx || 0) + 'px'); pr.setProperty('--t-offset-y', (cfg.title.offy || 0) + 'px');
+
+                pr.setProperty('--s-font', `"${cfg.sub.font}"`);
+                pr.setProperty('--s-weight', cfg.sub.weight);
+                pr.setProperty('--s-size', cfg.sub.size + 'rem');
+                pr.setProperty('--s-space', cfg.sub.space + 'px');
+                pr.setProperty('--s-col', cfg.sub.col);
+                pr.setProperty('--s-bg1', hexToRgba(cfg.sub.bg1, cfg.sub.opa));
+                pr.setProperty('--s-bg2', hexToRgba(cfg.sub.bg2, cfg.sub.opa));
+                pr.setProperty('--s-deg', cfg.sub.deg + 'deg');
+                pr.setProperty('--s-skew', cfg.sub.skew + 'deg');
+                pr.setProperty('--s-offset-x', cfg.sub.offx + 'px'); pr.setProperty('--s-offset-y', cfg.sub.offy + 'px');
+                pr.setProperty('--s-r-tl', cfg.sub.rtl + 'px'); pr.setProperty('--s-r-tr', cfg.sub.rtr + 'px');
+                pr.setProperty('--s-r-bl', cfg.sub.rbl + 'px'); pr.setProperty('--s-r-br', cfg.sub.rbr + 'px');
+                pr.setProperty('--s-pad-x', cfg.sub.padx + 'px'); pr.setProperty('--s-pad-y', cfg.sub.pady + 'px');
+
+                pr.setProperty('--l-size', cfg.logo.size + 'px');
+                pr.setProperty('--l-img-scale', cfg.logo.imgsc);
+                pr.setProperty('--l-offset-x', cfg.logo.offx + 'px');
+                pr.setProperty('--l-offset-y', cfg.logo.offy + 'px');
+                pr.setProperty('--l-z', cfg.logo.z);
+                pr.setProperty('--l-rot', cfg.logo.rot + 'deg');
+                pr.setProperty('--l-rad', cfg.logo.rad + '%');
+                pr.setProperty('--l-bg', cfg.logo.bg);
+                pr.setProperty('--l-border-w', cfg.logo.bordw + 'px');
+                pr.setProperty('--l-border-c', cfg.logo.bordc);
+            }
+
+            // HTML Text Content
+            document.getElementById(`${prefix}title`).innerText = cfg.texts.t;
+            
+            const subEl = document.getElementById(`${prefix}sub-bg`);
+            if(cfg.texts.s.trim() === '') {
+                subEl.style.display = 'none';
+            } else {
+                subEl.style.display = 'block';
+                document.getElementById(`${prefix}sub`).innerText = cfg.texts.s;
+            }
+
+            // Media
+            const logoEl = document.getElementById(`${prefix}logo`);
+            if(cfg.media.url.trim() === '') {
+                logoEl.style.display = 'none';
+            } else {
+                logoEl.style.display = 'flex';
+                if(cfg.media.url.match(/\.(mp4|webm)$/i)) {
+                    logoEl.innerHTML = `<video src="${cfg.media.url}" autoplay loop muted></video>`;
+                } else {
+                    logoEl.innerHTML = `<img src="${cfg.media.url}" alt="logo">`;
+                }
+            }
+
+            // Recentrer sur le centre visuel réel (logo + texte) maintenant que le contenu,
+            // les tailles et les décalages sont à jour.
+            centerComposer(prefix);
+        }
+
+        function triggerOBSAnimation(animClass, isOut = false) {
+            const stage = document.getElementById('obs-stage');
+            const animWrap = document.getElementById('obs-anim-wrap');
+
+            // Important : on nettoie/anime le WRAPPER, jamais .lt-stage lui-même, pour ne
+            // jamais perturber son translate(-50%,-50%) qui centre le bloc sur son point
+            // d'ancrage (voir commentaire CSS de .lt-anim-wrap).
+            animWrap.className = 'lt-anim-wrap';
+            void animWrap.offsetWidth; // Trigger reflow (important pour re-jouer l'animation)
+
+            if(isOut) {
+                animWrap.classList.add(`anim-out-${animClass}`);
+            } else {
+                // On met opacity:1 quand ça rentre car la base CSS le cache par défaut
+                stage.style.opacity = '1';
+                animWrap.classList.add(`anim-${animClass}`);
+            }
+        }
+
+        function updateLive() {
+            if(!isOBS) {
+                const cfg = getDesignConfig();
+                applyConfig(cfg, true);
+                bc.postMessage({ type: 'UPDATE', config: cfg });
+            }
+        }
+
+        // --- Préréglages rapides de position (agissent sur un seul axe à la fois, pour
+        // pouvoir combiner par ex. "Droite" + "Haut" en 2 clics) ---
+        function setBlockPosX(val) {
+            document.getElementById('g_posx').value = val;
+            updateLive();
+        }
+        function setBlockPosY(val) {
+            document.getElementById('g_posy').value = val;
+            updateLive();
+        }
+
+        // --- Sélecteur de fichier pour l'image/vidéo du logo ---
+        // On lit le fichier en local (FileReader) et on l'encode en data-URL, stockée dans
+        // le même champ l_url que l'ancien champ "lien" : le reste du code (rendu, envoi
+        // OBS, sauvegarde de presets) continue de fonctionner sans aucun changement, que
+        // l_url contienne un lien http(s) ou une image encodée directement.
+        function handleLogoFileSelect(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const nameEl = document.getElementById('l_file_name');
+            const reader = new FileReader();
+            reader.onload = () => {
+                document.getElementById('l_url').value = reader.result;
+                if (nameEl) nameEl.innerText = file.name;
+                updateLive();
+            };
+            reader.onerror = () => {
+                showToast("Impossible de lire ce fichier.", true);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearLogoMedia() {
+            document.getElementById('l_url').value = '';
+            document.getElementById('l_file').value = '';
+            const nameEl = document.getElementById('l_file_name');
+            if (nameEl) nameEl.innerText = 'Aucun fichier choisi';
+            updateLive();
+        }
+
+        // --- Glisser-déposer du bloc directement sur l'aperçu ---
+        // Le point d'ancrage (--g-posx/--g-posy) est déjà le CENTRE visuel du bloc (voir
+        // .lt-stage : transform: translate(-50%,-50%)). On déplace donc par delta de
+        // souris/doigt plutôt qu'en recalculant une position absolue depuis un coin : où
+        // que l'on clique sur le bloc, ce point précis reste sous le curseur pendant tout
+        // le glissement, et la valeur enregistrée correspond toujours au centre du bloc.
+        function setupDragHandle() {
+            const previewArea = document.getElementById('preview-area');
+            const stage = document.getElementById('prev-stage');
+            const handle = document.getElementById('prev-drag-handle');
+            const posXInput = document.getElementById('g_posx');
+            const posYInput = document.getElementById('g_posy');
+            if (!previewArea || !stage || !handle || !posXInput || !posYInput) return;
+
+            let dragging = false;
+            let startClientX = 0, startClientY = 0;
+            let startPosX = 0, startPosY = 0;
+
+            function getPoint(e) {
+                return e.touches && e.touches.length ? e.touches[0] : e;
+            }
+
+            function onDragStart(e) {
+                dragging = true;
+                const p = getPoint(e);
+                startClientX = p.clientX;
+                startClientY = p.clientY;
+                startPosX = parseFloat(posXInput.value) || 0;
+                startPosY = parseFloat(posYInput.value) || 0;
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            }
+
+            function onDragMove(e) {
+                if (!dragging) return;
+                const p = getPoint(e);
+                const rect = previewArea.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                const dxPercent = ((p.clientX - startClientX) / rect.width) * 100;
+                const dyPercent = ((p.clientY - startClientY) / rect.height) * 100;
+                const newX = Math.min(100, Math.max(0, startPosX + dxPercent));
+                const newY = Math.min(100, Math.max(0, startPosY + dyPercent));
+                posXInput.value = newX.toFixed(1);
+                posYInput.value = newY.toFixed(1);
+                updateLive();
+                e.preventDefault();
+            }
+
+            function onDragEnd() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.userSelect = '';
+            }
+
+            handle.addEventListener('mousedown', onDragStart);
+            stage.addEventListener('mousedown', onDragStart);
+            handle.addEventListener('touchstart', onDragStart, { passive: false });
+            stage.addEventListener('touchstart', onDragStart, { passive: false });
+            window.addEventListener('mousemove', onDragMove);
+            window.addEventListener('touchmove', onDragMove, { passive: false });
+            window.addEventListener('mouseup', onDragEnd);
+            window.addEventListener('touchend', onDragEnd);
+        }
+
+        function toggleObsResHelp() {
+            document.getElementById('obs-res-help').classList.toggle('hidden');
+        }
+
+        function cmdPlay() {
+            const cfg = getDesignConfig();
+            bc.postMessage({ type: 'PLAY', config: cfg });
+        }
+
+        function cmdStop() {
+            const cfg = getDesignConfig();
+            bc.postMessage({ type: 'STOP', outAnim: cfg.global.animOut });
+        }
+
+        // Relance le dernier lower third (bouton "Relancer" du Studio Unifié).
+        function relaunchLast() {
+            cmdPlay();
+        }
+
+        if (isOBS) {
+            document.body.classList.remove('controller-mode');
+            document.body.classList.add('obs-mode');
+            document.getElementById('obs-view').classList.remove('hidden');
+
+            // Aide au diagnostic : ajouter &debug=1 au lien OBS affiche la résolution que
+            // cette page détecte réellement (celle de la Source Navigateur OBS), pour
+            // vérifier facilement qu'elle correspond bien au Canvas de sortie — sinon les
+            // pourcentages de position (50% = centré, etc.) ne seront pas centrés sur
+            // l'écran final, seulement sur ce rectangle.
+            if (new URLSearchParams(window.location.search).get('debug') === '1') {
+                const dbg = document.createElement('div');
+                dbg.style.cssText = 'position:fixed;bottom:8px;right:8px;background:rgba(0,0,0,0.75);color:#fbbf24;font:12px monospace;padding:4px 8px;border-radius:4px;z-index:9999;pointer-events:none;';
+                document.body.appendChild(dbg);
+                const updateDbg = () => { dbg.textContent = `Résolution détectée : ${window.innerWidth} x ${window.innerHeight}`; };
+                updateDbg();
+                window.addEventListener('resize', updateDbg);
+            }
+
+            bc.onmessage = (ev) => {
+                const data = ev.data;
+                if (data.type === 'UPDATE') {
+                    applyConfig(data.config, false);
+                }
+                else if (data.type === 'PLAY') {
+                    applyConfig(data.config, false);
+                    triggerOBSAnimation(window.currentAnimIn || data.config.global.animIn, false);
+                    
+                    // Gestion du Masquage Automatique
+                    clearTimeout(autoHideTimer); // Annule l'ancien s'il y en avait un
+                    let dur = window.currentDuration || parseFloat(data.config.global.duration);
+                    if (dur > 0) {
+                        autoHideTimer = setTimeout(() => {
+                            triggerOBSAnimation(window.currentAnimOut || data.config.global.animOut, true);
+                        }, dur * 1000);
+                    }
+                }
+                else if (data.type === 'STOP') {
+                    clearTimeout(autoHideTimer); // Stoppe le timer s'il était en cours
+                    triggerOBSAnimation(data.outAnim, true);
+                }
+            };
+        } else {
+            document.body.classList.remove('obs-mode');
+            document.body.classList.add('controller-mode');
+            document.getElementById('controller-view').classList.remove('hidden');
+            
+            let currentUrl = window.location.href.split('?')[0];
+            document.getElementById('obs-url').innerText = currentUrl + '?obs=1';
+            
+            // Set init values
+            updateLive();
+            loadPresets();
+            // Synchronise les présets depuis le serveur si le stockage local est vide
+            // (utilisateur qui arrive sur un autre PC du réseau). Sans effet sinon.
+            if (window.OpenStore) {
+                OpenStore.pullIfLocalEmpty('lt', 'presets', obj => Object.keys(obj).length > 0)
+                    .then(changed => { if (changed) loadPresets(); });
+            }
+            setupDragHandle();
+        }
+
+        // UI Tabs & Copy Utils
+        function switchTab(id, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function copyUrl() {
+            const url = document.getElementById('obs-url').innerText;
+            // Creation textarea caché temporaire
+            const el = document.createElement('textarea');
+            el.value = url;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            setTimeout(() => btn.innerHTML = originalHtml, 2000);
+        }
+
+        // --- Stockage des présets (OpenStore, axe A) ---
+        // Les présets sont TOUJOURS écrits en local (instantané, hors-ligne), et en plus
+        // synchronisés vers le serveur relais (/data/...) pour qu'ils "suivent" l'utilisateur
+        // d'un PC à l'autre. En lecture, on lit d'abord le stockage local.
+        function ltLoadPresets() {
+            try { return JSON.parse(localStorage.getItem('lt_presets') || '{}'); }
+            catch (e) { return {}; }
+        }
+        function ltSavePresets(presets) {
+            try { localStorage.setItem('lt_presets', JSON.stringify(presets)); } catch (e) { /* silencieux */ }
+            if (window.OpenStore) { try { OpenStore.set('lt', 'presets', presets); } catch (e) { /* silencieux */ } }
+        }
+
+        // Sauvegarde de préréglages (Local Storage)
+        async function saveDesign() {
+            const name = await showPromptModal('Nom du design (ex : "Jean Dupont - Conférencier")');
+            if(!name) return;
+            const cfg = getDesignConfig();
+            try {
+                let presets = ltLoadPresets();
+                const overwrite = !!presets[name];
+                presets[name] = cfg;
+                ltSavePresets(presets);
+                loadPresets();
+                showToast(overwrite ? `"${name}" mis à jour ✓` : `"${name}" sauvegardé ✓`);
+            } catch (err) {
+                console.error(err);
+                showToast("Échec de la sauvegarde : le stockage local est indisponible ou plein.", true);
+            }
+        }
+
+        function loadPresets() {
+            const container = document.getElementById('preset-list');
+            container.innerHTML = '';
+            let presets;
+            try {
+                presets = ltLoadPresets();
+            } catch (err) {
+                showToast("Impossible de lire la bibliothèque de designs.", true);
+                presets = {};
+            }
+
+            // Ajout d'un preset par défaut visuellement sympa si vide
+            if(Object.keys(presets).length === 0) {
+                presets['Esport Modern'] = {"texts":{"t":"LANCEMENT DU LIVE","s":"INSTALLEZ-VOUS CONFORTABLEMENT"},"media":{"url":""},"global":{"posx":"50","posy":"85","scale":"1","gap":"0","marginl":"60","blur":"10","animIn":"popIn","animOut":"zoomOut","duration":"5"},"title":{"font":"Rajdhani","weight":"800","size":"3","space":"0","col":"#ffffff","bg1":"#000000","bg2":"#6366f1","opa":"0.9","deg":"90","skew":"-15","rtl":"0","rtr":"15","rbl":"15","rbr":"0","padx":"30","pady":"15","bordl":"5","bordc":"#4f46e5"},"sub":{"font":"Inter","weight":"600","size":"1.2","space":"2","col":"#e2e8f0","bg1":"#1e293b","bg2":"#0f172a","opa":"0.9","deg":"90","skew":"-15","offx":"20","offy":"0","rtl":"0","rtr":"0","rbl":"10","rbr":"10","padx":"30","pady":"8"},"logo":{"size":"100","imgsc":"0.8","offx":"-30","offy":"0","z":"10","rot":"0","rad":"50","bg":"#ffffff","bordw":"0","bordc":"#ffffff"}};
+                try { ltSavePresets(presets); } catch (err) {}
+            }
+
+            for(let name in presets) {
+                const el = document.createElement('div');
+                el.className = 'flex items-center justify-between bg-inputBg border border-gray-700 rounded p-2 hover:border-indigo-500 transition group gap-1';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'text-sm text-gray-200 truncate cursor-pointer flex-1';
+                nameSpan.title = "Charger ce design dans l'éditeur";
+                nameSpan.innerText = name;
+                nameSpan.addEventListener('click', () => applyPreset(name));
+
+                const actions = document.createElement('div');
+                actions.className = 'flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0';
+
+                const mkBtn = (label, title, extraClass, handler) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.title = title;
+                    b.className = `text-gray-500 ${extraClass} p-1 text-xs leading-none rounded hover:bg-black/20`;
+                    b.innerText = label;
+                    b.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
+                    return b;
+                };
+
+                actions.appendChild(mkBtn('▶', 'Charger et diffuser immédiatement', 'hover:text-green-400', () => quickPlay(name)));
+                actions.appendChild(mkBtn('✎', 'Renommer', 'hover:text-indigo-400', () => renamePreset(name)));
+                actions.appendChild(mkBtn('⧉', 'Dupliquer', 'hover:text-indigo-400', () => duplicatePreset(name)));
+                actions.appendChild(mkBtn('🗑', 'Supprimer', 'hover:text-red-400', () => deletePreset(name)));
+
+                el.appendChild(nameSpan);
+                el.appendChild(actions);
+                container.appendChild(el);
+            }
+        }
+
+        // Charge un design ET le diffuse immédiatement en direct — pratique pour enchaîner
+        // les intervenants d'une présentation sans repasser par le bouton LIVE.
+        function quickPlay(name) {
+            applyPreset(name);
+            cmdPlay();
+        }
+
+        async function renamePreset(oldName) {
+            const newName = await showPromptModal('Nouveau nom :', oldName);
+            if(!newName || newName === oldName) return;
+            try {
+                let presets = ltLoadPresets();
+                if(!presets[oldName]) return;
+                if(presets[newName]) {
+                    const ok = await showConfirmModal(`"${newName}" existe déjà. L'écraser ?`);
+                    if(!ok) return;
+                }
+                presets[newName] = presets[oldName];
+                delete presets[oldName];
+                ltSavePresets(presets);
+                loadPresets();
+                showToast(`Renommé en "${newName}" ✓`);
+            } catch (err) {
+                showToast("Échec du renommage.", true);
+            }
+        }
+
+        function duplicatePreset(name) {
+            try {
+                let presets = ltLoadPresets();
+                if(!presets[name]) return;
+                let copyName = `${name} (copie)`;
+                let i = 2;
+                while(presets[copyName]) { copyName = `${name} (copie ${i})`; i++; }
+                presets[copyName] = presets[name];
+                ltSavePresets(presets);
+                loadPresets();
+                showToast(`Dupliqué : "${copyName}" ✓`);
+            } catch (err) {
+                showToast("Échec de la duplication.", true);
+            }
+        }
+
+        // Export / Import JSON — indépendant du localStorage du navigateur, donc les designs
+        // survivent à un vidage de cache OBS, se transfèrent d'un PC à l'autre, et se partagent
+        // facilement entre plusieurs intervenants ou plusieurs machines.
+        function exportPresets() {
+            try {
+                const presets = JSON.stringify(ltLoadPresets());
+                const blob = new Blob([presets], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const date = new Date().toISOString().slice(0,10);
+                a.download = `lower-thirds-presets-${date}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Export effectué ✓');
+            } catch (err) {
+                showToast("Échec de l'export.", true);
+            }
+        }
+
+        function triggerImport() {
+            document.getElementById('import-file-input').click();
+        }
+
+        function importPresets(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    let presets = ltLoadPresets();
+                    let count = 0;
+                    for(let name in imported) { presets[name] = imported[name]; count++; }
+                    ltSavePresets(presets);
+                    loadPresets();
+                    showToast(`${count} design(s) importé(s) ✓`);
+                } catch (err) {
+                    showToast("Fichier invalide : ce n'est pas un export de designs valide.", true);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function applyPreset(name) {
+            let presets = ltLoadPresets();
+            let cfg = presets[name];
+            if(!cfg) return;
+            
+            // Fill form
+            document.getElementById('t_text').value = cfg.texts.t;
+            document.getElementById('s_text').value = cfg.texts.s;
+            document.getElementById('l_url').value = cfg.media.url;
+            const lFileNameEl = document.getElementById('l_file_name');
+            if (lFileNameEl) {
+                if (!cfg.media.url) lFileNameEl.innerText = 'Aucun fichier choisi';
+                else if (cfg.media.url.startsWith('data:')) lFileNameEl.innerText = 'Image/vidéo intégrée au design';
+                else lFileNameEl.innerText = 'Lien externe';
+            }
+            
+            // Loop through nested configs to set UI values
+            for(let cat in cfg) {
+                if(cat === 'texts' || cat === 'media') continue;
+                for(let key in cfg[cat]) {
+                    let id = (cat==='global'?'g_':cat==='title'?'t_':cat==='sub'?'s_':'l_') + key;
+                    // Remapping some keys for backward/forward compatibility
+                    if(key === 'animIn') id = 'g_in';
+                    if(key === 'animOut') id = 'g_out';
+                    if(key === 'duration') id = 'g_dur';
+                    if(key === 'posx') id = 'g_posx'; if(key === 'posy') id = 'g_posy';
+                    if(key === 'scale') id = 'g_scale'; if(key === 'gap') id = 'g_gap';
+                    if(key === 'marginl') id = 'g_marginl'; if(key === 'blur') id = 'g_blur';
+                    if(cat==='title' || cat==='sub') {
+                        if(key==='rtl') id = cat.charAt(0)+'_r_tl';
+                        if(key==='rtr') id = cat.charAt(0)+'_r_tr';
+                        if(key==='rbl') id = cat.charAt(0)+'_r_bl';
+                        if(key==='rbr') id = cat.charAt(0)+'_r_br';
+                    }
+
+                    let el = document.getElementById(id);
+                    if(el) el.value = cfg[cat][key];
+                }
+            }
+            updateLive();
+        }
+
+        async function deletePreset(name) {
+            const ok = await showConfirmModal(`Supprimer définitivement "${name}" ?`);
+            if(!ok) return;
+            try {
+                let presets = ltLoadPresets();
+                delete presets[name];
+                ltSavePresets(presets);
+                loadPresets();
+                showToast(`"${name}" supprimé`);
+            } catch (err) {
+                showToast("Échec de la suppression.", true);
+            }
+        }
+    </script>
+</body>
+</html>

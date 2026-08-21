@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenPresenter — Command Center</title>
+<style>
+    :root {
+        --bg: #0b1120; --panel: #111a2e; --panel2: #172033; --border: #1e293b;
+        --text: #f8fafc; --muted: #94a3b8;
+        --bible: #f59e0b; --lyrics: #8b5cf6; --media: #2dd4bf; --lt: #6366f1;
+        --green: #22c55e; --amber: #f59e0b; --sky: #0ea5e9; --red: #f43f5e;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; font-family: -apple-system, 'Segoe UI', Roboto, 'Inter', sans-serif;
+        background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ---- Header ---- */
+    .header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .logo {
+        width: 46px; height: 46px; border-radius: 12px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex; align-items: center; justify-content: center; font-size: 22px;
+        box-shadow: 0 8px 20px -6px rgba(99,102,241,0.5); flex-shrink: 0;
+    }
+    .header h1 { font-size: 22px; font-weight: 800; margin: 0; }
+    .header .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .status {
+        margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+        background: #0f2a1d; color: #4ade80; border: 1px solid #14532d;
+        padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    }
+    .status .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+    /* ---- Hero Studio Unifié ---- */
+    .hero {
+        margin-top: 22px; padding: 26px 24px; border-radius: 18px;
+        background: linear-gradient(120deg, #312e81, #4f46e5 55%, #6d28d9);
+        border: 1px solid #4f46e5; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .hero .hi { font-size: 34px; }
+    .hero h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+    .hero p { margin: 0; font-size: 13px; color: #e0e7ff; }
+    .hero .spacer { flex: 1; }
+    .btn-hero {
+        display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+        background: #fff; color: #312e81; font-weight: 800; font-size: 15px;
+        padding: 14px 26px; border-radius: 12px; box-shadow: 0 10px 25px -8px rgba(0,0,0,.5);
+    }
+    .btn-hero:hover { background: #f5f3ff; }
+
+    /* ---- Panneaux ---- */
+    .card-box {
+        margin-top: 18px; background: var(--panel); border: 1px solid var(--border);
+        border-radius: 14px; padding: 18px 20px;
+    }
+    .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #cbd5e1; margin: 0 0 14px; }
+
+    /* ---- Adresses ---- */
+    .addr-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #1a2438; flex-wrap: wrap; }
+    .addr-row:first-of-type { border-top: none; }
+    .addr-label { font-size: 12px; color: var(--muted); width: 150px; flex-shrink: 0; }
+    .addr-url {
+        flex: 1; min-width: 220px; font-family: ui-monospace, monospace; font-size: 13.5px;
+        color: #a5b4fc; background: #0b1120; border: 1px solid #24304a; padding: 8px 12px; border-radius: 8px;
+        user-select: all; word-break: break-all;
+    }
+    .btn-copy {
+        background: #24304a; border: 1px solid #334155; color: #e2e8f0; cursor: pointer;
+        padding: 8px 14px; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 600;
+        transition: background .15s ease; flex-shrink: 0;
+    }
+    .btn-copy:hover { background: #2b3a58; }
+    .btn-copy.copied { background: #14532d; color: #bbf7d0; border-color: #166534; }
+    .qr-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+    .qr-canvas { width: 128px; height: 128px; background: #fff; padding: 6px; border-radius: 10px; }
+    .qr-hint { font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 380px; }
+
+    /* ---- Boutons d'action génériques ---- */
+    .btn-action {
+        display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer;
+        color: #0b1120; font-weight: 800; font-size: 13px; padding: 12px 18px; border-radius: 10px;
+        font-family: inherit; transition: filter .15s ease, transform .06s ease;
+    }
+    .btn-action:hover { filter: brightness(1.07); }
+    .btn-action:active { transform: scale(.98); }
+    .btn-green { background: var(--green); }
+    .btn-amber { background: var(--amber); }
+    .btn-sky { background: var(--sky); }
+
+    /* ---- Grille outils ---- */
+    .grid-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #cbd5e1; margin: 30px 0 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+    .card {
+        background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 10px;
+        transition: border-color .15s ease, transform .15s ease;
+    }
+    .card:hover { border-color: #334155; transform: translateY(-2px); }
+    .card-top { display: flex; align-items: center; gap: 12px; }
+    .card-icon {
+        width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .card h3 { margin: 0; font-size: 15px; font-weight: 700; }
+    .card .desc { font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0; }
+    .btn-open {
+        display: inline-block; text-align: center; text-decoration: none; color: #0b1120;
+        font-weight: 800; font-size: 12.5px; padding: 9px 12px; border-radius: 9px;
+    }
+    .obs-modes { border-top: 1px dashed #24304a; padding-top: 8px; margin-top: 2px; }
+    .obs-modes .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; }
+    .mode-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .mode-name { font-size: 11.5px; color: #cbd5e1; width: 108px; flex-shrink: 0; }
+    .mode-url { flex: 1; min-width: 150px; font-family: ui-monospace, monospace; font-size: 10.5px; color: #a5b4fc; background: #0b1120; border: 1px solid #24304a; padding: 5px 8px; border-radius: 6px; user-select: all; word-break: break-all; }
+    .mode-copy { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; cursor: pointer; font-family: inherit; font-size: 10.5px; font-weight: 700; padding: 5px 9px; border-radius: 6px; flex-shrink: 0; }
+    .mode-copy:hover { background: #263449; }
+    .mode-copy.copied { background: #14532d; color: #bbf7d0; border-color: #166534; }
+
+    /* ---- Logs ---- */
+    .log {
+        margin-top: 12px; font-size: 12px; font-family: ui-monospace, monospace;
+        color: #a5b4fc; white-space: pre-wrap; line-height: 1.5;
+    }
+
+    /* ---- Assistant de configuration (wizard) ---- */
+    .wizard-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200;
+        display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .wizard-overlay.show { display: flex; }
+    .wizard {
+        position: relative; background: var(--panel); border: 1px solid #334155; border-radius: 16px;
+        width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 22px 24px;
+    }
+    .wizard h2 { margin: 0 0 4px; font-size: 19px; }
+    .wizard .wizard-sub { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+    .wizard h3 { margin: 0 0 10px; font-size: 15px; }
+    .wizard-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+    .wizard-close:hover { color: #fff; }
+    .wiz-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .wiz-opt {
+        display: flex; align-items: center; gap: 10px; background: var(--panel2); border: 1px solid var(--border);
+        border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    }
+    .wiz-opt input { accent-color: #6366f1; }
+    .wiz-opt b { font-size: 14px; }
+    .wiz-opt span { font-size: 12px; color: var(--muted); }
+    .wiz-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .wiz-row label { font-size: 13px; color: #cbd5e1; }
+    .wiz-row select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 13px; }
+    .wiz-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 0; }
+    .wiz-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+    .wizard-nav { display: flex; align-items: center; gap: 12px; margin-top: 22px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .wizard-nav .wiz-count { font-size: 12px; color: var(--muted); }
+    .wizard-nav .btn-action { padding: 10px 16px; }
+
+    .foot { margin-top: 34px; font-size: 12px; color: var(--muted); text-align: center; }
+    .foot a { color: #818cf8; text-decoration: none; }
+    .foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">🎛️</div>
+        <div>
+            <h1>OpenPresenter</h1>
+            <div class="sub">Suite de régie live — pilotage OBS Studio</div>
+        </div>
+        <span class="status"><span class="dot"></span>Serveur actif</span>
+        <button id="btn-assistant" class="status" style="margin-left:0; cursor:pointer; border:1px solid #14532d;" title="Rouvrir l'assistant de configuration">🧭 Assistant</button>
+    </div>
+
+    <!-- Hero : accès immédiat au Studio Unifié -->
+    <div class="hero">
+        <span class="hi">🎛️</span>
+        <div>
+            <h2>Studio Unifié</h2>
+            <p>La régie tout-en-un : Bible, Paroles, Médias et Titres dans une seule fenêtre.</p>
+        </div>
+        <span class="spacer"></span>
+        <a class="btn-hero" href="studio_unifie.html" target="_blank">▶ Ouvrir le Studio Unifié</a>
+    </div>
+
+    <!-- Adresses d'accès -->
+    <div class="card-box">
+        <h3 class="card-title">Adresses d'accès</h3>
+        <div id="addr-rows"></div>
+        <div class="qr-row">
+            <canvas id="qrcode" class="qr-canvas"></canvas>
+            <div class="qr-hint">
+                <b>Accès mobile / autre PC :</b> scannez ce QR code avec un téléphone connecté au même réseau
+                pour ouvrir OpenPresenter, ou utilisez les adresses ci-dessus.<br>
+                (Ce code se génère localement — pas besoin d'internet.)
+            </div>
+        </div>
+    </div>
+
+    <!-- Installation OBS en 1 clic -->
+    <div class="card-box">
+        <h3 class="card-title">🎬 Installation dans OBS <span style="text-transform:none; letter-spacing:0; color:var(--muted); font-weight:600;">(facultatif, en 1 clic)</span></h3>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
+            Crée automatiquement les Sources Navigateur (Bible, Paroles, Médias, Titres) et les scènes de
+            présentation dans OBS. Prérequis : activez <b>obs-websocket</b> dans OBS
+            (Outils &gt; WebSocket Server Settings, noter le port 4455 et le mot de passe).
+        </p>
+        <button id="btn-install-obs" class="btn-action btn-sky">🎬 Installer les scènes OBS</button>
+        <div id="obs-install-log" class="log"></div>
+    </div>
+
+    <!-- Sauvegardes globales -->
+    <div class="card-box">
+        <h3 class="card-title">💾 Sauvegardes &amp; partage</h3>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
+            Sauvegardez <b>tout</b> d'un coup (versets favoris, chants, médias, présents, file de déroulement,
+            réglages, groupes) dans un seul fichier, et restaurez-le sur cet ordinateur ou un autre.
+        </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="btn-backup" class="btn-action btn-green">⬇️ Sauvegarder tout</button>
+            <button id="btn-restore" class="btn-action btn-amber">⬆️ Restaurer une sauvegarde</button>
+            <input type="file" id="restore-file" accept=".json,application/json" style="display:none;">
+        </div>
+        <div id="backup-log" class="log"></div>
+    </div>
+
+    <!-- Outils -->
+    <div class="grid-title">Outils &amp; sources OBS</div>
+    <div class="grid" id="tool-grid"></div>
+
+    <div class="foot">
+        Projet <b>OpenPresenter</b> — fonctionne 100% en local, sans compte ni abonnement. &nbsp;·&nbsp;
+        <a href="ROADMAP.md" target="_blank">Feuille de route</a>
+    </div>
+</div>
+
+<!-- Le serveur remplace UNIQUEMENT le placeholder ci-dessous par les infos réseau (JSON),
+     ce qui donne : window.OP_DATA = {"port":8787, ...}; — toujours valide. -->
+<script>window.OP_DATA = __OPENPRESENTER_DATA__;</script>
+<!-- Assistant de configuration (premier lancement ou bouton "🧭 Assistant") -->
+<div id="wizard-overlay" class="wizard-overlay">
+    <div class="wizard">
+        <button id="wizard-close" class="wizard-close" title="Fermer">✕</button>
+        <h2>🧭 Bienvenue dans OpenPresenter</h2>
+        <p class="wizard-sub">On configure tout en 3 étapes — c'est rapide, même si vous débutez.</p>
+
+        <div class="wizard-step" id="wiz-1">
+            <h3>1. Vos sorties</h3>
+            <p>Combien d'écrans / sorties utilisez-vous ?</p>
+            <div class="wiz-opts">
+                <label class="wiz-opt"><input type="radio" name="screens" value="1"> <b>1 écran</b><span>Le public seulement.</span></label>
+                <label class="wiz-opt"><input type="radio" name="screens" value="2" checked> <b>2 écrans</b><span>Public + écran scène (recommandé).</span></label>
+                <label class="wiz-opt"><input type="radio" name="screens" value="3"> <b>3+ écrans</b><span>Public + scène + stream / lobby.</span></label>
+            </div>
+        </div>
+
+        <div class="wizard-step" id="wiz-2" style="display:none;">
+            <h3>2. Résolution &amp; OBS</h3>
+            <div class="wiz-row">
+                <label>Résolution du canvas :</label>
+                <select id="wiz-res">
+                    <option value="1920x1080" selected>1920 × 1080 (Full HD)</option>
+                    <option value="1280x720">1280 × 720 (HD)</option>
+                    <option value="2560x1440">2560 × 1440 (2K)</option>
+                    <option value="3840x2160">3840 × 2160 (4K)</option>
+                </select>
+            </div>
+            <p class="wiz-hint">La résolution sert à cadrer les Sources Navigateur OBS. Vous pourrez toujours la changer.</p>
+            <div class="wiz-actions">
+                <button class="btn-action btn-sky" id="wiz-install-obs">🎬 Créer les scènes OBS</button>
+                <span class="wiz-hint" style="margin-left:auto;">(facultatif — nécessite obs-websocket)</span>
+            </div>
+        </div>
+
+        <div class="wizard-step" id="wiz-3" style="display:none;">
+            <h3>3. Contenu de démarrage</h3>
+            <p>Voulez-vous précharger des exemples pour voir l'outil en action ?</p>
+            <div class="wiz-actions">
+                <button class="btn-action btn-green" id="wiz-demo">⬇️ Charger des exemples (démo)</button>
+                <button class="btn-action btn-amber" id="wiz-import-bible">📖 Charger des Bibles</button>
+            </div>
+            <p class="wiz-hint">Ces boutons ouvrent les outils correspondants, où vous pourrez importer. Vous pouvez aussi passer cette étape.</p>
+        </div>
+
+        <div class="wizard-nav">
+            <button id="wiz-prev" class="btn-action" style="background:#24304a; color:#fff;">← Précédent</button>
+            <span id="wiz-count" class="wiz-count">1 / 3</span>
+            <button id="wiz-next" class="btn-action" style="background:#6366f1; color:#fff;">Suivant →</button>
+            <button id="wiz-done" class="btn-action btn-green" style="display:none;">Terminer ✓</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/qrcode.js"></script>
+<script>
+    // Données injectées par le serveur relais (adresses réseau). Si la page est ouverte
+    // directement en double-clic (file://) ou hors serveur, on se replie sur localhost.
+    var DATA = window.OP_DATA || { port: location.port || 8787, local: location.origin || 'http://localhost:8787/', network: [] };
+
+    // ---- Outils + modes d'affichage OBS ----
+    var MODES_BIBLE = [
+        { label: 'Plein écran', q: '?obs=true' },
+        { label: '80% écran', q: '?obs=true&lockMode=screen80' },
+        { label: 'Bas centré', q: '?obs=true&lockMode=bottom' },
+        { label: 'Bas droite', q: '?obs=true&lockMode=bottom-right' },
+        { label: 'Ruban défilant', q: '?obs=true&lockMode=scrolling' }
+    ];
+    var TOOLS = [
+        { key: 'bible',  icon: '📖', name: 'Bible',           color: 'var(--bible)',  desc: 'Versets par livre/chapitre/verset, import XML, favoris.', file: 'bible_control_display_pro.html', modes: MODES_BIBLE },
+        { key: 'lyrics', icon: '🎤', name: 'Paroles',         color: 'var(--lyrics)', desc: 'Chants découpés en sections, fond image/vidéo.', file: 'lyrics_control_display_pro.html', modes: MODES_BIBLE },
+        { key: 'media',  icon: '🖼️', name: 'Médias',          color: 'var(--media)',  desc: 'Images, vidéos, PDF et PowerPoint, organisés par groupes.', file: 'media_control_display_pro.html', modes: [{ label: 'Plein écran', q: '?obs=true' }] },
+        { key: 'lt',     icon: '🏷️', name: 'Lower Third',     color: 'var(--lt)',     desc: 'Titres et bandeaux animés, logo, animations.', file: 'obs_lower_third_ultimate_studio.html', modes: [{ label: 'Titres (OBS)', q: '?obs=1' }] },
+        { key: 'cue',    icon: '📋', name: 'File de déroulement', color: '#f43f5e',   desc: 'Composez l\u2019ordre de service et enchaînez en une touche (mobile-friendly).', file: 'cue_list.html', modes: [], controller: 'Contrôleur mobile' },
+        { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' }
+    ];
+
+    var base = location.origin;
+
+    function copyText(text, btn, doneLabel) {
+        var done = function () {
+            if (!btn) return;
+            var orig = btn.innerText;
+            btn.innerText = doneLabel || 'Copié !';
+            btn.classList.add('copied');
+            setTimeout(function () { btn.innerText = orig; btn.classList.remove('copied'); }, 1400);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(function () { fallback(text, done); });
+        } else fallback(text, done);
+    }
+    function fallback(text, done) {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta); done();
+    }
+
+    // ---- Adresses ----
+    var addrRows = document.getElementById('addr-rows');
+    var entries = [{ label: 'Sur ce PC', url: DATA.local }].concat((DATA.network || []).map(function (u) { return { label: 'Depuis le réseau', url: u }; }));
+    var seen = {};
+    entries.forEach(function (entry) {
+        if (seen[entry.url]) return; seen[entry.url] = true;
+        var row = document.createElement('div');
+        row.className = 'addr-row';
+        row.innerHTML = '<span class="addr-label">' + entry.label + '</span><code class="addr-url">' + entry.url + '</code><button class="btn-copy">Copier</button>';
+        row.querySelector('.btn-copy').addEventListener('click', function (e) { copyText(entry.url, e.currentTarget, 'Copié ✓'); });
+        addrRows.appendChild(row);
+    });
+
+    // ---- QR code (générateur local, aucun CDN) ----
+    (function buildQr() {
+        var urls = (DATA.network || []).length ? DATA.network : [DATA.local];
+        var url = urls[0];
+        var canvas = document.getElementById('qrcode');
+        if (window.OpenQR) {
+            if (!window.OpenQR.toCanvas(canvas, url, 220)) {
+                canvas.style.display = 'none';
+            }
+        } else {
+            canvas.style.display = 'none';
+        }
+    })();
+
+    // ---- Grille d'outils + liens par mode ----
+    var grid = document.getElementById('tool-grid');
+    TOOLS.forEach(function (t) {
+        var openUrl = base + '/' + t.file;
+        var card = document.createElement('div');
+        card.className = 'card';
+        var modesHtml = '';
+        if (t.modes && t.modes.length) {
+            var rows = t.modes.map(function (m) {
+                var url = base + '/' + t.file + m.q;
+                return '<div class="mode-row">' +
+                    '<span class="mode-name">' + m.label + '</span>' +
+                    '<code class="mode-url">' + url + '</code>' +
+                    '<button class="mode-copy" data-url="' + url + '">Copier</button>' +
+                    '</div>';
+            }).join('');
+            modesHtml = '<div class="obs-modes"><div class="lbl">Sources OBS (par mode d\u2019affichage)</div>' + rows + '</div>';
+        } else {
+            modesHtml = '<div class="obs-modes"><div class="lbl">Ouvrir la page</div></div>';
+        }
+        card.innerHTML =
+            '<div class="card-top">' +
+                '<div class="card-icon" style="background:' + t.color + '22; color:' + t.color + ';">' + t.icon + '</div>' +
+                '<h3>' + t.name + '</h3>' +
+            '</div>' +
+            '<p class="desc">' + t.desc + '</p>' +
+            '<a class="btn-open" style="background:' + t.color + ';" href="' + openUrl + '" target="_blank">Ouvrir</a>' +
+            modesHtml;
+        grid.appendChild(card);
+    });
+    // Boutons "Copier" des modes
+    grid.addEventListener('click', function (e) {
+        var btn = e.target.closest('.mode-copy');
+        if (btn) copyText(btn.getAttribute('data-url'), btn, 'Lien copié ✓');
+    });
+
+    // ============================================================
+    // Installation OBS en 1 clic (Axe C) — obs-websocket v5 via WebSocket natif
+    // ============================================================
+    var OBS = (function () {
+        var logEl = document.getElementById('obs-install-log');
+        function log(msg) { if (logEl) logEl.textContent += (logEl.textContent ? '\n' : '') + msg; }
+        function clear() { if (logEl) logEl.textContent = ''; }
+
+        function buildSources(b) {
+            return [
+                { name: 'BIBLE PLEIN ECRAN',   url: b + 'bible_control_display_pro.html?obs=true' },
+                { name: 'BIBLE BAS CENTRE',    url: b + 'bible_control_display_pro.html?obs=true&lockMode=bottom' },
+                { name: 'PAROLES PLEIN ECRAN', url: b + 'lyrics_control_display_pro.html?obs=true' },
+                { name: 'PAROLES BAS CENTRE',  url: b + 'lyrics_control_display_pro.html?obs=true&lockMode=bottom' },
+                { name: 'MEDIAS + PRESENTATIONS', url: b + 'media_control_display_pro.html?obs=true' },
+                { name: 'TITRES',              url: b + 'obs_lower_third_ultimate_studio.html?obs=1' }
+            ];
+        }
+
+        function connect(url, password) {
+            return new Promise(function (resolve, reject) {
+                var ws;
+                try { ws = new WebSocket(url); } catch (e) { return reject(new Error('Adresse WebSocket invalide : ' + url)); }
+                var timeout = setTimeout(function () { reject(new Error('Connexion à OBS impossible (vérifiez le port et que obs-websocket est actif).')); }, 8000);
+                ws.onerror = function () { clearTimeout(timeout); reject(new Error('Erreur réseau vers OBS.')); };
+                ws.onmessage = function (ev) {
+                    var msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+                    if (msg.op === 0) {
+                        var d = msg.d || {};
+                        var identify = { op: 1, d: { rpcVersion: 1 } };
+                        if (d.authentication && password) {
+                            var salt = d.authentication.salt || '';
+                            var challenge = d.authentication.challenge || '';
+                            sha256B64(password + salt).then(function (secretB64) {
+                                return sha256B64(secretB64 + challenge);
+                            }).then(function (authB64) {
+                                identify.d.authentication = authB64;
+                                ws.send(JSON.stringify(identify));
+                            });
+                        } else {
+                            ws.send(JSON.stringify(identify));
+                        }
+                    } else if (msg.op === 2) {
+                        clearTimeout(timeout);
+                        resolve(ws);
+                    } else if (msg.op === 5) {
+                        if (msg.d && msg.d.requestId && pending[msg.d.requestId]) {
+                            var h = pending[msg.d.requestId]; delete pending[msg.d.requestId]; h(msg.d);
+                        }
+                    }
+                };
+            });
+        }
+
+        var pending = {};
+        function sendRequest(ws, requestType, requestData) {
+            return new Promise(function (resolve, reject) {
+                var requestId = 'r' + (++sendRequest._n || (sendRequest._n = 1));
+                pending[requestId] = function (d) {
+                    if (d.requestStatus && d.requestStatus.code !== 100) reject(new Error((d.requestStatus.comment) || requestType + ' a échoué'));
+                    else resolve(d.responseData || {});
+                };
+                ws.send(JSON.stringify({ op: 6, d: { requestType: requestType, requestId: requestId, requestData: requestData || {} } }));
+            });
+        }
+        async function sha256B64(str) {
+            var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            var bytes = new Uint8Array(buf), bin = '';
+            for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            return btoa(bin);
+        }
+        async function getExistingScenes(ws) {
+            try { var d = await sendRequest(ws, 'GetSceneList'); return (d.scenes || []).map(function (s) { return s.sceneName; }); }
+            catch (e) { return []; }
+        }
+        async function getExistingSources(ws) {
+            try { var d = await sendRequest(ws, 'GetInputList'); return (d.inputs || []).map(function (s) { return s.inputName; }); }
+            catch (e) { return []; }
+        }
+
+        async function install(url, password) {
+            clear();
+            var ws = await connect(url, password);
+            log('Connecté à OBS ✓');
+            var base = location.origin + '/';
+            var sources = buildSources(base);
+            var existingSrc = await getExistingSources(ws);
+            var existingScn = await getExistingScenes(ws);
+
+            var createdSrc = 0;
+            for (var s of sources) {
+                if (existingSrc.indexOf(s.name) >= 0) { log('  - Source existante, ignorée : ' + s.name); continue; }
+                try {
+                    await sendRequest(ws, 'CreateInput', { inputName: s.name, inputKind: 'browser_source', inputSettings: { url: s.url, width: 1920, height: 1080, fps: 30 } });
+                    createdSrc++;
+                } catch (e) { log('  ! ' + s.name + ' : ' + (e.message || e)); }
+            }
+            log(createdSrc ? 'Sources créées : ' + createdSrc : 'Aucune nouvelle source à créer.');
+
+            var scenes = ['PRESENTATION PLEIN ECRAN', 'PRESENTATION BAS CENTRE', 'TITRES'];
+            var createdScn = 0;
+            for (var sc of scenes) {
+                if (existingScn.indexOf(sc) >= 0) { log('  - Scène existante, ignorée : ' + sc); continue; }
+                try { await sendRequest(ws, 'CreateScene', { sceneName: sc }); createdScn++; }
+                catch (e) { log('  ! scène ' + sc + ' : ' + (e.message || e)); }
+            }
+            log(createdScn ? 'Scènes créées : ' + createdScn : 'Aucune nouvelle scène à créer.');
+
+            var sceneMap = {
+                'PRESENTATION PLEIN ECRAN': ['BIBLE PLEIN ECRAN', 'PAROLES PLEIN ECRAN', 'MEDIAS + PRESENTATIONS'],
+                'PRESENTATION BAS CENTRE': ['MEDIAS + PRESENTATIONS', 'BIBLE BAS CENTRE', 'PAROLES BAS CENTRE'],
+                'TITRES': ['TITRES']
+            };
+            for (var sc2 of scenes) {
+                for (var src of sceneMap[sc2]) {
+                    if (existingSrc.indexOf(src) < 0 && !sources.some(function (x) { return x.name === src; })) continue;
+                    try { await sendRequest(ws, 'CreateSceneItem', { sceneName: sc2, sourceName: src }); } catch (e) {}
+                }
+            }
+            log('Scènes prêtes. Ouvrez OBS pour vérifier et régler votre Canvas si besoin. ✓');
+            return true;
+        }
+        return { install: install, log: log };
+    })();
+
+    var installBtn = document.getElementById('btn-install-obs');
+    if (installBtn) {
+        installBtn.addEventListener('click', function () {
+            var port = window.prompt('Port obs-websocket d\'OBS (défaut 4455) :', '4455');
+            if (port === null) return;
+            var pass = window.prompt('Mot de passe obs-websocket (laissez vide si aucun) :', '') || '';
+            var url = 'ws://localhost:' + (port.trim() || '4455');
+            installBtn.disabled = true; installBtn.textContent = '⏳ Installation en cours...';
+            OBS.install(url, pass)
+                .then(function () { installBtn.disabled = false; installBtn.textContent = '🎬 Installer les scènes OBS'; })
+                .catch(function (err) { OBS.log('✗ ' + (err.message || err)); installBtn.disabled = false; installBtn.textContent = '🎬 Installer les scènes OBS'; });
+        });
+    }
+
+    // ============================================================
+    // Sauvegardes globales (Axe H) — export/import de TOUT le système
+    // ============================================================
+    var BACKUP = (function () {
+        var logEl = document.getElementById('backup-log');
+        function log(m) { if (logEl) logEl.textContent += (logEl.textContent ? '\n' : '') + m; }
+        function clear() { if (logEl) logEl.textContent = ''; }
+
+        var LS_KEYS = ['bibleFavs', 'bibleCurrentVersionId', 'bibleLastPosition', 'bibleDisplaySettings', 'lyricsDisplaySettings', 'lyricsLastSongId', 'lt_presets', 'cue_list', 'media_groups_list'];
+        var DBS = [
+            { name: 'bibleProStorage', stores: ['versions'] },
+            { name: 'lyricsProStorage', stores: ['songs', 'media'] },
+            { name: 'mediaProStorage', stores: ['items'] }
+        ];
+
+        async function encodeBlobs(v) {
+            if (v instanceof Blob) {
+                var dataUrl = await new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(v); });
+                return { __blob64: true, data: dataUrl };
+            }
+            if (Array.isArray(v)) return Promise.all(v.map(encodeBlobs));
+            if (v && typeof v === 'object') { var out = {}; for (var k in v) out[k] = await encodeBlobs(v[k]); return out; }
+            return v;
+        }
+        function decodeBlobs(v) {
+            if (v && typeof v === 'object' && v.__blob64) {
+                var b64 = v.data.split(',')[1]; var mime = (v.data.match(/^data:([^;]+)/) || [, 'application/octet-stream'])[1];
+                var bin = atob(b64); var bytes = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return new Blob([bytes], { type: mime });
+            }
+            if (Array.isArray(v)) return v.map(decodeBlobs);
+            if (v && typeof v === 'object') { var o = {}; for (var k2 in v) o[k2] = decodeBlobs(v[k2]); return o; }
+            return v;
+        }
+        function openDB(name) { return new Promise(function (res, rej) { var r = indexedDB.open(name); r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }
+        async function dumpDB(name, stores) {
+            var db = await openDB(name), result = {};
+            for (var s of stores) {
+                try {
+                    var rows = await new Promise(function (res, rej) { var tx = db.transaction(s, 'readonly'); var r = tx.objectStore(s).getAll(); r.onsuccess = function () { res(r.result || []); }; r.onerror = function () { rej(r.error); }; });
+                    result[s] = await encodeBlobs(rows);
+                } catch (e) { result[s] = []; }
+            }
+            db.close(); return result;
+        }
+        async function restoreDB(name, stores, payload) {
+            var db = await openDB(name);
+            for (var s of stores) {
+                var rows = payload[s]; if (!Array.isArray(rows)) continue;
+                try {
+                    var decoded = decodeBlobs(rows);
+                    await new Promise(function (res, rej) { var tx = db.transaction(s, 'readwrite'); var os = tx.objectStore(s); decoded.forEach(function (r) { try { os.put(r); } catch (e) {} }); tx.oncomplete = res; tx.onerror = function () { rej(tx.error); }; });
+                } catch (e) {}
+            }
+            db.close();
+        }
+
+        async function backup() {
+            clear(); log('Collecte des données…');
+            var bag = { version: 1, exportedAt: new Date().toISOString(), localStorage: {}, server: {}, indexedDB: {} };
+            LS_KEYS.forEach(function (k) { try { var v = localStorage.getItem(k); if (v != null) bag.localStorage[k] = JSON.parse(v); } catch (e) {} });
+            try { var res = await fetch('/api/export'); if (res.ok) { var j = await res.json(); bag.server = j.data || {}; } } catch (e) {}
+            for (var db of DBS) { try { bag.indexedDB[db.name] = await dumpDB(db.name, db.stores); } catch (e) { log('  (IndexedDB indisponible : ' + db.name + ')'); } }
+            var blob = new Blob([JSON.stringify(bag)], { type: 'application/json' });
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'openpresenter-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+            log('Sauvegarde téléchargée ✓ (localStorage + données serveur + bibliothèques IndexedDB).');
+        }
+        async function restore(file) {
+            clear(); if (!file) return;
+            var bag; try { bag = JSON.parse(await file.text()); } catch (e) { log('✗ Fichier invalide.'); return; }
+            var ls = 0;
+            Object.keys(bag.localStorage || {}).forEach(function (k) { try { localStorage.setItem(k, JSON.stringify(bag.localStorage[k])); ls++; } catch (e) {} });
+            log('localStorage restauré (' + ls + ' clés).');
+            if (bag.server && Object.keys(bag.server).length) {
+                try {
+                    var res = await fetch('/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: bag.server }) });
+                    var j = await res.json().catch(function () { return {}; });
+                    log('Données serveur importées (' + (j.imported || '?') + ' fichiers).');
+                } catch (e) { log('  (serveur indisponible, données serveur non importées)'); }
+            }
+            var dbOk = 0;
+            for (var db of DBS) { if (bag.indexedDB && bag.indexedDB[db.name]) { try { await restoreDB(db.name, db.stores, bag.indexedDB[db.name]); dbOk++; } catch (e) {} } }
+            log('Bibliothèques restaurées (' + dbOk + '/' + DBS.length + ').');
+            log('Terminé ✓ — actualisez la page pour voir vos données.');
+        }
+        return { backup: backup, restore: restore };
+    })();
+
+    var btnBackup = document.getElementById('btn-backup');
+    if (btnBackup) btnBackup.addEventListener('click', function () { BACKUP.backup(); });
+    var restoreInput = document.getElementById('restore-file');
+    var btnRestore = document.getElementById('btn-restore');
+    if (btnRestore) btnRestore.addEventListener('click', function () { restoreInput && restoreInput.click(); });
+    if (restoreInput) restoreInput.addEventListener('change', function (e) { if (e.target.files[0]) BACKUP.restore(e.target.files[0]); e.target.value = ''; });
+
+    // ============================================================
+    // Assistant de configuration (premier lancement) — P3
+    // ============================================================
+    var WIZ = (function () {
+        var overlay = document.getElementById('wizard-overlay');
+        var step = 1, max = 3;
+        var KEY = 'op_assistant_done';
+
+        function show() { overlay.classList.add('show'); render(); }
+        function hide() {
+            overlay.classList.remove('show');
+            try { localStorage.setItem(KEY, '1'); } catch (e) {}
+        }
+        function render() {
+            for (var i = 1; i <= max; i++) document.getElementById('wiz-' + i).style.display = (i === step) ? 'block' : 'none';
+            document.getElementById('wiz-prev').style.display = step === 1 ? 'none' : 'inline-block';
+            document.getElementById('wiz-next').style.display = step === max ? 'none' : 'inline-block';
+            document.getElementById('wiz-done').style.display = step === max ? 'inline-block' : 'none';
+            document.getElementById('wiz-count').textContent = step + ' / ' + max;
+        }
+        function next() { if (step < max) { step++; render(); } }
+        function prev() { if (step > 1) { step--; render(); } }
+
+        function bind() {
+            var btnAssist = document.getElementById('btn-assistant');
+            if (btnAssist) btnAssist.addEventListener('click', show);
+            document.getElementById('wizard-close').addEventListener('click', hide);
+            document.getElementById('wiz-next').addEventListener('click', next);
+            document.getElementById('wiz-prev').addEventListener('click', prev);
+            document.getElementById('wiz-done').addEventListener('click', hide);
+            // Fermer en cliquant sur le fond
+            overlay.addEventListener('click', function (e) { if (e.target === overlay) hide(); });
+
+            // Étape 2 : installer OBS (réutilise le bouton d'installation principal)
+            var wizInstall = document.getElementById('wiz-install-obs');
+            if (wizInstall) wizInstall.addEventListener('click', function () {
+                hide();
+                var installBtn = document.getElementById('btn-install-obs');
+                if (installBtn) installBtn.click();
+            });
+
+            // Étape 3 : ouvrir les outils pour importer du contenu
+            var wizDemo = document.getElementById('wiz-demo');
+            if (wizDemo) wizDemo.addEventListener('click', function () { window.open('cue_list.html', '_blank'); });
+            var wizImport = document.getElementById('wiz-import-bible');
+            if (wizImport) wizImport.addEventListener('click', function () { window.open('bible_control_display_pro.html', '_blank'); });
+
+            // Sauvegarde le choix de sorties (pour info / futures évolutions)
+            var wizRes = document.getElementById('wiz-res');
+            if (wizRes) wizRes.addEventListener('change', function () { try { localStorage.setItem('op_canvas_res', wizRes.value); } catch (e) {} });
+            var radios = document.querySelectorAll('input[name="screens"]');
+            radios.forEach(function (r) { r.addEventListener('change', function () { try { localStorage.setItem('op_screens', r.value); } catch (e) {} }); });
+        }
+
+        // Affiche l'assistant au premier lancement seulement.
+        function maybeFirstLaunch() {
+            try { if (localStorage.getItem(KEY)) return; } catch (e) {}
+            show();
+        }
+        return { bind: bind, maybeFirstLaunch: maybeFirstLaunch };
+    })();
+
+    WIZ.bind();
+    WIZ.maybeFirstLaunch();
+</script>
+</body>
+</html>

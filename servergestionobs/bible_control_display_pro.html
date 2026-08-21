@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Pro Controller - OBS</title>
+    <!-- Importation des polices -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;800&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="store.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/obs-links.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                        display: ['Cinzel', 'serif'],
+                    },
+                    colors: {
+                        obs: {
+                            bg: 'rgba(15, 23, 42, 0.92)',
+                            accent: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Styles spécifiques au mode OBS (identiques à ton code original) */
+        body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
+
+        #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
+
+        .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
+
+        /* Bas centré : boîte à dimensions STRICTEMENT fixes (80% largeur écran, 25% hauteur écran max).
+           Elle ne s'agrandit jamais avec le texte — c'est le texte qui s'adapte à elle (voir autoFitDisplay). */
+        .obs-bottom { position: absolute; bottom: 60px; left: 192px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-left: 8px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; overflow: hidden; }
+
+        /* Bas à droite : mêmes proportions exactes que "bas centré" (80% largeur / 25% hauteur max),
+           mais ancrée sur le bord droit de l'écran au lieu d'être centrée. */
+        .obs-bottom-right { position: absolute; bottom: 60px; right: 60px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-right: 8px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; text-align: right; box-sizing: border-box; overflow: hidden; }
+
+        .obs-screen80 { position: absolute; top: 108px; left: 192px; width: 1536px; height: 864px; padding: 64px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-top: 6px solid var(--accent-color, #f59e0b); border-bottom: 6px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 20px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; overflow: hidden; }
+
+        .obs-scrolling { position: absolute; bottom: 0; left: 0; width: 1920px; height: 80px; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border-top: 3px solid var(--accent-color, #f59e0b); display: flex; align-items: center; overflow: hidden; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); box-sizing: border-box; }
+
+        /* Ruban défilant robuste et fluide */
+        .ticker-wrapper { display: flex; align-items: center; white-space: nowrap; will-change: transform; animation: marquee var(--speed, 30s) linear infinite; padding-left: 100vw; }
+        .ticker-content { display: inline-flex; align-items: center; padding-right: 15vw; }
+        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+
+        /* Le texte du verset occupe toujours 80% de la largeur du cadre, centré,
+           pour garantir des marges de lisibilité constantes quel que soit l'affichage. */
+        /* IMPORTANT : pas de transition sur font-size ici. Le script mesure card.scrollHeight
+           juste après avoir changé la taille du texte pour décider si ça rentre dans le cadre —
+           une transition CSS sur cette propriété fausse cette mesure (le texte est encore "en
+           cours d'animation" au moment où on le mesure), ce qui pouvait faire déborder le texte
+           visuellement une fraction de seconde après l'affichage, sur tous les modes. */
+        .verse-text { color: var(--text-color, #ffffff); line-height: 1.4; text-shadow: 0 2px 4px rgba(0,0,0,0.5); overflow-wrap: break-word; word-break: break-word; width: 80%; max-width: 80%; margin: 0 auto; box-sizing: border-box; font-weight: 600; }
+        .obs-bottom-right .verse-text { margin-left: auto; margin-right: 0; }
+        .verse-line { display: block; }
+        .verse-line + .verse-line { margin-top: 0.45em; }
+
+        .verse-ref { color: var(--accent-color, #f59e0b); font-family: 'Cinzel', serif; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; overflow-wrap: break-word; word-break: break-word; }
+        .version-badge { background-color: var(--accent-color, #f59e0b); color: #0f172a; font-family: 'Inter', sans-serif; font-weight: 800; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; margin-left: 10px; vertical-align: middle; }
+
+        /* Image de fond floutée automatiquement, contenue dans la forme du cadre (clip via overflow:hidden du parent) */
+        .has-bg-image { background: transparent !important; }
+        .has-bg-image::before { content: ''; position: absolute; inset: -24px; background-image: var(--bg-image); background-size: cover; background-position: center; filter: blur(var(--bg-blur, 18px)); transform: scale(1.08); z-index: 0; }
+        .has-bg-image::after { content: ''; position: absolute; inset: 0; background: var(--bg-color, rgba(15, 23, 42, 0.85)); z-index: 1; }
+        #obs-content-area, #preview-content { position: relative; z-index: 2; width: 100%; height: 100%; }
+
+        .anim-show { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-hide { animation: fadeOutScale 0.5s ease-in forwards; }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95) translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)); } to { opacity: 1; transform: scale(1) translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)); } }
+        @keyframes fadeOutScale { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+
+        /* Animations de l'interface de contrôle */
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .verse-item { transition: all 0.2s; cursor: pointer; }
+        .verse-item:hover, .verse-item.active { background: rgba(245, 158, 11, 0.15); border-left: 3px solid #f59e0b; }
+
+        /* Conteneur de preview (simule OBS) */
+        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* Versions & sélection multiple */
+        #version-tabs::-webkit-scrollbar { height: 4px; }
+        .version-tab { white-space: nowrap; }
+        #selection-bar { animation: fadeInScale 0.25s ease forwards; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+    <div id="obs-mode-ui" class="hidden">
+        <div id="obs-container">
+            <div id="obs-card-element">
+                <div id="obs-content-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controller-mode-ui" class="hidden h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="glass-panel flex items-center justify-between px-6 py-3 shrink-0 z-10">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-500 text-slate-900 p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-xl text-white tracking-wide">Bible Pro Controller</h1>
+                    <p class="text-xs text-slate-400" id="version-info">Chargement...</p>
+                </div>
+                <span id="sync-badge" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-700 text-slate-400 ml-3">
+                    <span id="sync-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
+                    <span id="sync-label">Local uniquement</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Ajouter une version (XML)
+                    <input type="file" id="xml-upload" accept=".xml" class="hidden">
+                </label>
+
+                <div class="h-6 w-px bg-slate-600"></div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-300">Style OBS:</span>
+                    <select id="obs-mode-select" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block p-2">
+                        <option value="full" selected>Plein Écran (Centré)</option>
+                        <option value="screen80">80% Écran (Centré)</option>
+                        <option value="bottom">Bas Centré</option>
+                        <option value="bottom-right">Bas Droite</option>
+                        <option value="scrolling">Ruban Défilant</option>
+                    </select>
+                </div>
+
+                <button id="btn-open-settings" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Personnaliser
+                </button>
+
+                <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Effacer OBS
+                </button>
+            </div>
+        </header>
+
+        <!-- Barre des versions -->
+        <div class="glass-panel px-6 py-2 flex items-center gap-3 shrink-0 border-t border-slate-800">
+            <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider shrink-0">Versions</span>
+            <div id="version-tabs" class="flex items-center gap-2 overflow-x-auto flex-1 py-0.5"></div>
+            <button id="btn-delete-version" class="shrink-0 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors flex items-center gap-1" title="Supprimer la version active">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Supprimer
+            </button>
+        </div>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 flex overflow-hidden">
+
+            <section class="w-1/4 min-w-[300px] border-r border-slate-700/50 flex flex-col bg-slate-900/50">
+                <div class="p-4 border-b border-slate-700/50">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" id="book-search" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full pl-10 p-2.5 placeholder-slate-400" placeholder="Chercher un livre (ex: 1 je)...">
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-2" id="books-list">
+                    <!-- Livres injectés ici -->
+                </div>
+            </section>
+
+            <section class="flex-1 flex flex-col relative bg-slate-900/30">
+                <!-- Info du livre sélectionné et Smart Input -->
+                <div id="book-header" class="p-6 border-b border-slate-700/50 glass-panel flex flex-col gap-4 hidden">
+                    <div class="flex justify-between items-end gap-3 flex-wrap">
+                        <div>
+                            <h2 id="active-book-name" class="text-3xl font-display font-bold text-amber-500">Livre</h2>
+                            <p id="active-book-stats" class="text-sm text-slate-400 mt-1">0 Chapitres • 0 Versets</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button id="btn-multiselect" type="button" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">
+                                Sélection multiple
+                            </button>
+
+                            <!-- Saisie Intelligente -->
+                            <div class="relative group">
+                                <div class="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-lg blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200"></div>
+                                <input type="text" id="smart-input" class="relative bg-slate-800 border-none text-white text-center text-lg font-bold rounded-lg focus:ring-2 focus:ring-amber-500 w-48 py-2 px-4 shadow-lg" placeholder="Chap Verset (ex: 3 16)" title="Tape 'Chapitre Espace Verset' pour afficher">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Chapitres -->
+                    <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1" id="chapters-grid">
+                        <!-- Boutons chapitres injectés ici -->
+                    </div>
+                </div>
+
+                <!-- Liste des Versets -->
+                <div class="flex-1 overflow-y-auto p-4" id="verses-list">
+                    <div class="h-full flex flex-col items-center justify-center text-slate-500">
+                        <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        <p class="text-lg">Sélectionnez un livre à gauche pour commencer.</p>
+                        <p class="text-sm mt-2">Vous pouvez aussi charger votre propre fichier XML.</p>
+                    </div>
+                </div>
+
+                <!-- Barre flottante de sélection multiple -->
+                <div id="selection-bar" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 border border-amber-500 rounded-full shadow-2xl px-5 py-3 flex items-center gap-4 z-20">
+                    <span class="text-sm text-white"><span id="selection-count" class="font-bold text-amber-500">0</span> verset(s) sélectionné(s)</span>
+                    <button onclick="displaySelectedVerses()" class="bg-amber-500 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold hover:bg-amber-400 transition-colors">Afficher</button>
+                    <button onclick="toggleSelectionMode()" class="text-slate-400 hover:text-white text-sm">Annuler</button>
+                </div>
+            </section>
+
+            <section class="w-1/3 min-w-[350px] max-w-[450px] border-l border-slate-700/50 flex flex-col bg-slate-900/50">
+                <!-- Live Preview OBS -->
+                <div class="p-4 border-b border-slate-700/50">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        Sortie Directe (OBS)
+                    </h3>
+                    <div id="preview-wrapper">
+                        <div id="preview-container" style="position: absolute; width: 100%; height: 100%; transform: scale(0.25); transform-origin: top left; pointer-events: none;">
+                            <div id="preview-card" class="hidden">
+                                <div id="preview-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 space-y-1.5" id="obs-links-panel">
+                        <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <div class="min-w-0">
+                                <p class="text-[9px] text-slate-500">Lien général — suit le mode choisi ci-dessus</p>
+                                <p class="text-[10px] text-amber-400 truncate font-mono" data-link-role="general">...</p>
+                            </div>
+                            <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-copy-role="general">Copier</button>
+                        </div>
+                        <details class="bg-slate-800/40 border border-slate-700/60 rounded-lg px-2 py-1.5">
+                            <summary class="text-[10px] text-slate-400 cursor-pointer select-none">Liens à mode fixe (pour d'autres scènes OBS)</summary>
+                            <p class="text-[9px] text-slate-500 mt-1 mb-2">Chacun de ces liens affiche toujours le même mode dans OBS, quel que soit le style choisi ci-dessus — pratique pour avoir une scène "plein écran" et une scène "bas centré" en même temps.</p>
+                            <div class="space-y-1.5" id="obs-fixed-links"></div>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- Favoris -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50 flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <svg class="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                            Favoris Sauvés
+                        </h3>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2" id="favorites-list">
+                        <!-- Favoris injectés ici -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de personnalisation du rendu écran -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-6 relative border border-slate-700">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-xl font-display font-bold text-white">Personnaliser le rendu</h2>
+                <button id="btn-close-settings" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur de fond</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="set-bg-color" class="h-9 w-12 rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                        <input type="range" id="set-bg-opacity" min="0" max="100" value="92" class="flex-1 accent-amber-500">
+                        <span id="set-bg-opacity-val" class="text-xs text-slate-400 w-9 text-right">92%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur d'accent</label>
+                    <input type="color" id="set-accent-color" class="h-9 w-full rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur du texte</label>
+                    <input type="color" id="set-text-color" class="h-9 w-full rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Police d'écriture</label>
+                    <select id="set-font-family" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                        <option value="Merriweather">Merriweather (classique)</option>
+                        <option value="Cinzel">Cinzel (majestueux)</option>
+                        <option value="Playfair Display">Playfair Display (élégant)</option>
+                        <option value="Lora">Lora (doux)</option>
+                        <option value="EB Garamond">EB Garamond (livre ancien)</option>
+                        <option value="Montserrat">Montserrat (moderne)</option>
+                        <option value="Inter">Inter (net)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Forme du cadre</label>
+                    <select id="set-shape" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                        <option value="0">Rectangle net</option>
+                        <option value="16">Coins arrondis</option>
+                        <option value="32">Coins doux</option>
+                        <option value="60">Très arrondi</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 mt-6">
+                    <input type="checkbox" id="set-line-mode" class="w-5 h-5 accent-amber-500">
+                    <label for="set-line-mode" class="text-sm text-slate-300">Afficher ligne par ligne (versets longs)</label>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-5 border-t border-slate-700/50">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Image de fond (floutée automatiquement)</label>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Choisir une image
+                        <input type="file" id="set-bg-image" accept="image/*" class="hidden">
+                    </label>
+                    <button id="btn-remove-bg-image" class="text-xs text-red-400 hover:text-red-300">Retirer l'image</button>
+                    <span id="bg-image-status" class="text-xs text-slate-500">Aucune image</span>
+                </div>
+                <div class="mt-3">
+                    <label class="text-xs text-slate-400">Intensité du flou</label>
+                    <input type="range" id="set-bg-blur" min="0" max="40" value="18" class="w-full accent-amber-500">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="btn-reset-settings" class="text-sm text-slate-400 hover:text-white px-4 py-2">Réinitialiser</button>
+                <button id="btn-apply-settings" class="bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-5 py-2 rounded-lg text-sm">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // DONNÉES DE BASE & ÉCHANTILLON
+        // ============================================================
+        const FRENCH_BOOKS = [
+            "Genèse", "Exode", "Lévitique", "Nombres", "Deutéronome", "Josué", "Juges", "Ruth", "1 Samuel", "2 Samuel", "1 Rois", "2 Rois", "1 Chroniques", "2 Chroniques", "Esdras", "Néhémie", "Esther", "Job", "Psaumes", "Proverbes", "Ecclésiaste", "Cantique des Cantiques", "Esaïe", "Jérémie", "Lamentations", "Ezéchiel", "Daniel", "Osée", "Joël", "Amos", "Abdias", "Jonas", "Michée", "Nahum", "Habakuk", "Sophonie", "Aggée", "Zacharie", "Malachie",
+            "Matthieu", "Marc", "Luc", "Jean", "Actes", "Romains", "1 Corinthiens", "2 Corinthiens", "Galates", "Ephésiens", "Philippiens", "Colossiens", "1 Thessaloniciens", "2 Thessaloniciens", "1 Timothée", "2 Timothée", "Tite", "Philémon", "Hébreux", "Jacques", "1 Pierre", "2 Pierre", "1 Jean", "2 Jean", "3 Jean", "Jude", "Apocalypse"
+        ];
+
+        // Échantillon XML pour démarrer tout de suite
+        const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bible translation="French S21 2007 (Bible Segond 21)">
+	<testament name="Old">
+		<book number="1">
+			<chapter number="1">
+				<verse number="1">Au commencement, Dieu créa le ciel et la terre.</verse>
+				<verse number="2">La terre n’était que chaos et vide. Il y avait des ténèbres à la surface de l'abîme et l'Esprit de Dieu planait au-dessus de l’eau.</verse>
+				<verse number="3">Dieu dit: «Qu’il y ait de la lumière!» et il y eut de la lumière.</verse>
+                <verse number="4">Dieu vit que la lumière était bonne, et il sépara la lumière des ténèbres.</verse>
+			</chapter>
+            <chapter number="2">
+                <verse number="1">Ainsi furent achevés les cieux et la terre, et toute leur armée.</verse>
+                <verse number="2">Dieu acheva au septième jour son oeuvre, qu'il avait faite: et il se reposa au septième jour de toute son oeuvre, qu'il avait faite.</verse>
+            </chapter>
+		</book>
+        <book number="43">
+			<chapter number="3">
+				<verse number="16">Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle.</verse>
+			</chapter>
+		</book>
+	</testament>
+</bible>`;
+
+        // ============================================================
+        // ÉTAT DE L'APPLICATION
+        // ============================================================
+        let bibleVersions = [];     // [{ id, name, books: [{name, totalVerses, chapters:[{num, verses:[{num,text}]}]}] }]
+        let currentVersionId = null;
+        let activeBookName = null;
+        let activeChapterNum = null;
+        let favorites = [];
+        let onAir = null;           // { bookName, chapterNum, verseNums:[...] } — ce qui est actuellement affiché sur OBS
+        let selectionMode = false;
+        let selectedVerseNums = new Set();
+
+        // ============================================================
+        // RÉGLAGES DE PERSONNALISATION DU RENDU (persistés en localStorage)
+        // ============================================================
+        const DEFAULT_DISPLAY_SETTINGS = {
+            bgColor: 'rgba(15, 23, 42, 0.92)',
+            accentColor: '#f59e0b',
+            textColor: '#ffffff',
+            fontFamily: 'Merriweather',
+            shapeRadius: 20,
+            bgImage: null,
+            bgBlur: 18,
+            lineMode: false
+        };
+        let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
+
+        function loadDisplaySettings() {
+            const stored = safeParseLocal('bibleDisplaySettings', null);
+            displaySettings = stored ? { ...DEFAULT_DISPLAY_SETTINGS, ...stored } : { ...DEFAULT_DISPLAY_SETTINGS };
+        }
+
+        function saveDisplaySettings() {
+            try {
+                localStorage.setItem('bibleDisplaySettings', JSON.stringify(displaySettings));
+            } catch (e) {
+                showToast("Réglages appliqués pour cette session (l'image est trop lourde pour être sauvegardée durablement).");
+            }
+            // Synchronise aussi vers le serveur (axe A) pour que les réglages "suivent" l'utilisateur.
+            if (window.OpenStore) { try { OpenStore.set('bible', 'displaySettings', displaySettings); } catch (e) { /* silencieux */ } }
+        }
+
+        
+
+        
+
+        function populateSettingsForm() {
+            const { hex, opacity } = rgbaToHexAndOpacity(displaySettings.bgColor);
+            document.getElementById('set-bg-color').value = hex;
+            document.getElementById('set-bg-opacity').value = opacity;
+            document.getElementById('set-bg-opacity-val').innerText = opacity + '%';
+            document.getElementById('set-accent-color').value = displaySettings.accentColor;
+            document.getElementById('set-text-color').value = displaySettings.textColor;
+            document.getElementById('set-font-family').value = displaySettings.fontFamily;
+            document.getElementById('set-shape').value = String(displaySettings.shapeRadius);
+            document.getElementById('set-line-mode').checked = !!displaySettings.lineMode;
+            document.getElementById('set-bg-blur').value = displaySettings.bgBlur;
+            document.getElementById('bg-image-status').innerText = displaySettings.bgImage ? 'Image chargée' : 'Aucune image';
+        }
+
+        function updateSettingsFromForm() {
+            const hex = document.getElementById('set-bg-color').value;
+            const opacity = document.getElementById('set-bg-opacity').value;
+            document.getElementById('set-bg-opacity-val').innerText = opacity + '%';
+            displaySettings.bgColor = hexToRgba(hex, opacity);
+            displaySettings.accentColor = document.getElementById('set-accent-color').value;
+            displaySettings.textColor = document.getElementById('set-text-color').value;
+            displaySettings.fontFamily = document.getElementById('set-font-family').value;
+            displaySettings.shapeRadius = Number(document.getElementById('set-shape').value);
+            displaySettings.lineMode = document.getElementById('set-line-mode').checked;
+            displaySettings.bgBlur = Number(document.getElementById('set-bg-blur').value);
+        }
+
+        function handleBgImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 4 * 1024 * 1024) {
+                showToast("Image assez lourde (>4 Mo) : elle sera appliquée mais pourrait ne pas être sauvegardée durablement.");
+            }
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                displaySettings.bgImage = evt.target.result;
+                document.getElementById('bg-image-status').innerText = 'Image chargée';
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        function removeBgImage() {
+            displaySettings.bgImage = null;
+            document.getElementById('bg-image-status').innerText = 'Aucune image';
+        }
+
+        function openSettingsPanel() {
+            populateSettingsForm();
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsPanel() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        // Réapplique en direct le rendu actuellement à l'écran quand les réglages changent
+        function refreshOnAirDisplay() {
+            if (onAir) {
+                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            }
+        }
+
+        function initSettingsPanel() {
+            document.getElementById('btn-open-settings').addEventListener('click', openSettingsPanel);
+            document.getElementById('btn-close-settings').addEventListener('click', closeSettingsPanel);
+            document.getElementById('settings-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'settings-modal') closeSettingsPanel();
+            });
+
+            ['set-bg-color', 'set-bg-opacity', 'set-accent-color', 'set-text-color', 'set-font-family', 'set-shape', 'set-line-mode', 'set-bg-blur'].forEach(id => {
+                const el = document.getElementById(id);
+                const evt = (el.type === 'color' || el.type === 'range' || el.tagName === 'SELECT') ? 'input' : 'change';
+                el.addEventListener('input', updateSettingsFromForm);
+                el.addEventListener('change', updateSettingsFromForm);
+            });
+
+            document.getElementById('set-bg-image').addEventListener('change', handleBgImageUpload);
+            document.getElementById('btn-remove-bg-image').addEventListener('click', removeBgImage);
+
+            document.getElementById('btn-apply-settings').addEventListener('click', () => {
+                saveDisplaySettings();
+                closeSettingsPanel();
+                refreshOnAirDisplay();
+                showToast('Réglages du rendu appliqués.');
+            });
+
+            document.getElementById('btn-reset-settings').addEventListener('click', () => {
+                displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
+                saveDisplaySettings();
+                populateSettingsForm();
+                refreshOnAirDisplay();
+                showToast('Réglages du rendu réinitialisés.');
+            });
+        }
+
+        // ============================================================
+        // RemoteChannel — pont réseau optionnel au-dessus de BroadcastChannel
+        // ============================================================
+        // BroadcastChannel ne fonctionne qu'entre pages ouvertes dans le MÊME processus
+        // navigateur (ex: un Dock OBS + une Source Navigateur OBS, car tous deux tournent
+        // dans le moteur Chromium interne à OBS). Il NE fonctionne PAS entre un navigateur
+        // externe (Chrome, Edge...) et OBS, ni entre deux PC différents.
+        //
+        // RemoteChannel garde BroadcastChannel comme transport local (gratuit, zéro
+        // config, marche toujours), et ajoute EN PLUS une connexion WebSocket vers un petit
+        // serveur relais local (sync-relay-server.js) quand la page est chargée depuis ce
+        // serveur (via une adresse http://..., pas en ouvrant le fichier directement). Cela
+        // permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
+        // sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
+        // fonctionnement de l'application.
+        
+
+        
+
+        // Canal de communication avec OBS (local + relais réseau)
+        const bc = new RemoteChannel('obs_bible_channel');
+        bc.onStatusChange(updateSyncBadge);
+        // Canal partagé d'exclusion mutuelle avec les Paroles : quand la Bible s'affiche,
+        // elle le signale pour que l'autre outil se coupe automatiquement (jamais les deux ensemble).
+        const mutex = new RemoteChannel('obs_mutex_channel');
+        // Si les Paroles s'affichent, on coupe la Bible. Robuste en mode contrôleur ET OBS.
+        mutex.onmessage = (ev) => {
+            if (ev.data && ev.data.action === 'show' && ev.data.source === 'lyrics') {
+                if (isObsMode) {
+                    const c = document.getElementById('obs-container');
+                    if (c) c.style.opacity = '0';
+                } else {
+                    clearOBS();
+                }
+            }
+        };
+
+        // Dernier rendu affiché (mode + éléments DOM), utilisé pour ré-ajuster la taille du
+        // texte une fois que les polices web (Google Fonts) ont fini de se charger.
+        let lastRenderCtx = null;
+
+        // Les polices (Cinzel, Merriweather...) se chargent de façon asynchrone. Si le calcul
+        // anti-débordement s'exécute AVANT que la police définitive soit prête, il se base sur
+        // une police de secours dont les dimensions diffèrent -> le texte peut déborder une fois
+        // la vraie police appliquée. On relance donc le calcul dès que tout est chargé.
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                if (lastRenderCtx) {
+                    autoFitDisplay(lastRenderCtx.mode, lastRenderCtx.card, lastRenderCtx.contentArea);
+                }
+            });
+        }
+
+        // --- DÉTECTION DU MODE (OBS vs Controller) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const isObsMode = urlParams.get('obs') === 'true';
+        // Lien de sortie "à mode fixe" : si ?lockMode=... est présent dans l'URL, cette
+        // source OBS ignore le style choisi dans le contrôleur et reste toujours affichée
+        // dans ce mode précis. Permet d'avoir plusieurs Sources Navigateur OBS (une par
+        // scène) affichant le même contenu mais chacune dans un mode différent, en plus
+        // du lien général qui suit le mode en direct.
+        const lockedMode = urlParams.get('lockMode');
+
+        if (isObsMode) {
+            document.body.classList.add('mode-obs');
+            document.getElementById('obs-mode-ui').classList.remove('hidden');
+            initObsMode();
+        } else {
+            document.getElementById('controller-mode-ui').classList.remove('hidden');
+            initControllerMode();
+        }
+
+        function initObsMode() {
+            const container = document.getElementById('obs-container');
+            const card = document.getElementById('obs-card-element');
+            const contentArea = document.getElementById('obs-content-area');
+
+            bc.onmessage = (event) => {
+                const data = event.data;
+                if (data.action === 'hide') {
+                    container.style.opacity = '0';
+                    return;
+                }
+                if (data.action === 'show') {
+                    const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
+                    renderDisplay(cfg, container, card, contentArea);
+                }
+            };
+        }
+
+        // ============================================================
+        // RENDU PARTAGÉ (OBS + Live Preview) — avec anti-débordement auto
+        // ============================================================
+        // Découpe un verset en groupes de sens (à la ponctuation) pour l'affichage "ligne par ligne",
+        // en fusionnant les fragments trop courts pour éviter des lignes ridicules.
+        function splitTextIntoLines(text) {
+            let parts = text.match(/[^.!?;:]+[.!?;:]?/g) || [text];
+            parts = parts.map(p => p.trim()).filter(Boolean);
+            const lines = [];
+            let buffer = '';
+            parts.forEach(p => {
+                buffer = buffer ? buffer + ' ' + p : p;
+                if (buffer.length >= 45) { lines.push(buffer); buffer = ''; }
+            });
+            if (buffer) lines.push(buffer);
+            return lines.length ? lines : [text];
+        }
+
+        function renderDisplay(config, container, card, contentArea) {
+            container.style.opacity = '1';
+            card.className = '';
+
+            card.style.setProperty('--bg-color', config.bgColor || 'rgba(15, 23, 42, 0.92)');
+            card.style.setProperty('--accent-color', config.accentColor || '#f59e0b');
+            card.style.setProperty('--text-color', config.textColor || '#ffffff');
+            card.style.setProperty('--shape-radius', (config.shapeRadius != null ? config.shapeRadius : 20) + 'px');
+
+            if (config.bgImage) {
+                card.style.setProperty('--bg-image', `url('${config.bgImage}')`);
+                card.style.setProperty('--bg-blur', (config.bgBlur != null ? config.bgBlur : 18) + 'px');
+            } else {
+                card.style.removeProperty('--bg-image');
+            }
+
+            const fontFam = config.fontFamily || 'Merriweather';
+            const wordCount = config.text.split(/\s+/).filter(Boolean).length;
+
+            // Bloc de texte : soit une seule bulle, soit découpé ligne par ligne (respecte les mêmes
+            // règles de largeur 80% / anti-débordement, gérées ensuite par autoFitDisplay).
+            let textHtml;
+            if (config.lineMode) {
+                const lines = splitTextIntoLines(config.text);
+                textHtml = lines.map(l => `<div class="verse-text verse-line" style="font-family: '${fontFam}', serif;">${l}</div>`).join('');
+            } else {
+                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${config.text}"</div>`;
+            }
+
+            let html = '';
+            let modeClass = '';
+
+            if (config.mode === 'scrolling') {
+                modeClass = 'obs-scrolling';
+                // Vitesse du ruban adaptée à la longueur du texte pour rester lisible
+                const speed = Math.max(15, Math.min(70, wordCount * 0.55));
+                card.style.setProperty('--speed', speed + 's');
+                html = `
+                    <div class="ticker-wrapper" style="font-family: '${fontFam}', serif; font-size: 40px;">
+                        <div class="ticker-content">
+                            <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
+                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>
+                        </div>
+                        <div class="ticker-content">
+                            <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
+                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>
+                        </div>
+                    </div>
+                `;
+            } else if (config.mode === 'bottom') {
+                modeClass = 'obs-bottom anim-show';
+                html = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="verse-ref" style="font-size: 38px;">📖 ${config.reference}</div>
+                        <span class="version-badge" style="font-size: 24px; padding: 6px 14px;">${config.version}</span>
+                    </div>
+                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
+                `;
+            } else if (config.mode === 'bottom-right') {
+                modeClass = 'obs-bottom-right anim-show';
+                html = `
+                    <div class="flex items-center justify-end gap-4 mb-2">
+                        <span class="version-badge" style="font-size: 24px; padding: 6px 14px;">${config.version}</span>
+                        <div class="verse-ref" style="font-size: 38px;">📖 ${config.reference}</div>
+                    </div>
+                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
+                `;
+            } else if (config.mode === 'screen80') {
+                modeClass = 'obs-screen80 anim-show';
+                html = `
+                    <div class="verse-ref mb-6" style="font-size: 50px;">📖 ${config.reference} <span class="version-badge align-middle" style="font-size: 28px; padding: 6px 14px;">${config.version}</span></div>
+                    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
+                    <div class="h-8"></div>
+                `;
+            } else { // full
+                modeClass = 'obs-full anim-show';
+                html = `
+                    <div class="verse-ref mb-6" style="font-size: 50px;">
+                        <span class="opacity-30" style="font-size: 40px; margin-right: 16px;">✝</span>
+                        ${config.reference}
+                        <span class="version-badge align-middle" style="font-size: 28px; padding: 6px 14px;">${config.version}</span>
+                    </div>
+                    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
+                    <div class="h-8"></div>
+                `;
+            }
+
+            if (config.bgImage) modeClass += ' has-bg-image';
+
+            card.className = modeClass;
+            contentArea.innerHTML = html;
+
+            // Ajustement automatique de la taille du texte pour ne jamais déborder du cadre
+            autoFitDisplay(config.mode, card, contentArea);
+
+            // On mémorise ce rendu pour pouvoir le réajuster automatiquement si les polices
+            // web (Cinzel, Merriweather, etc.) finissent de charger APRÈS ce calcul — sinon
+            // le texte peut changer de taille réelle une fois la police définitive appliquée
+            // et déborder du cadre sans que rien ne le rattrape.
+            lastRenderCtx = { mode: config.mode, card, contentArea };
+        }
+
+        // Réduit progressivement la taille du texte tant qu'il dépasse l'espace disponible.
+        // Se base sur les dimensions réelles mesurées dans le DOM (pas des estimations).
+        // Calcule et applique la taille du texte de façon PROPORTIONNELLE :
+        // - plus le texte est long, plus il commence petit (estimation basée sur la surface
+        //   réellement disponible dans CE cadre précis : 80% de sa largeur × sa hauteur réelle) ;
+        // - plus il est court, plus il peut grandir (jusqu'au plafond du mode) ;
+        // - un filet de sécurité garantit qu'il ne déborde jamais, quoi qu'il arrive.
+        function autoFitDisplay(mode, card, contentArea) {
+            // On repart toujours d'un zoom neutre : un rendu précédent (texte très long) a pu
+            // laisser un transform: scale() actif sur ce même élément DOM (réutilisé d'un
+            // affichage à l'autre), ce qui fausserait tout — y compris pour le mode "ruban"
+            // ci-dessous qui n'a pas besoin d'ajustement. Donc on réinitialise avant tout.
+            contentArea.style.transform = '';
+            contentArea.style.transformOrigin = 'center center';
+
+            const textEls = contentArea.querySelectorAll('.verse-text');
+            if (!textEls.length) return; // le mode "ruban défilant" n'a pas besoin d'ajustement (défilement horizontal infini)
+
+            const limits = {
+                'full':          { min: 26, max: 110 },
+                'screen80':      { min: 22, max: 95  },
+                'bottom':        { min: 14, max: 64  },
+                'bottom-right':  { min: 14, max: 64  },
+            };
+            const cfg = limits[mode];
+            if (!cfg) return;
+
+            // On mesure la hauteur DANS le conteneur de texte (contentArea), PAS celle de la
+            // carte : en mode image de fond, la carte porte des pseudo-éléments absolus
+            // (le fond flouté) qui gonflent son scrollHeight et faisaient croire à un
+            // débordement → le texte était réduit à une taille minuscule. contentArea ne
+            // contient que le texte, sa mesure est donc la bonne.
+            const usableWidth = contentArea.clientWidth * 0.8; // le texte occupe 80% de la largeur
+            const usableHeight = contentArea.clientHeight;     // hauteur disponible pour le texte
+
+            const totalChars = Array.from(textEls).reduce((sum, el) => sum + el.textContent.length, 0) || 1;
+            const area = Math.max(usableWidth, 1) * Math.max(usableHeight, 1);
+
+            // Estimation continue proportionnelle à la quantité de texte (pas de "paliers" figés)
+            let estimate = Math.sqrt(area / (totalChars * 6.2));
+            let fontSize = Math.max(cfg.min, Math.min(cfg.max, Math.round(estimate)));
+            textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+
+            // Filet de sécurité : si ça déborde malgré tout, on réduit précisément jusqu'à ce que ça rentre
+            let guard = 0;
+            while (contentArea.scrollHeight > usableHeight && fontSize > cfg.min && guard < 100) {
+                fontSize -= 1;
+                textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+                guard++;
+            }
+
+            // S'il reste de la place (texte court), on agrandit jusqu'au plafond du mode
+            guard = 0;
+            while (fontSize < cfg.max && guard < 100) {
+                const next = fontSize + 1;
+                textEls.forEach(el => el.style.fontSize = next + 'px');
+                if (contentArea.scrollHeight > usableHeight) {
+                    textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+                    break;
+                }
+                fontSize = next;
+                guard++;
+            }
+
+            // Filet de sécurité ULTIME : même à la taille de police minimale, un verset
+            // exceptionnellement long (ou plusieurs versets combinés) peut encore dépasser la
+            // hauteur du cadre. Dans ce cas on réduit l'ensemble du bloc de texte par un zoom
+            // global — le texte devient plus petit mais NE DÉBORDE JAMAIS, quelle que soit sa
+            // longueur.
+            if (contentArea.scrollHeight > usableHeight) {
+                const scale = Math.max(0.3, usableHeight / contentArea.scrollHeight);
+                contentArea.style.transform = `scale(${scale})`;
+            }
+        }
+
+        // ============================================================
+        // INITIALISATION DU CONTRÔLEUR
+        // ============================================================
+        async function initControllerMode() {
+            favorites = safeParseLocal('bibleFavs', []);
+            loadDisplaySettings();
+            initSettingsPanel();
+
+            await loadVersions();
+            renderVersionSelector();
+            document.getElementById('version-info').innerText = getCurrentVersion() ? getCurrentVersion().name : 'Aucune version chargée';
+            renderBooksList(currentBooks());
+            renderFavorites();
+            restorePosition();
+            initObsLinksPanel();
+
+            // Event Listeners UI
+            document.getElementById('xml-upload').addEventListener('change', handleFileUpload);
+            document.getElementById('book-search').addEventListener('input', handleSearch);
+            document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+            document.getElementById('btn-delete-version').addEventListener('click', deleteCurrentVersion);
+            document.getElementById('btn-multiselect').addEventListener('click', toggleSelectionMode);
+            document.getElementById('smart-input').addEventListener('input', handleSmartInput);
+            document.getElementById('smart-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') confirmSmartInput();
+            });
+
+            // Synchronise depuis le serveur (axe A) : si le stockage local est vide (premier
+            // passage sur ce PC), on récupère favoris, position et réglages sauvegardés ailleurs.
+            if (window.OpenStore) {
+                const pullAll = Promise.all([
+                    OpenStore.pullIfLocalEmpty('bible', 'favs', a => Array.isArray(a) && a.length > 0),
+                    OpenStore.pullIfLocalEmpty('bible', 'position', o => o && o.bookName),
+                    OpenStore.pullIfLocalEmpty('bible', 'displaySettings', o => o && o.bgColor),
+                ]);
+                pullAll.then(([favsChanged, , settingsChanged]) => {
+                    if (favsChanged) { favorites = safeParseLocal('bibleFavs', []); renderFavorites(); }
+                    if (settingsChanged) loadDisplaySettings();
+                }).catch(() => { /* silencieux */ });
+            }
+        }
+
+        // Construit le lien général (qui suit le mode en direct) et un lien par mode fixe
+        // (screen80, bottom, bottom-right, full, scrolling) à coller dans OBS sur d'autres
+        // scènes. Se base sur les options déjà présentes dans le sélecteur de style, pour
+        // rester toujours synchronisé si la liste de modes change un jour.
+        
+
+        // Copie un lien dans le presse-papier, avec repli si l'API clipboard n'est pas
+        // disponible (ex: page ouverte en file:// dans certains navigateurs).
+        
+
+        
+
+        
+
+        // ============================================================
+        // STOCKAGE PERSISTANT DES VERSIONS (IndexedDB — grande capacité)
+        // localStorage est limité à quelques Mo, ce qui suffit à peine pour
+        // une seule Bible complète. IndexedDB offre des centaines de Mo,
+        // ce qui permet de garder autant de versions que voulu sans jamais
+        // avoir à en supprimer.
+        // ============================================================
+        const IDB_NAME = 'bibleProStorage';
+        const IDB_STORE = 'versions';
+        let idbAvailable = true;
+
+        function openVersionsDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) { reject(new Error('IndexedDB non supporté par ce navigateur')); return; }
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function idbGetAllVersions() {
+            const db = await openVersionsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const req = tx.objectStore(IDB_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function idbPutVersion(version) {
+            const db = await openVersionsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(version);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function idbDeleteVersion(id) {
+            const db = await openVersionsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).delete(id);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // Portabilité : sauvegarde les versions Bible (le contenu est du texte, mais
+        // volumineux) vers le dossier du projet /data/bible/versions.json.
+        function syncVersionsToServer() {
+            if (window.OpenStore) {
+                try { OpenStore.saveHeavy('bible', 'versions', bibleVersions); } catch (e) { /* silencieux */ }
+            }
+        }
+
+        // ============================================================
+        // GESTION MULTI-VERSIONS
+        // ============================================================
+        function getCurrentVersion() {
+            return bibleVersions.find(v => v.id === currentVersionId) || null;
+        }
+
+        function currentBooks() {
+            const v = getCurrentVersion();
+            return v ? v.books : [];
+        }
+
+        async function loadVersions() {
+            // Migration automatique : si d'anciennes versions existent encore dans
+            // localStorage (ancienne édition de l'app), on les bascule vers IndexedDB
+            // une bonne fois pour toutes, puis on libère localStorage.
+            const legacy = safeParseLocal('bibleVersions', null);
+            if (legacy && Array.isArray(legacy) && legacy.length > 0) {
+                try {
+                    for (const v of legacy) { await idbPutVersion(v); }
+                    localStorage.removeItem('bibleVersions');
+                } catch (e) { console.error("Migration échouée:", e); }
+            }
+
+            let stored = [];
+            try {
+                stored = await idbGetAllVersions();
+            } catch (err) {
+                console.error(err);
+                idbAvailable = false;
+                showToast("Stockage persistant indisponible : les versions ajoutées ne seront pas conservées après fermeture.");
+            }
+
+            if (stored.length > 0) {
+                bibleVersions = stored;
+            } else {
+                // Portabilité : si rien localement, on tente de restaurer les versions
+                // depuis le dossier du projet (data/bible/versions.json).
+                let restored = null;
+                if (window.OpenStore) {
+                    try { restored = await OpenStore.loadHeavy('bible', 'versions'); } catch (e) { restored = null; }
+                }
+                if (restored && Array.isArray(restored) && restored.length > 0) {
+                    bibleVersions = restored;
+                    restored.forEach(v => { if (idbAvailable) { try { idbPutVersion(v); } catch (e) {} } });
+                } else {
+                    const parsed = parseXML(SAMPLE_XML);
+                    const sample = { id: 'v_sample', name: parsed.translation || 'Bible Segond 21 (Échantillon)', books: parsed.books };
+                    bibleVersions = [sample];
+                    if (idbAvailable) { try { await idbPutVersion(sample); } catch (e) { console.error(e); } }
+                }
+            }
+
+            currentVersionId = localStorage.getItem('bibleCurrentVersionId');
+            if (!currentVersionId || !bibleVersions.find(v => v.id === currentVersionId)) {
+                currentVersionId = bibleVersions[0].id;
+            }
+        }
+
+        function renderVersionSelector() {
+            const container = document.getElementById('version-tabs');
+            container.innerHTML = '';
+
+            bibleVersions.forEach(v => {
+                const btn = document.createElement('button');
+                const isActive = v.id === currentVersionId;
+                btn.className = `version-tab px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${isActive ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+                btn.innerText = v.name;
+                btn.title = v.name;
+                btn.onclick = () => switchVersion(v.id);
+                container.appendChild(btn);
+            });
+        }
+
+        // Bascule vers une autre version SANS recharger le livre/chapitre/verset :
+        // la position de lecture est conservée, et si un verset est actuellement à l'écran (OBS),
+        // il est automatiquement reconverti et réaffiché dans la nouvelle version.
+        function switchVersion(newId) {
+            if (!newId || newId === currentVersionId) return;
+            currentVersionId = newId;
+            localStorage.setItem('bibleCurrentVersionId', newId);
+            renderVersionSelector();
+
+            const version = getCurrentVersion();
+            document.getElementById('version-info').innerText = version ? version.name : 'Aucune version';
+
+            if (activeBookName) {
+                const book = currentBooks().find(b => b.name === activeBookName);
+                if (book) {
+                    document.getElementById('active-book-stats').innerText = `${book.chapters.length} Chapitres • ${book.totalVerses} Versets`;
+                    renderChaptersGrid(book);
+                    const chapter = book.chapters.find(c => c.num == activeChapterNum) || book.chapters[0];
+                    if (chapter) {
+                        activeChapterNum = chapter.num;
+                        renderVerses(chapter.verses, book.name, chapter.num);
+                    }
+                } else {
+                    showToast(`"${activeBookName}" est introuvable dans "${version.name}".`);
+                }
+            }
+            renderBooksList(currentBooks());
+            renderFavorites();
+
+            // Conversion automatique du verset actuellement diffusé
+            if (onAir) {
+                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            }
+        }
+
+        async function addVersion(xmlString) {
+            try {
+                const parsed = parseXML(xmlString);
+                let defaultName = parsed.translation || `Version ${bibleVersions.length + 1}`;
+                let name = window.prompt("Nom de cette version (ex: LSG, Darby, KJV, S21)...", defaultName);
+                if (name === null) return; // annulé par l'utilisateur
+                name = name.trim() || defaultName;
+
+                const version = { id: 'v_' + Date.now(), name, books: parsed.books };
+
+                if (idbAvailable) {
+                    try {
+                        await idbPutVersion(version);
+                    } catch (err) {
+                        console.error(err);
+                        alert("Impossible d'enregistrer cette version dans le stockage persistant. Elle reste disponible pour cette session, mais sera perdue à la fermeture.");
+                    }
+                }
+
+                bibleVersions.push(version);
+                currentVersionId = version.id;
+                localStorage.setItem('bibleCurrentVersionId', currentVersionId);
+                renderVersionSelector();
+                document.getElementById('version-info').innerText = version.name;
+
+                if (activeBookName) {
+                    const book = currentBooks().find(b => b.name === activeBookName);
+                    if (book) {
+                        document.getElementById('active-book-stats').innerText = `${book.chapters.length} Chapitres • ${book.totalVerses} Versets`;
+                        renderChaptersGrid(book);
+                        const chapter = book.chapters.find(c => c.num == activeChapterNum) || book.chapters[0];
+                        if (chapter) {
+                            activeChapterNum = chapter.num;
+                            renderVerses(chapter.verses, book.name, chapter.num);
+                        }
+                    }
+                }
+                renderBooksList(currentBooks());
+                syncVersionsToServer(); // portabilité : sauvegarde vers le dossier du projet
+
+                showToast(`Version "${version.name}" ajoutée : ${version.books.length} livres.`);
+            } catch (err) {
+                console.error("Erreur de parsing:", err);
+                alert("Erreur lors de la lecture du fichier XML. Vérifiez le format du fichier.");
+            }
+        }
+
+        async function deleteCurrentVersion() {
+            if (bibleVersions.length <= 1) {
+                showToast("Impossible de supprimer la dernière version restante.");
+                return;
+            }
+            const v = getCurrentVersion();
+            if (!v) return;
+            if (!confirm(`Supprimer la version "${v.name}" ? Cette action est irréversible.\n\n(Ce n'est jamais obligatoire : le stockage permet de garder toutes vos versions.)`)) return;
+
+            if (idbAvailable) {
+                try { await idbDeleteVersion(v.id); } catch (e) { console.error(e); }
+            }
+
+            bibleVersions = bibleVersions.filter(x => x.id !== v.id);
+            currentVersionId = bibleVersions[0].id;
+            localStorage.setItem('bibleCurrentVersionId', currentVersionId);
+            renderVersionSelector();
+            document.getElementById('version-info').innerText = getCurrentVersion().name;
+            renderBooksList(currentBooks());
+            syncVersionsToServer(); // portabilité
+            showToast(`Version "${v.name}" supprimée.`);
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => addVersion(evt.target.result);
+            reader.readAsText(file);
+            e.target.value = ''; // permet de réimporter le même fichier plus tard
+        }
+
+        // Transforme un XML en { translation, books } SANS toucher à l'état global
+        function parseXML(xmlString) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+            if (xmlDoc.querySelector("parsererror")) {
+                throw new Error("XML invalide");
+            }
+
+            let translation = '';
+            const bibleNode = xmlDoc.querySelector("bible");
+            if (bibleNode && bibleNode.getAttribute("translation")) {
+                const full = bibleNode.getAttribute("translation");
+                translation = full.length > 30 ? full.substring(0, 30) + '...' : full;
+            }
+
+            const parsedData = [];
+            const bookNodes = xmlDoc.querySelectorAll("book");
+            let ntStarted = false;
+
+            bookNodes.forEach((bookNode) => {
+                let bookNum = parseInt(bookNode.getAttribute("number"));
+
+                // Ajustement si le numéro est 1 mais qu'on a déjà traité l'AT (cas des XML qui font OT:1-39, NT:1-27)
+                if (bookNum === 1 && parsedData.length >= 39) {
+                    ntStarted = true;
+                }
+                if (ntStarted) bookNum += 39;
+
+                let bookName = FRENCH_BOOKS[bookNum - 1] || `Livre Inconnu ${bookNum}`;
+
+                const chapters = [];
+                let totalVerses = 0;
+
+                bookNode.querySelectorAll("chapter").forEach(chapNode => {
+                    const verses = [];
+                    chapNode.querySelectorAll("verse").forEach(verseNode => {
+                        verses.push({
+                            num: verseNode.getAttribute("number"),
+                            text: verseNode.textContent.trim()
+                        });
+                        totalVerses++;
+                    });
+                    chapters.push({ num: chapNode.getAttribute("number"), verses });
+                });
+
+                parsedData.push({ name: bookName, totalVerses, chapters });
+            });
+
+            if (parsedData.length === 0) {
+                throw new Error("Aucun livre trouvé dans ce fichier.");
+            }
+
+            return { translation, books: parsedData };
+        }
+
+        // ============================================================
+        // NAVIGATION : LIVRES / CHAPITRES / VERSETS
+        // ============================================================
+        function renderBooksList(booksToRender) {
+            const container = document.getElementById('books-list');
+            container.innerHTML = '';
+
+            if (!booksToRender || booksToRender.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic p-4 text-center">Aucune version chargée. Importez un fichier XML.</p>';
+                return;
+            }
+
+            booksToRender.forEach(book => {
+                const div = document.createElement('div');
+                const isActive = book.name === activeBookName;
+                div.className = `p-3 rounded-lg text-sm text-slate-300 font-medium mb-1 cursor-pointer transition-colors hover:bg-slate-800 flex justify-between items-center ${isActive ? 'bg-amber-500/20 border-l-2 border-amber-500 text-amber-500' : ''}`;
+
+                div.innerHTML = `
+                    <span>${book.name}</span>
+                    <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">${book.chapters.length} chap.</span>
+                `;
+
+                div.onclick = () => selectBook(book.name);
+                container.appendChild(div);
+            });
+        }
+
+        // Recherche : d'abord par nom de livre, sinon par phrase/paraphrase dans le texte
+        // des versets. En mode texte, on liste les versets correspondants (et on peut les
+        // afficher en un clic).
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const books = currentBooks();
+            if (query === '') {
+                renderBooksList(books);
+                return;
+            }
+
+            // 1) Correspondance par nom de livre
+            const bookMatches = books.filter(b => b.name.toLowerCase().includes(query));
+            if (bookMatches.length > 0) {
+                renderBooksList(bookMatches);
+                return;
+            }
+
+            // 2) Recherche plein texte (phrase / paraphrase) dans les versets
+            const results = [];
+            const qParts = query.split(/\s+/).filter(Boolean);
+            for (const book of books) {
+                for (const chap of book.chapters) {
+                    for (const verse of chap.verses) {
+                        const t = String(verse.text || '').toLowerCase();
+                        // Tous les mots de la phrase doivent apparaître (recherche souple)
+                        const hit = qParts.every(w => t.includes(w));
+                        if (hit) {
+                            results.push({ bookName: book.name, chapterNum: chap.num, verseNum: verse.num, text: verse.text });
+                        }
+                    }
+                }
+            }
+            renderTextSearchResults(results, query);
+        }
+
+        // Affiche les versets trouvés par la recherche plein texte, cliquables pour projeter.
+        function renderTextSearchResults(results, query) {
+            const container = document.getElementById('books-list');
+            container.innerHTML = '';
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic p-4 text-center">Aucun verset ne correspond à « ' + query + ' ».</p>';
+                return;
+            }
+            const header = document.createElement('div');
+            header.className = 'px-1 pt-1 pb-2 text-[10px] font-bold uppercase tracking-wider text-amber-500';
+            header.textContent = `Recherche texte — ${results.length} verset(s)`;
+            container.appendChild(header);
+
+            results.slice(0, 50).forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-lg text-sm text-slate-300 font-medium mb-1 cursor-pointer transition-colors hover:bg-slate-800 border border-slate-700/50';
+                div.innerHTML = `<div class="text-amber-500 font-bold text-xs mb-1">${escapeQuotes(r.bookName)} ${r.chapterNum}:${r.verseNum}</div>
+                    <div class="text-slate-200 text-xs font-serif line-clamp-2" style="overflow-wrap:break-word;">${escapeHtml(r.text)}</div>`;
+                div.onclick = () => triggerDisplay(r.bookName, r.chapterNum, [r.verseNum]);
+                container.appendChild(div);
+            });
+        }
+
+        function renderChaptersGrid(book) {
+            const chaptersGrid = document.getElementById('chapters-grid');
+            chaptersGrid.innerHTML = '';
+            book.chapters.forEach(chap => {
+                const btn = document.createElement('button');
+                btn.className = `w-10 h-10 rounded font-bold text-sm transition-colors ${activeChapterNum == chap.num ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`;
+                btn.innerText = chap.num;
+                btn.onclick = () => selectChapter(chap.num);
+                chaptersGrid.appendChild(btn);
+            });
+        }
+
+        function selectBook(bookName, chapterToOpen = null) {
+            const book = currentBooks().find(b => b.name === bookName);
+            if (!book) return;
+
+            activeBookName = bookName;
+            selectionMode = false;
+            selectedVerseNums.clear();
+            const msBtn = document.getElementById('btn-multiselect');
+            msBtn.classList.remove('bg-amber-500', 'text-slate-900');
+            msBtn.innerText = 'Sélection multiple';
+
+            document.getElementById('book-header').classList.remove('hidden');
+            document.getElementById('active-book-name').innerText = book.name;
+            document.getElementById('active-book-stats').innerText = `${book.chapters.length} Chapitres • ${book.totalVerses} Versets`;
+
+            const smartInput = document.getElementById('smart-input');
+            smartInput.value = '';
+
+            renderChaptersGrid(book);
+            renderBooksList(currentBooks());
+
+            if (book.chapters.length > 0) {
+                const target = (chapterToOpen && book.chapters.find(c => c.num == chapterToOpen)) ? chapterToOpen : book.chapters[0].num;
+                selectChapter(target);
+            }
+
+            smartInput.focus();
+            savePosition();
+        }
+
+        function selectChapter(chapterNum) {
+            activeChapterNum = chapterNum;
+            const book = currentBooks().find(b => b.name === activeBookName);
+            if (!book) return;
+            const chapter = book.chapters.find(c => c.num == chapterNum);
+            if (!chapter) return;
+
+            selectionMode = false;
+            selectedVerseNums.clear();
+            const msBtn = document.getElementById('btn-multiselect');
+            if (msBtn) { msBtn.classList.remove('bg-amber-500', 'text-slate-900'); msBtn.innerText = 'Sélection multiple'; }
+
+            const btns = document.getElementById('chapters-grid').children;
+            for (let b of btns) {
+                b.className = `w-10 h-10 rounded font-bold text-sm transition-colors ${b.innerText == chapterNum ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`;
+            }
+
+            renderVerses(chapter.verses, book.name, chapterNum);
+            savePosition();
+        }
+
+        function renderVerses(verses, bookName, chapterNum) {
+            const container = document.getElementById('verses-list');
+            container.innerHTML = '';
+
+            verses.forEach(verse => {
+                const ref = `${bookName} ${chapterNum}:${verse.num}`;
+                const isFav = favorites.some(f => f.ref === ref);
+                const isChecked = selectedVerseNums.has(verse.num);
+
+                const div = document.createElement('div');
+                div.className = `verse-item p-4 mb-2 rounded-lg border border-slate-700/50 relative group bg-slate-800/40 ${isChecked ? 'active' : ''}`;
+                div.id = `verse-item-${verse.num}`;
+
+                const leftMarker = selectionMode
+                    ? `<input type="checkbox" ${isChecked ? 'checked' : ''} class="w-5 h-5 mt-1 accent-amber-500 shrink-0 pointer-events-none">`
+                    : `<div class="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-amber-500 shrink-0 select-none">${verse.num}</div>`;
+
+                const actionsHtml = selectionMode ? '' : `
+                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        <button onclick="toggleFavorite(event, '${bookName}', '${chapterNum}', '${verse.num}', '${escapeQuotes(verse.text)}')" class="p-2 rounded bg-slate-700 hover:bg-slate-600 text-${isFav ? 'pink-500' : 'slate-400'}">
+                            <svg class="w-4 h-4" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                        </button>
+                        <button class="p-2 rounded bg-amber-500 text-slate-900 font-bold hover:bg-amber-400 flex items-center gap-1 text-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            Afficher
+                        </button>
+                    </div>
+                `;
+
+                div.innerHTML = `
+                    <div class="flex gap-4">
+                        ${leftMarker}
+                        <div class="flex-1 text-slate-200 font-serif leading-relaxed text-lg" style="overflow-wrap:break-word;">
+                            ${verse.text}
+                        </div>
+                    </div>
+                    ${actionsHtml}
+                `;
+
+                div.onclick = (e) => {
+                    if (selectionMode) {
+                        toggleVerseSelection(verse.num);
+                        return;
+                    }
+                    if (e.target.closest('button') && !e.target.closest('button').innerText.includes('Afficher')) return;
+                    triggerDisplay(bookName, chapterNum, [verse.num]);
+
+                    document.querySelectorAll('.verse-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                };
+
+                container.appendChild(div);
+            });
+
+            updateSelectionBar();
+        }
+
+        // ============================================================
+        // SÉLECTION MULTIPLE (afficher plusieurs versets à la fois)
+        // ============================================================
+        function toggleSelectionMode() {
+            selectionMode = !selectionMode;
+            selectedVerseNums.clear();
+
+            const btn = document.getElementById('btn-multiselect');
+            btn.classList.toggle('bg-amber-500', selectionMode);
+            btn.classList.toggle('text-slate-900', selectionMode);
+            btn.classList.toggle('bg-slate-700', !selectionMode);
+            btn.classList.toggle('text-slate-300', !selectionMode);
+            btn.innerText = selectionMode ? 'Annuler la sélection' : 'Sélection multiple';
+
+            if (activeBookName && activeChapterNum) {
+                const book = currentBooks().find(b => b.name === activeBookName);
+                const chapter = book && book.chapters.find(c => c.num == activeChapterNum);
+                if (chapter) renderVerses(chapter.verses, book.name, activeChapterNum);
+            }
+            updateSelectionBar();
+        }
+
+        function toggleVerseSelection(num) {
+            if (selectedVerseNums.has(num)) selectedVerseNums.delete(num);
+            else selectedVerseNums.add(num);
+
+            const item = document.getElementById(`verse-item-${num}`);
+            if (item) {
+                item.classList.toggle('active', selectedVerseNums.has(num));
+                const cb = item.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = selectedVerseNums.has(num);
+            }
+            updateSelectionBar();
+        }
+
+        function updateSelectionBar() {
+            const bar = document.getElementById('selection-bar');
+            if (!bar) return;
+            if (selectionMode && selectedVerseNums.size > 0) {
+                bar.classList.remove('hidden');
+                document.getElementById('selection-count').innerText = selectedVerseNums.size;
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function displaySelectedVerses() {
+            if (selectedVerseNums.size === 0) return;
+            triggerDisplay(activeBookName, activeChapterNum, [...selectedVerseNums]);
+        }
+
+        // ============================================================
+        // SAISIE INTELLIGENTE (Chapitre Verset)
+        // ============================================================
+        function handleSmartInput(e) {
+            const val = e.target.value.trim();
+            const parts = val.split(' ');
+
+            document.querySelectorAll('.verse-item').forEach(el => el.classList.remove('border-amber-500', 'border-2'));
+
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                const targetChap = parts[0];
+                const targetVerse = parts[1];
+                const book = currentBooks().find(b => b.name === activeBookName);
+                if (!book) return;
+
+                if (targetChap != activeChapterNum && book.chapters.find(c => c.num == targetChap)) {
+                    selectChapter(targetChap);
+                }
+
+                setTimeout(() => {
+                    const verseEl = document.getElementById(`verse-item-${targetVerse}`);
+                    if (verseEl) {
+                        verseEl.classList.add('border-amber-500', 'border-2');
+                        verseEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                }, 50);
+            }
+        }
+
+        function confirmSmartInput() {
+            const val = document.getElementById('smart-input').value.trim();
+            const parts = val.split(' ');
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                const book = currentBooks().find(b => b.name === activeBookName);
+                if (!book) return;
+                const chapter = book.chapters.find(c => c.num == parts[0]);
+                if (!chapter) return;
+                const verse = chapter.verses.find(v => v.num == parts[1]);
+                if (!verse) return;
+
+                if (activeChapterNum != parts[0]) selectChapter(parts[0]);
+                triggerDisplay(book.name, parts[0], [parts[1]]);
+                document.getElementById('smart-input').value = '';
+            }
+        }
+
+        // ============================================================
+        // FAVORIS
+        // ============================================================
+        function toggleFavorite(e, bookName, chapterNum, verseNum, verseText) {
+            e.stopPropagation();
+            const ref = `${bookName} ${chapterNum}:${verseNum}`;
+            const exists = favorites.findIndex(f => f.ref === ref);
+
+            if (exists >= 0) {
+                favorites.splice(exists, 1);
+                showToast("Retiré des favoris");
+            } else {
+                const version = getCurrentVersion();
+                favorites.push({ ref, bookName, chapterNum, verseNum, text: unescapeQuotes(verseText), versionName: version ? version.name : '' });
+                showToast("Ajouté aux favoris");
+            }
+
+            saveFavorites();
+
+            if (activeBookName === bookName && activeChapterNum == chapterNum) {
+                const svg = e.currentTarget.querySelector('svg');
+                if (exists >= 0) {
+                    svg.setAttribute('fill', 'none');
+                    e.currentTarget.classList.replace('text-pink-500', 'text-slate-400');
+                } else {
+                    svg.setAttribute('fill', 'currentColor');
+                    e.currentTarget.classList.replace('text-slate-400', 'text-pink-500');
+                }
+            }
+
+            renderFavorites();
+        }
+
+        function saveFavorites() {
+            try {
+                localStorage.setItem('bibleFavs', JSON.stringify(favorites));
+            } catch (err) {
+                showToast("Erreur : stockage plein, favori non sauvegardé.");
+            }
+            // Synchronise aussi vers le serveur (axe A) pour que les favoris "suivent" l'utilisateur.
+            if (window.OpenStore) { try { OpenStore.set('bible', 'favs', favorites); } catch (e) { /* silencieux */ } }
+        }
+
+        function renderFavorites() {
+            const container = document.getElementById('favorites-list');
+            container.innerHTML = '';
+
+            if (favorites.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic p-2 text-center">Aucun favori enregistré.</p>';
+                return;
+            }
+
+            // Inverser pour avoir les plus récents en haut
+            [...favorites].reverse().forEach((fav, index) => {
+                const div = document.createElement('div');
+                div.className = `p-3 bg-slate-800/50 rounded border border-slate-700/50 mb-2 cursor-pointer hover:border-amber-500/50 transition-colors group relative`;
+
+                div.innerHTML = `
+                    <div class="font-bold text-amber-500 text-sm mb-1">${fav.ref}</div>
+                    <div class="text-slate-300 text-xs font-serif line-clamp-2" style="overflow-wrap:break-word;">${fav.text}</div>
+                    <button onclick="deleteFavorite(event, ${favorites.length - 1 - index})" class="absolute top-2 right-2 p-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                `;
+
+                div.onclick = (e) => {
+                    if (e.target.closest('button')) return;
+                    goToFavorite(fav);
+                };
+
+                container.appendChild(div);
+            });
+        }
+
+        function deleteFavorite(e, trueIndex) {
+            e.stopPropagation();
+            favorites.splice(trueIndex, 1);
+            saveFavorites();
+            renderFavorites();
+
+            if (activeBookName) {
+                const book = currentBooks().find(b => b.name === activeBookName);
+                const chapter = book && book.chapters.find(c => c.num == activeChapterNum);
+                if (chapter) renderVerses(chapter.verses, book.name, activeChapterNum);
+            }
+        }
+
+        // Clique sur un favori : ramène EXACTEMENT au livre / chapitre / verset concerné,
+        // fait défiler la liste jusqu'à lui, le surligne, et l'envoie sur OBS
+        // (converti automatiquement dans la version actuellement active si le verset y existe).
+        function goToFavorite(fav) {
+            const book = currentBooks().find(b => b.name === fav.bookName);
+
+            if (book) {
+                activeBookName = fav.bookName;
+                selectionMode = false;
+                selectedVerseNums.clear();
+
+                document.getElementById('book-header').classList.remove('hidden');
+                document.getElementById('active-book-name').innerText = book.name;
+                document.getElementById('active-book-stats').innerText = `${book.chapters.length} Chapitres • ${book.totalVerses} Versets`;
+                renderChaptersGrid(book);
+
+                const chapter = book.chapters.find(c => c.num == fav.chapterNum);
+                if (chapter) {
+                    activeChapterNum = fav.chapterNum;
+                    const btns = document.getElementById('chapters-grid').children;
+                    for (let b of btns) {
+                        b.className = `w-10 h-10 rounded font-bold text-sm transition-colors ${b.innerText == fav.chapterNum ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`;
+                    }
+                    renderVerses(chapter.verses, book.name, fav.chapterNum);
+                }
+                renderBooksList(currentBooks());
+                savePosition();
+            } else {
+                showToast(`"${fav.bookName}" est introuvable dans la version active.`);
+            }
+
+            // Diffusion sur OBS : auto-conversion vers la version active, avec le texte du favori en secours
+            triggerDisplay(fav.bookName, fav.chapterNum, [fav.verseNum], fav.text);
+
+            // Défilement + surlignage exact du verset
+            setTimeout(() => {
+                const el = document.getElementById(`verse-item-${fav.verseNum}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el.classList.add('active');
+                }
+            }, 60);
+        }
+
+        // ============================================================
+        // POSITION (mémorisée entre les sessions)
+        // ============================================================
+        function savePosition() {
+            try {
+                localStorage.setItem('bibleLastPosition', JSON.stringify({ bookName: activeBookName, chapterNum: activeChapterNum }));
+            } catch (e) { /* silencieux */ }
+            // Synchronise aussi vers le serveur (axe A) pour que la position de lecture "suive" l'utilisateur.
+            if (window.OpenStore) { try { OpenStore.set('bible', 'position', { bookName: activeBookName, chapterNum: activeChapterNum }); } catch (e) { /* silencieux */ } }
+        }
+
+        function restorePosition() {
+            const pos = safeParseLocal('bibleLastPosition', null);
+            if (pos && pos.bookName) {
+                const book = currentBooks().find(b => b.name === pos.bookName);
+                if (book) {
+                    selectBook(pos.bookName, pos.chapterNum);
+                    return;
+                }
+            }
+        }
+
+        // ============================================================
+        // DIFFUSION VERS OBS (un ou plusieurs versets, texte auto-converti)
+        // ============================================================
+        function triggerDisplay(bookName, chapterNum, verseNums, fallbackText = null) {
+            if (!Array.isArray(verseNums)) verseNums = [verseNums];
+
+            const version = getCurrentVersion();
+            const book = currentBooks().find(b => b.name === bookName);
+            const chapter = book && book.chapters.find(c => c.num == chapterNum);
+
+            let texts = [];
+            if (chapter) {
+                verseNums.forEach(n => {
+                    const v = chapter.verses.find(vv => vv.num == n);
+                    if (v) texts.push(v.text);
+                });
+            }
+
+            let usedFallback = false;
+            if (texts.length === 0) {
+                if (fallbackText) {
+                    texts = [fallbackText];
+                    usedFallback = true;
+                } else {
+                    showToast("Ce verset est introuvable dans la version active.");
+                    return;
+                }
+            }
+
+            const sortedNums = [...verseNums].sort((a, b) => Number(a) - Number(b));
+            let refLabel;
+            if (sortedNums.length > 1 && !usedFallback) {
+                const isContiguous = sortedNums.every((n, i) => i === 0 || Number(n) === Number(sortedNums[i - 1]) + 1);
+                refLabel = isContiguous
+                    ? `${bookName} ${chapterNum}:${sortedNums[0]}-${sortedNums[sortedNums.length - 1]}`
+                    : `${bookName} ${chapterNum}:${sortedNums.join(',')}`;
+            } else {
+                refLabel = `${bookName} ${chapterNum}:${sortedNums[0]}`;
+            }
+
+            const combinedText = texts.join(' ');
+
+            const config = {
+                reference: refLabel,
+                text: combinedText,
+                version: usedFallback ? (version ? version.name : 'Favori') : (version ? version.name : ''),
+                mode: document.getElementById('obs-mode-select').value,
+                bgColor: displaySettings.bgColor,
+                accentColor: displaySettings.accentColor,
+                textColor: displaySettings.textColor,
+                fontFamily: displaySettings.fontFamily,
+                shapeRadius: displaySettings.shapeRadius,
+                bgImage: displaySettings.bgImage,
+                bgBlur: displaySettings.bgBlur,
+                lineMode: displaySettings.lineMode
+            };
+
+            onAir = { bookName, chapterNum, verseNums: sortedNums };
+
+            // 1. Envoyer à OBS via BroadcastChannel
+            bc.postMessage({ action: 'show', config });
+            // 2. Exclusion mutuelle : signaler aux Paroles de se couper.
+            mutex.postMessage({ action: 'show', source: 'bible' });
+
+            // 2. Mettre à jour la Preview Locale
+            const pContainer = document.getElementById('preview-container');
+            const pCard = document.getElementById('preview-card');
+            const pContent = document.getElementById('preview-content');
+
+            pContainer.style.opacity = '1';
+            const wrapperWidth = document.getElementById('preview-wrapper').offsetWidth;
+            pContainer.style.width = '1920px';
+            pContainer.style.height = '1080px';
+            pContainer.style.transform = `scale(${wrapperWidth / 1920})`;
+
+            renderDisplay(config, pContainer, pCard, pContent);
+        }
+
+        function clearOBS() {
+            bc.postMessage({ action: 'hide' });
+            document.getElementById('preview-container').style.opacity = '0';
+            onAir = null;
+        }
+
+        // Relance la dernière chose affichée à l'écran (utilisé par le bouton "Relancer"
+        // du Studio Unifié). Si rien n'est affiché, relance la sélection multiple active.
+        function relaunchLast() {
+            if (onAir) {
+                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            } else if (selectedVerseNums.size > 0) {
+                displaySelectedVerses();
+            }
+        }
+
+        // ============================================================
+        // UTILITAIRES
+        // ============================================================
+        function escapeQuotes(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function unescapeQuotes(str) { return str.replace(/\\'/g, "'").replace(/&quot;/g, '"'); }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-amber-500 text-slate-900 px-4 py-2 rounded shadow-xl font-bold z-50 anim-show';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.classList.replace('anim-show', 'anim-hide'); setTimeout(() => t.remove(), 500); }, 3000);
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Pro Controller - OBS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="store.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Poppins', 'sans-serif'] },
+                colors: { obsAccent: '#14b8a6' } } }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+        body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
+        #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.4s ease; background: #000; overflow: hidden; }
+        #obs-stage, #preview-stage { position: absolute; inset: 0; overflow: hidden; transition: opacity 0.2s ease; background: #000; }
+
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .item-row { transition: all 0.15s; cursor: pointer; }
+        .item-row:hover, .item-row.active { background: rgba(20, 184, 166, 0.15); border-left: 3px solid #14b8a6; }
+        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        .type-pill { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .anim-show { animation: fadeInScale 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div id="obs-mode-ui" class="hidden">
+        <div id="obs-container">
+            <div id="obs-stage"></div>
+        </div>
+    </div>
+
+    <div id="controller-mode-ui" class="hidden h-screen flex flex-col">
+
+        <header class="glass-panel flex items-center justify-between px-6 py-3 shrink-0 z-10">
+            <div class="flex items-center gap-3">
+                <div class="bg-obsAccent text-slate-900 p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-xl text-white tracking-wide">Media Pro Controller</h1>
+                    <div class="flex items-center gap-2">
+                        <p class="text-xs text-slate-400" id="items-info">Chargement...</p>
+                        <span id="sync-badge" class="hidden md:inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">
+                            <span id="sync-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
+                            <span id="sync-label">Local uniquement</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <label class="cursor-pointer bg-obsAccent hover:bg-teal-400 text-slate-900 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Ajouter des médias
+                    <input type="file" id="file-input" class="hidden" multiple accept="image/*,video/*,application/pdf,.pdf,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+                </label>
+
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400">dans</span>
+                    <select id="import-group-select" class="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg p-1.5 max-w-[140px]" title="Groupe dans lequel les prochains fichiers importés seront rangés">
+                        <option value="">Sans groupe</option>
+                    </select>
+                    <button id="btn-new-group" type="button" class="text-slate-400 hover:text-teal-300 text-xs px-1" title="Créer un nouveau groupe">+ Groupe</button>
+                </div>
+
+                <div class="h-6 w-px bg-slate-600"></div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-300">Cadrage:</span>
+                    <select id="fit-mode-select" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2">
+                        <option value="cover">Couvrir (remplit l'écran, peut rogner)</option>
+                        <option value="contain" selected>Ajuster (image entière visible, bandes noires)</option>
+                    </select>
+                </div>
+
+                <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Effacer OBS
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex overflow-hidden">
+
+            <section class="w-1/4 min-w-[300px] border-r border-slate-700/50 flex flex-col bg-slate-900/50">
+                <div class="p-4 border-b border-slate-700/50">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" id="item-search" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg block w-full pl-10 p-2.5 placeholder-slate-400" placeholder="Chercher un média...">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2" id="items-list"></div>
+            </section>
+
+            <section class="flex-1 flex flex-col relative bg-slate-900/30">
+                <div id="item-panel" class="flex-1 flex flex-col items-center justify-center text-slate-500 p-6 text-center">
+                    <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p class="text-lg">Sélectionnez un média à gauche, ou ajoutez-en un nouveau.</p>
+                    <p class="text-xs mt-2 max-w-sm">Images, vidéos, PDF et PowerPoint (.pptx) sont lus directement dans le navigateur — aucune conversion nécessaire.</p>
+                </div>
+            </section>
+
+            <section class="w-1/3 min-w-[350px] max-w-[450px] border-l border-slate-700/50 flex flex-col bg-slate-900/50">
+                <div class="p-4 border-b border-slate-700/50">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        Sortie Directe (OBS)
+                    </h3>
+                    <div id="preview-wrapper">
+                        <div id="preview-container" style="position:absolute; width:100%; height:100%; opacity:0; transition: opacity 0.4s ease;">
+                            <div id="preview-stage"></div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 text-center mt-2">Source Navigateur OBS : <code class="text-teal-400 bg-slate-800 px-1 rounded">.../media_control_display_pro.html?obs=true</code></p>
+                </div>
+                <div class="p-4 text-xs text-slate-500 space-y-2 overflow-y-auto">
+                    <p><strong class="text-slate-400">Diapositives (PDF / PowerPoint) :</strong> flèches ← → du clavier pour avancer/reculer une fois un média de ce type sélectionné, en plus des boutons.</p>
+                    <p><strong class="text-slate-400">PowerPoint :</strong> lu directement (texte, images, groupes, mise en page héritée du modèle). Tableaux, graphiques, SmartArt et animations ne sont pas rendus.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+// ============================================================================
+// Parseur PPTX minimal (texte + images + groupes + héritage de mise en page)
+// ============================================================================
+// Lit un fichier .pptx (format OOXML = zip de XML) directement dans le navigateur
+// et produit une structure de données simple (slides[].shapes[]) que l'application
+// dessine ensuite en HTML/CSS. Ce n'est PAS un moteur de rendu PowerPoint complet :
+// tableaux, graphiques, SmartArt, animations, transitions, dégradés et masques
+// complexes ne sont pas gérés. Les cas courants (titres, texte, listes à puces,
+// images, formes groupées, positions héritées d'un modèle/layout) le sont.
+
+const EMU_PER_INCH = 914400;
+const PX_PER_INCH = 96;
+function emuToPx(emu) { return (emu / EMU_PER_INCH) * PX_PER_INCH; }
+
+function qChildren(el, tag) {
+    if (!el) return [];
+    return Array.from(el.childNodes).filter(n => n.nodeType === 1 && n.tagName === tag);
+}
+function qChild(el, tag) { return qChildren(el, tag)[0] || null; }
+function qAll(el, tag) { return el ? Array.from(el.getElementsByTagName(tag)) : []; }
+function attr(el, name, fallback) {
+    if (!el) return fallback;
+    const v = el.getAttribute(name);
+    return v === null || v === undefined ? fallback : v;
+}
+function parseXmlString(str) { return new DOMParser().parseFromString(str, 'application/xml'); }
+
+function parseRels(xmlStr) {
+    const map = {};
+    if (!xmlStr) return map;
+    const doc = parseXmlString(xmlStr);
+    qAll(doc, 'Relationship').forEach(r => { map[attr(r, 'Id')] = { target: attr(r, 'Target'), type: attr(r, 'Type') }; });
+    return map;
+}
+
+function resolvePath(basePath, relTarget) {
+    if (relTarget.startsWith('/')) return relTarget.slice(1);
+    const baseParts = basePath.split('/'); baseParts.pop();
+    const relParts = relTarget.split('/');
+    for (const part of relParts) {
+        if (part === '.' || part === '') continue;
+        else if (part === '..') baseParts.pop();
+        else baseParts.push(part);
+    }
+    return baseParts.join('/');
+}
+
+function readXfrm(spPr) {
+    const xfrm = qChild(spPr, 'a:xfrm');
+    if (!xfrm) return null;
+    const off = qChild(xfrm, 'a:off'), ext = qChild(xfrm, 'a:ext');
+    if (!off || !ext) return null;
+    return {
+        x: parseFloat(attr(off, 'x', '0')), y: parseFloat(attr(off, 'y', '0')),
+        w: parseFloat(attr(ext, 'cx', '0')), h: parseFloat(attr(ext, 'cy', '0')),
+        rot: parseFloat(attr(xfrm, 'rot', '0')) / 60000
+    };
+}
+
+function readGroupXfrm(grpSpPr) {
+    const xfrm = qChild(grpSpPr, 'a:xfrm');
+    if (!xfrm) return null;
+    const off = qChild(xfrm, 'a:off'), ext = qChild(xfrm, 'a:ext');
+    const chOff = qChild(xfrm, 'a:chOff'), chExt = qChild(xfrm, 'a:chExt');
+    if (!off || !ext || !chOff || !chExt) return null;
+    return {
+        x: parseFloat(attr(off, 'x', '0')), y: parseFloat(attr(off, 'y', '0')),
+        w: parseFloat(attr(ext, 'cx', '0')), h: parseFloat(attr(ext, 'cy', '0')),
+        chX: parseFloat(attr(chOff, 'x', '0')), chY: parseFloat(attr(chOff, 'y', '0')),
+        chW: parseFloat(attr(chExt, 'cx', '1')) || 1, chH: parseFloat(attr(chExt, 'cy', '1')) || 1
+    };
+}
+
+function applyGroupTransform(group, rect) {
+    if (!group || !rect) return rect;
+    const scaleX = group.w / group.chW, scaleY = group.h / group.chH;
+    return {
+        x: group.x + (rect.x - group.chX) * scaleX, y: group.y + (rect.y - group.chY) * scaleY,
+        w: rect.w * scaleX, h: rect.h * scaleY, rot: rect.rot || 0
+    };
+}
+
+function readTextBody(txBody) {
+    if (!txBody) return null;
+    const paragraphs = qChildren(txBody, 'a:p');
+    if (paragraphs.length === 0) return null;
+    let firstSize = null, firstColor = null, firstBold = false, align = 'l';
+    const lines = []; let hasAnyText = false;
+    paragraphs.forEach(p => {
+        const pPr = qChild(p, 'a:pPr');
+        if (pPr) { const a = attr(pPr, 'algn', null); if (a) align = a; }
+        const runs = qChildren(p, 'a:r');
+        let lineText = '';
+        runs.forEach(r => {
+            const t = qChild(r, 'a:t');
+            const text = t ? (t.textContent || '') : '';
+            if (text) hasAnyText = true;
+            lineText += text;
+            if (firstSize === null) {
+                const rPr = qChild(r, 'a:rPr');
+                if (rPr) {
+                    const sz = attr(rPr, 'sz', null);
+                    if (sz) firstSize = parseFloat(sz) / 100;
+                    if (attr(rPr, 'b', '0') === '1') firstBold = true;
+                    const fill = qChild(rPr, 'a:solidFill');
+                    const clr = fill ? qChild(fill, 'a:srgbClr') : null;
+                    if (clr) firstColor = '#' + attr(clr, 'val', '000000');
+                }
+            }
+        });
+        lines.push(lineText);
+    });
+    if (!hasAnyText) return null;
+    return {
+        text: lines.join('\n'), fontSizePt: firstSize || 18, color: firstColor || '#000000',
+        bold: firstBold, align: align === 'ctr' ? 'center' : (align === 'r' ? 'right' : 'left')
+    };
+}
+
+function readSolidFillColor(spPr) {
+    const fill = qChild(spPr, 'a:solidFill');
+    if (!fill) return null;
+    const clr = qChild(fill, 'a:srgbClr');
+    return clr ? '#' + attr(clr, 'val', '000000') : null;
+}
+
+function findPlaceholderMatch(shapes, type, idx) {
+    if (idx !== null) { const byIdx = shapes.find(s => s.phIdx === idx); if (byIdx) return byIdx; }
+    if (type !== null) {
+        const byType = shapes.find(s => s.phType === type);
+        if (byType) return byType;
+        const titleLike = ['title', 'ctrTitle'];
+        if (titleLike.includes(type)) { const alt = shapes.find(s => titleLike.includes(s.phType)); if (alt) return alt; }
+    }
+    return shapes.find(s => s.phType && s.phType !== 'title' && s.phType !== 'ctrTitle') || null;
+}
+
+function extractRawPlaceholders(spTreeEl) {
+    const out = [];
+    qChildren(spTreeEl, 'p:sp').forEach(sp => {
+        const nvPr = qChild(qChild(sp, 'p:nvSpPr'), 'p:nvPr');
+        const ph = nvPr ? qChild(nvPr, 'p:ph') : null;
+        if (!ph) return;
+        out.push({ phType: attr(ph, 'type', null), phIdx: attr(ph, 'idx', null), xfrm: readXfrm(qChild(sp, 'p:spPr')) });
+    });
+    return out;
+}
+
+async function walkSpTree(spTreeEl, zip, slideRelsMap, slideDir, groupTransform, layoutPlaceholders, masterPlaceholders, out) {
+    const children = Array.from(spTreeEl.childNodes).filter(n => n.nodeType === 1);
+    for (const el of children) {
+        if (el.tagName === 'p:sp') {
+            const spPr = qChild(el, 'p:spPr');
+            let xfrm = readXfrm(spPr);
+            const nvPr = qChild(qChild(el, 'p:nvSpPr'), 'p:nvPr');
+            const ph = nvPr ? qChild(nvPr, 'p:ph') : null;
+            const phType = ph ? attr(ph, 'type', null) : null;
+            const phIdx = ph ? attr(ph, 'idx', null) : null;
+            if (!xfrm && ph) {
+                const fromLayout = findPlaceholderMatch(layoutPlaceholders, phType, phIdx);
+                if (fromLayout && fromLayout.xfrm) xfrm = fromLayout.xfrm;
+                else { const fromMaster = findPlaceholderMatch(masterPlaceholders, phType, phIdx); if (fromMaster && fromMaster.xfrm) xfrm = fromMaster.xfrm; }
+            }
+            if (!xfrm) continue;
+            const rect = groupTransform ? applyGroupTransform(groupTransform, xfrm) : xfrm;
+            const textInfo = readTextBody(qChild(el, 'p:txBody'));
+            const bg = readSolidFillColor(spPr);
+            if (textInfo || bg) {
+                out.push({
+                    type: 'text', x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0,
+                    text: textInfo ? textInfo.text : '', fontSizePt: textInfo ? textInfo.fontSizePt : 18,
+                    color: textInfo ? textInfo.color : '#000000', bold: textInfo ? textInfo.bold : false,
+                    align: textInfo ? textInfo.align : 'left', background: bg
+                });
+            }
+        } else if (el.tagName === 'p:pic') {
+            const xfrm = readXfrm(qChild(el, 'p:spPr'));
+            if (!xfrm) continue;
+            const rect = groupTransform ? applyGroupTransform(groupTransform, xfrm) : xfrm;
+            const blipFill = qChild(el, 'p:blipFill');
+            const blip = blipFill ? qChild(blipFill, 'a:blip') : null;
+            const rEmbed = blip ? attr(blip, 'r:embed', null) : null;
+            if (!rEmbed || !slideRelsMap[rEmbed]) continue;
+            const mediaPath = resolvePath(slideDir + '/x', slideRelsMap[rEmbed].target);
+            const zipEntry = zip.file(mediaPath);
+            if (!zipEntry) continue;
+            const b64 = await zipEntry.async('base64');
+            const ext = (mediaPath.split('.').pop() || 'png').toLowerCase();
+            const mime = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
+            out.push({ type: 'image', x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0, dataUrl: `data:image/${mime};base64,${b64}` });
+        } else if (el.tagName === 'p:grpSp') {
+            const gXfrm = readGroupXfrm(qChild(el, 'p:grpSpPr'));
+            let composed;
+            if (gXfrm) {
+                if (groupTransform) {
+                    const mapped = applyGroupTransform(groupTransform, { x: gXfrm.x, y: gXfrm.y, w: gXfrm.w, h: gXfrm.h });
+                    composed = { x: mapped.x, y: mapped.y, w: mapped.w, h: mapped.h, chX: gXfrm.chX, chY: gXfrm.chY, chW: gXfrm.chW, chH: gXfrm.chH };
+                } else composed = gXfrm;
+            } else composed = groupTransform;
+            await walkSpTree(el, zip, slideRelsMap, slideDir, composed, layoutPlaceholders, masterPlaceholders, out);
+        }
+    }
+}
+
+async function loadPlaceholdersForLayout(zip, layoutPath) {
+    const xml = await zip.file(layoutPath).async('text');
+    return extractRawPlaceholders(qAll(parseXmlString(xml), 'p:spTree')[0]);
+}
+async function loadMasterForLayout(zip, layoutPath) {
+    const layoutDir = layoutPath.split('/').slice(0, -1).join('/');
+    const layoutFile = layoutPath.split('/').pop();
+    const relsEntry = zip.file(`${layoutDir}/_rels/${layoutFile}.rels`);
+    if (!relsEntry) return null;
+    const rels = parseRels(await relsEntry.async('text'));
+    const masterRel = Object.values(rels).find(r => r.type && r.type.endsWith('/slideMaster'));
+    return masterRel ? resolvePath(layoutPath, masterRel.target) : null;
+}
+
+async function parsePptx(fileBlobOrBuffer) {
+    const zip = await JSZip.loadAsync(fileBlobOrBuffer);
+    const presDoc = parseXmlString(await zip.file('ppt/presentation.xml').async('text'));
+    const sldSz = qAll(presDoc, 'p:sldSz')[0];
+    const slideWidthEMU = parseFloat(attr(sldSz, 'cx', '12192000'));
+    const slideHeightEMU = parseFloat(attr(sldSz, 'cy', '6858000'));
+    const presRels = parseRels(await zip.file('ppt/_rels/presentation.xml.rels').async('text'));
+    const sldIds = qChildren(qAll(presDoc, 'p:sldIdLst')[0], 'p:sldId');
+    const slidePaths = sldIds.map(sldId => {
+        const rel = presRels[attr(sldId, 'r:id')];
+        return rel ? resolvePath('ppt/presentation.xml', rel.target) : null;
+    }).filter(Boolean);
+
+    const layoutCache = {};
+    const slides = [];
+    for (const slidePath of slidePaths) {
+        const slideDir = slidePath.split('/').slice(0, -1).join('/');
+        const slideFile = slidePath.split('/').pop();
+        const relsEntry = zip.file(`${slideDir}/_rels/${slideFile}.rels`);
+        const slideRelsMap = relsEntry ? parseRels(await relsEntry.async('text')) : {};
+
+        const layoutRel = Object.values(slideRelsMap).find(r => r.type && r.type.endsWith('/slideLayout'));
+        let layoutPlaceholders = [], masterPlaceholders = [];
+        if (layoutRel) {
+            const layoutPath = resolvePath(slidePath, layoutRel.target);
+            if (!layoutCache[layoutPath]) {
+                const placeholders = await loadPlaceholdersForLayout(zip, layoutPath);
+                const masterPath = await loadMasterForLayout(zip, layoutPath);
+                const masterPlaceholdersLoaded = masterPath ? await loadPlaceholdersForLayout(zip, masterPath) : [];
+                layoutCache[layoutPath] = { placeholders, masterPlaceholders: masterPlaceholdersLoaded };
+            }
+            layoutPlaceholders = layoutCache[layoutPath].placeholders;
+            masterPlaceholders = layoutCache[layoutPath].masterPlaceholders;
+        }
+
+        const slideDoc = parseXmlString(await zip.file(slidePath).async('text'));
+        const spTree = qAll(slideDoc, 'p:spTree')[0];
+
+        let bg = null;
+        const cSld = qAll(slideDoc, 'p:cSld')[0];
+        const bgEl = cSld ? qChild(cSld, 'p:bg') : null;
+        if (bgEl) { const bgPr = qChild(bgEl, 'p:bgPr'); if (bgPr) bg = readSolidFillColor(bgPr); }
+
+        const shapes = [];
+        await walkSpTree(spTree, zip, slideRelsMap, slideDir, null, layoutPlaceholders, masterPlaceholders, shapes);
+        slides.push({ background: bg, shapes });
+    }
+    return { widthEMU: slideWidthEMU, heightEMU: slideHeightEMU, slides };
+}
+
+// Si le CDN de pdf.js n'a pas pu charger (pas d'accès internet, coupure momentanée...),
+// on ne bloque pas tout le reste de l'application : seul l'import de fichiers PDF sera
+// indisponible, tout le reste (favoris, images, vidéos, PPTX déjà importés, Relancer,
+// Effacer OBS...) continue de fonctionner normalement.
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ============================================================
+// RemoteChannel — pont réseau optionnel au-dessus de BroadcastChannel
+// ============================================================
+// BroadcastChannel ne fonctionne qu'entre pages ouvertes dans le MÊME processus
+// navigateur (ex: un Dock OBS + une Source Navigateur OBS, car tous deux tournent
+// dans le moteur Chromium interne à OBS). Il NE fonctionne PAS entre un navigateur
+// externe (Chrome, Edge...) et OBS, ni entre deux PC différents.
+//
+// RemoteChannel garde BroadcastChannel comme transport local (gratuit, zéro
+// config, marche toujours), et ajoute EN PLUS une connexion WebSocket vers un petit
+// serveur relais local (sync-relay-server.js) quand la page est chargée depuis ce
+// serveur (via une adresse http://..., pas en ouvrant le fichier directement). Cela
+// permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
+// sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
+// fonctionnement de l'application.
+
+
+
+
+// ============================================================
+// ÉTAT DE L'APPLICATION
+// ============================================================
+let items = [];           // [{id, name, type, blob, addedAt, group, _cursor, _pageCount, _slideCount}]
+let currentItemId = null;
+let onAir = null;
+
+// Groupes : simple liste de noms, sauvegardée localement. Un item est rangé dans un
+// groupe via son champ item.group (nom du groupe, ou null = « Sans groupe »).
+const GROUPS_KEY = 'media_groups_list';
+const GROUPS_COLLAPSED_KEY = 'media_groups_collapsed';
+let mediaGroups = [];
+// Groupes repliés/dépliés (état persistant).
+let collapsedGroups = new Set();
+function loadGroupsList() {
+    try { mediaGroups = JSON.parse(localStorage.getItem(GROUPS_KEY) || '[]'); }
+    catch (e) { mediaGroups = []; }
+}
+function saveGroupsList() {
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(mediaGroups)); } catch (e) { /* ignoré */ }
+    // Portabilité : sauvegarde aussi la liste des groupes vers le dossier du projet.
+    if (window.OpenStore) { try { OpenStore.set('media', 'groups', mediaGroups); } catch (e) { /* silencieux */ } }
+}
+function loadCollapsedGroups() {
+    try {
+        const arr = JSON.parse(localStorage.getItem(GROUPS_COLLAPSED_KEY) || '[]');
+        collapsedGroups = new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) { collapsedGroups = new Set(); }
+}
+function saveCollapsedGroups() {
+    try { localStorage.setItem(GROUPS_COLLAPSED_KEY, JSON.stringify(Array.from(collapsedGroups))); } catch (e) { /* ignoré */ }
+}
+function toggleGroupCollapsed(name) {
+    const key = name || 'Sans groupe';
+    if (collapsedGroups.has(key)) collapsedGroups.delete(key); else collapsedGroups.add(key);
+    saveCollapsedGroups();
+    renderItemsList(document.getElementById('item-search').value.trim());
+}
+function ensureGroupExists(name) {
+    if (name && !mediaGroups.includes(name)) { mediaGroups.push(name); saveGroupsList(); }
+}
+
+function genId() { return 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
+
+const bc = new RemoteChannel('obs_media_channel');
+
+// ============================================================
+// STOCKAGE (IndexedDB)
+// ============================================================
+const IDB_NAME = 'mediaProStorage', IDB_STORE = 'items';
+function openMediaDB() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB non supporté')); return; }
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = (e) => { if (!e.target.result.objectStoreNames.contains(IDB_STORE)) e.target.result.createObjectStore(IDB_STORE, { keyPath: 'id' }); };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+async function idbGetAllItems() {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbPutItem(item) {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put({ id: item.id, name: item.name, type: item.type, blob: item.blob, addedAt: item.addedAt, group: item.group || null });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+async function idbDeleteItem(id) {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// Portabilité : sauvegarde la bibliothèque (avec les fichiers blobs) vers le dossier
+// du projet /data/media/items.json. Appelée après chaque ajout/modification/suppression.
+function syncItemsToServer() {
+    if (window.OpenStore) {
+        try { OpenStore.saveHeavy('media', 'items', items); } catch (e) { /* silencieux */ }
+    }
+}
+
+// ============================================================
+// DÉTECTION DU MODE
+// ============================================================
+const urlParams = new URLSearchParams(window.location.search);
+const isObsMode = urlParams.get('obs') === 'true';
+
+if (isObsMode) {
+    document.body.classList.add('mode-obs');
+    document.getElementById('obs-mode-ui').classList.remove('hidden');
+    initObsMode();
+} else {
+    document.getElementById('controller-mode-ui').classList.remove('hidden');
+    initControllerMode();
+}
+
+function initObsMode() {
+    const container = document.getElementById('obs-container');
+    const stage = document.getElementById('obs-stage');
+    bc.onmessage = (event) => {
+        const data = event.data;
+        if (data.action === 'hide') {
+            container.style.opacity = '0';
+            stopMediaIn(stage);
+            stage.innerHTML = '';
+            videoEls.obs = null;
+            return;
+        }
+        if (data.action === 'show') renderMediaStage(data.config, container, stage, 'obs');
+        // Commande de contrôle direct de la lecture (pause/seek/volume/vitesse) sur OBS.
+        if (data.action === 'control') {
+            applyVideoControl(videoEls.obs, data.control || {});
+        }
+    };
+}
+
+// ============================================================
+// RENDU PARTAGÉ (OBS + Live Preview)
+// ============================================================
+const pdfDocCache = {};   // itemId -> Promise<PDFDocumentProxy>
+const pptxCache = {};     // itemId -> Promise<{widthEMU,heightEMU,slides}>
+const mediaObjectUrls = { obs: null, preview: null, local: null };
+const crossfadeTimers = { obs: null, preview: null, local: null };
+// Référence aux éléments <video> en cours, par contexte (obs/preview/local) :
+// permet de contrôler la lecture (pause, seek, volume, vitesse) sur l'élément réel,
+// y compris celui de la source OBS.
+const videoEls = { obs: null, preview: null, local: null };
+
+// Applique une commande de contrôle sur un élément <video>.
+// control peut contenir : play(bool), seek(sec), volume(0..1), muted(bool), rate(x).
+function applyVideoControl(video, control) {
+    if (!video) return;
+    if (typeof control.play === 'boolean') {
+        if (control.play) { const p = video.play(); if (p && p.catch) p.catch(() => {}); }
+        else video.pause();
+    }
+    if (typeof control.seek === 'number') { try { video.currentTime = Math.max(0, control.seek); } catch (e) {} }
+    if (typeof control.volume === 'number') video.volume = Math.min(1, Math.max(0, control.volume));
+    if (typeof control.muted === 'boolean') video.muted = control.muted;
+    if (typeof control.rate === 'number') video.playbackRate = control.rate;
+}
+
+// Coupe explicitement toute vidéo en cours de lecture dans un conteneur avant de le vider.
+// Simplement retirer un <video> du DOM (via innerHTML='') ne garantit pas l'arrêt immédiat
+// du son dans tous les navigateurs — d'où ce nettoyage explicite (pause + retrait de la
+// source) à chaque fois qu'on remplace ou qu'on masque un média.
+function stopMediaIn(el) {
+    if (!el) return;
+    el.querySelectorAll('video').forEach(v => {
+        try {
+            v.pause();
+            v.muted = true;
+            v.removeAttribute('src');
+            v.srcObject = null;
+            v.load();
+        } catch (e) { /* silencieux */ }
+    });
+}
+
+async function getPdfDoc(itemId, blob) {
+    if (pdfDocCache[itemId]) return pdfDocCache[itemId];
+    const p = blob.arrayBuffer().then(buf => pdfjsLib.getDocument({ data: buf }).promise);
+    pdfDocCache[itemId] = p;
+    return p;
+}
+async function getPptxData(itemId, blob) {
+    if (pptxCache[itemId]) return pptxCache[itemId];
+    const p = parsePptx(blob);
+    pptxCache[itemId] = p;
+    return p;
+}
+
+function fitBox(containerW, containerH, contentAspect, mode) {
+    const containerAspect = containerW / containerH;
+    let width, height;
+    if (mode === 'cover') {
+        if (containerAspect > contentAspect) { width = containerW; height = containerW / contentAspect; }
+        else { height = containerH; width = containerH * contentAspect; }
+    } else {
+        if (containerAspect > contentAspect) { height = containerH; width = containerH * contentAspect; }
+        else { width = containerW; height = containerW / contentAspect; }
+    }
+    return { width, height, left: (containerW - width) / 2, top: (containerH - height) / 2 };
+}
+
+function setupVideoPlayback(videoEl, url, loop) {
+    videoEl.loop = !!loop;
+    videoEl.playsInline = true;
+    videoEl.src = url;
+    const tryPlay = () => { const p = videoEl.play(); if (p && p.catch) p.catch(() => { videoEl.muted = true; videoEl.play().catch(() => {}); }); };
+    if (!loop) {
+        videoEl.addEventListener('pause', () => { if (videoEl.currentTime > 0 && !videoEl.ended) setTimeout(tryPlay, 50); });
+    } else {
+        videoEl.addEventListener('ended', () => { videoEl.currentTime = 0; tryPlay(); });
+        videoEl.addEventListener('pause', () => setTimeout(tryPlay, 50));
+    }
+    videoEl.addEventListener('loadedmetadata', tryPlay);
+    videoEl.load();
+    tryPlay();
+}
+
+async function buildMediaContent(config, targetEl, key) {
+    if (mediaObjectUrls[key]) { URL.revokeObjectURL(mediaObjectUrls[key]); mediaObjectUrls[key] = null; }
+    const fitCss = config.fitMode === 'contain' ? 'contain' : 'cover';
+
+    if (config.type === 'image') {
+        const url = URL.createObjectURL(config.blob);
+        mediaObjectUrls[key] = url;
+        // En mode "contain" (média entier visible, bandes éventuelles), on remplit les
+        // bandes vides d'un reflet flouté du même média (au lieu du noir).
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:absolute; inset:0; background:#000; overflow:hidden;';
+        if (fitCss === 'contain') {
+            const bg = document.createElement('img');
+            bg.src = url;
+            bg.style.cssText = 'position:absolute; inset:-20px; width:calc(100% + 40px); height:calc(100% + 40px); object-fit:cover; filter:blur(24px); transform:scale(1.1); opacity:0.9;';
+            wrap.appendChild(bg);
+        }
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.cssText = `position:relative; width:100%; height:100%; object-fit:${fitCss};`;
+        wrap.appendChild(img);
+        targetEl.appendChild(wrap);
+
+    } else if (config.type === 'video') {
+        const url = URL.createObjectURL(config.blob);
+        mediaObjectUrls[key] = url;
+        // Reflet flouté derrière la vidéo (mode contain) pour éviter les bandes noires.
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:absolute; inset:0; background:#000; overflow:hidden;';
+        let bgVideo = null;
+        if (fitCss === 'contain') {
+            bgVideo = document.createElement('video');
+            bgVideo.muted = true;
+            bgVideo.autoplay = true;
+            bgVideo.loop = true;
+            bgVideo.style.cssText = 'position:absolute; inset:-20px; width:calc(100% + 40px); height:calc(100% + 40px); object-fit:cover; filter:blur(24px); transform:scale(1.1); opacity:0.9;';
+            bgVideo.src = url;
+            bgVideo.load();
+            wrap.appendChild(bgVideo);
+        }
+        const video = document.createElement('video');
+        video.style.cssText = `position:relative; width:100%; height:100%; object-fit:${fitCss};`;
+        video.muted = !!config.muted;
+        video.autoplay = true;
+        videoEls[key] = video;   // mémorise l'élément pour le contrôle en direct
+        wrap.appendChild(video);
+        targetEl.appendChild(wrap);
+        setupVideoPlayback(video, url, config.loop);
+        // Le fond flouté suit la lecture de la vidéo principale (synchro)
+        if (bgVideo) {
+            const syncBg = () => { try { if (bgVideo.currentTime !== video.currentTime) bgVideo.currentTime = video.currentTime; } catch (e) {} };
+            video.addEventListener('timeupdate', syncBg);
+            video.addEventListener('play', () => { const p = bgVideo.play(); if (p && p.catch) p.catch(() => {}); });
+            video.addEventListener('pause', () => { try { bgVideo.pause(); } catch (e) {} });
+        }
+        // Démarre à la position et à la vitesse voulues (si fournies) : on attend que la
+        // vidéo soit chargée avant de se positionner, sinon currentTime peut être ignoré.
+        if (config.startRate) video.playbackRate = config.startRate;
+        if (config.startAt) {
+            const onReady = () => { try { video.currentTime = config.startAt; } catch (e) {} };
+            if (video.readyState >= 1) onReady();
+            else video.addEventListener('loadedmetadata', onReady, { once: true });
+        }
+
+    } else if (config.type === 'pdf') {
+        const doc = await getPdfDoc(config.itemId, config.blob);
+        const pageNum = Math.min(Math.max((config.pageIndex || 0) + 1, 1), doc.numPages);
+        const page = await doc.getPage(pageNum);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const targetLong = 1920;
+        const scale = targetLong / Math.max(baseViewport.width, baseViewport.height);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        canvas.style.cssText = `width:100%; height:100%; object-fit:${fitCss}; background:#000;`;
+        targetEl.appendChild(canvas);
+
+    } else if (config.type === 'pptx') {
+        const data = await getPptxData(config.itemId, config.blob);
+        const idx = Math.min(Math.max(config.slideIndex || 0, 0), data.slides.length - 1);
+        const slide = data.slides[idx];
+        const aspect = data.widthEMU / data.heightEMU;
+        const box = fitBox(targetEl.clientWidth || 1920, targetEl.clientHeight || 1080, aspect, config.fitMode === 'contain' ? 'contain' : 'cover');
+        const scaleFactor = box.width / emuToPx(data.widthEMU);
+
+        const wrap = document.createElement('div');
+        wrap.style.cssText = `position:absolute; left:${box.left}px; top:${box.top}px; width:${box.width}px; height:${box.height}px; background:${slide.background || '#ffffff'}; overflow:hidden;`;
+
+        slide.shapes.forEach(sh => {
+            const xPct = sh.x / data.widthEMU * 100, yPct = sh.y / data.heightEMU * 100;
+            const wPct = sh.w / data.widthEMU * 100, hPct = sh.h / data.heightEMU * 100;
+            const el = document.createElement('div');
+            el.style.cssText = `position:absolute; left:${xPct}%; top:${yPct}%; width:${wPct}%; height:${hPct}%; ${sh.rot ? `transform:rotate(${sh.rot}deg);` : ''}`;
+            if (sh.type === 'image') {
+                el.innerHTML = `<img src="${sh.dataUrl}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else {
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = sh.align === 'center' ? 'center' : (sh.align === 'right' ? 'flex-end' : 'flex-start');
+                if (sh.background) el.style.background = sh.background;
+                const txt = document.createElement('div');
+                const fontPx = sh.fontSizePt * 1.3333 * scaleFactor;
+                txt.style.cssText = `width:100%; white-space:pre-wrap; font-family:'Inter',sans-serif; font-size:${fontPx}px; line-height:1.25; color:${sh.color}; font-weight:${sh.bold ? '700' : '400'}; text-align:${sh.align};`;
+                txt.textContent = sh.text;
+                el.appendChild(txt);
+            }
+            wrap.appendChild(el);
+        });
+        targetEl.appendChild(wrap);
+    }
+}
+
+async function renderMediaStage(config, container, stage, key) {
+    const wasVisible = container.style.opacity === '1';
+    container.style.opacity = '1';
+
+    const temp = document.createElement('div');
+    temp.style.cssText = 'position:absolute; inset:0;';
+    try {
+        await buildMediaContent(config, temp, key);
+    } catch (e) {
+        console.error(e);
+        temp.innerHTML = `<div style="color:#f87171; font-family:sans-serif; padding:40px; font-size:24px;">Erreur d'affichage : ${(e && e.message) || e}</div>`;
+    }
+
+    const doSwap = () => {
+        stopMediaIn(stage);
+        stage.innerHTML = '';
+        while (temp.firstChild) stage.appendChild(temp.firstChild);
+        stage.style.opacity = '1';
+    };
+
+    if (crossfadeTimers[key]) { clearTimeout(crossfadeTimers[key]); crossfadeTimers[key] = null; }
+
+    if (wasVisible) {
+        stage.style.opacity = '0';
+        crossfadeTimers[key] = setTimeout(doSwap, 80); // rendu plus réactif (moins de latence)
+    } else {
+        stage.style.opacity = '1';
+        doSwap();
+    }
+}
+
+// ============================================================
+// INITIALISATION DU CONTRÔLEUR
+// ============================================================
+async function initControllerMode() {
+    bc.onStatusChange(updateSyncBadge);
+
+    try { items = await idbGetAllItems(); } catch (e) { items = []; }
+    items.sort((a, b) => b.addedAt - a.addedAt);
+    loadGroupsList();
+    loadCollapsedGroups();
+    items.forEach(i => ensureGroupExists(i.group));
+    renderImportGroupSelect();
+    renderItemsList();
+    updateItemsInfo();
+
+    // Portabilité : si la bibliothèque locale est vide (nouveau PC / navigateur),
+    // on restaure les médias (avec leurs fichiers) depuis le dossier du projet.
+    if (window.OpenStore && items.length === 0) {
+        OpenStore.loadHeavy('media', 'items').then((serverItems) => {
+            if (serverItems && Array.isArray(serverItems) && serverItems.length > 0) {
+                items = serverItems;
+                items.sort((a, b) => b.addedAt - a.addedAt);
+                serverItems.forEach(it => { try { idbPutItem(it); } catch (e) {} });
+                items.forEach(i => ensureGroupExists(i.group));
+                renderImportGroupSelect();
+                renderItemsList();
+                updateItemsInfo();
+            }
+        }).catch(() => { /* silencieux */ });
+    }
+
+    document.getElementById('file-input').addEventListener('change', handleFilesAdded);
+    document.getElementById('item-search').addEventListener('input', (e) => renderItemsList(e.target.value.trim()));
+    document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+    document.getElementById('fit-mode-select').addEventListener('change', () => { if (onAir) resendCurrent(); });
+    document.getElementById('btn-new-group').addEventListener('click', () => {
+        const name = prompt('Nom du nouveau groupe :');
+        if (!name || !name.trim()) return;
+        ensureGroupExists(name.trim());
+        renderImportGroupSelect();
+        document.getElementById('import-group-select').value = name.trim();
+        renderItemsList(document.getElementById('item-search').value.trim());
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+        const item = items.find(i => i.id === currentItemId);
+        if (!item || (item.type !== 'pdf' && item.type !== 'pptx')) return;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goToSlide(item, (item._cursor || 0) + 1); }
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goToSlide(item, (item._cursor || 0) - 1); }
+    });
+}
+
+function updateItemsInfo() { document.getElementById('items-info').innerText = `${items.length} média(s) en bibliothèque`; }
+
+function detectType(file) {
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return 'pdf';
+    if (/\.pptx$/i.test(file.name) || (file.type && file.type.includes('presentationml'))) return 'pptx';
+    return null;
+}
+
+function renderImportGroupSelect() {
+    const sel = document.getElementById('import-group-select');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Sans groupe</option>' +
+        mediaGroups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+    if (mediaGroups.includes(current)) sel.value = current;
+}
+
+async function handleFilesAdded(e) {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    const targetGroup = document.getElementById('import-group-select').value || null;
+    let added = 0;
+    for (const file of files) {
+        const type = detectType(file);
+        if (!type) { showToast(`Type non supporté : ${file.name}`, true); continue; }
+        const item = { id: genId(), name: file.name, type, blob: file, addedAt: Date.now(), group: targetGroup };
+        try { await idbPutItem(item); items.push(item); added++; }
+        catch (err) { showToast(`Échec de l'ajout de ${file.name}`, true); }
+    }
+    items.sort((a, b) => b.addedAt - a.addedAt);
+    renderItemsList();
+    updateItemsInfo();
+    if (added) showToast(`${added} média(s) ajouté(s)${targetGroup ? ` dans « ${targetGroup} »` : ''}.`);
+    syncItemsToServer(); // portabilité : sauvegarde vers le dossier du projet
+}
+
+const TYPE_META = {
+    image: { icon: '🖼️', label: 'Image', color: 'bg-sky-500/20 text-sky-300' },
+    video: { icon: '🎬', label: 'Vidéo', color: 'bg-purple-500/20 text-purple-300' },
+    pdf: { icon: '📄', label: 'PDF', color: 'bg-red-500/20 text-red-300' },
+    pptx: { icon: '📊', label: 'PPTX', color: 'bg-orange-500/20 text-orange-300' }
+};
+
+function renderItemsList(filter) {
+    const container = document.getElementById('items-list');
+    container.innerHTML = '';
+    let list = items;
+    if (filter) { const q = filter.toLowerCase(); list = items.filter(i => i.name.toLowerCase().includes(q)); }
+
+    if (list.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 italic p-4 text-center">${items.length === 0 ? "Aucun média. Cliquez sur « Ajouter des médias » pour commencer." : "Aucun résultat."}</p>`;
+        return;
+    }
+
+    // Regroupement : on suit l'ordre des groupes connus (mediaGroups), puis les items
+    // sans groupe en dernier. Un groupe créé mais encore vide n'apparaît pas ici tant
+    // qu'aucun média ne lui est rattaché (il reste sélectionnable pour l'import).
+    const buckets = new Map();
+    mediaGroups.forEach(g => buckets.set(g, []));
+    buckets.set('', []);
+    list.forEach(item => {
+        const key = item.group && mediaGroups.includes(item.group) ? item.group : '';
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(item);
+    });
+
+    const groupOptionsHtml = (selected) => '<option value="">Sans groupe</option>' +
+        mediaGroups.map(g => `<option value="${escapeHtml(g)}" ${g === selected ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('');
+
+    for (const [groupName, groupItems] of buckets.entries()) {
+        if (groupItems.length === 0) continue;
+        const groupKey = groupName || 'Sans groupe';
+        const isCollapsed = collapsedGroups.has(groupKey);
+        const header = document.createElement('div');
+        header.className = 'px-1 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 cursor-pointer select-none hover:text-slate-200';
+        header.title = isCollapsed ? 'Déplier le groupe' : 'Replier le groupe';
+        header.innerHTML = `
+            <span class="group-caret text-slate-500 transition-transform" style="${isCollapsed ? 'transform:rotate(-90deg);' : ''}">▶</span>
+            ${groupName ? `📁 ${escapeHtml(groupName)}` : `📂 Sans groupe`}
+            <span class="text-slate-600">(${groupItems.length})</span>
+            <span class="ml-auto text-[9px] text-slate-600">${isCollapsed ? 'replier' : 'plier'}</span>
+        `;
+        header.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleGroupCollapsed(groupName);
+        });
+        container.appendChild(header);
+
+        if (isCollapsed) continue; // groupe replié : on masque ses médias
+
+        groupItems.forEach(item => {
+            const meta = TYPE_META[item.type] || { icon: '📁', label: item.type, color: 'bg-slate-600/30 text-slate-300' };
+            const isActive = item.id === currentItemId;
+            const div = document.createElement('div');
+            div.className = `item-row p-3 rounded-lg mb-1 flex items-center gap-2 ${isActive ? 'active bg-teal-500/10' : ''}`;
+            div.innerHTML = `
+                <div class="text-2xl shrink-0">${meta.icon}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm text-slate-200 truncate">${escapeHtml(item.name)}</div>
+                    <span class="type-pill ${meta.color}">${meta.label}</span>
+                </div>
+                <select data-move="${item.id}" class="bg-slate-800 border border-slate-700 text-slate-400 text-[10px] rounded px-1 py-1 max-w-[84px] shrink-0" title="Déplacer vers un groupe">
+                    ${groupOptionsHtml(item.group || '')}
+                </select>
+                <button data-rename="${item.id}" class="text-slate-500 hover:text-teal-300 shrink-0 px-1" title="Renommer">✏️</button>
+                <button data-del="${item.id}" class="text-slate-500 hover:text-red-400 shrink-0 px-1" title="Supprimer">✕</button>
+            `;
+            div.title = 'Clic : aperçu — Double-clic : projeter directement sur OBS';
+            div.addEventListener('click', (e) => {
+                if (e.target.closest('[data-del]') || e.target.closest('[data-rename]') || e.target.closest('[data-move]')) return;
+                selectItem(item.id);
+            });
+            div.addEventListener('dblclick', (e) => {
+                if (e.target.closest('[data-del]') || e.target.closest('[data-rename]') || e.target.closest('[data-move]')) return;
+                activateItem(item.id);
+            });
+            div.querySelector('[data-del]').addEventListener('click', (e) => { e.stopPropagation(); deleteItem(item.id); });
+            div.querySelector('[data-rename]').addEventListener('click', (e) => { e.stopPropagation(); renameItem(item.id); });
+            const moveSelect = div.querySelector('[data-move]');
+            moveSelect.addEventListener('click', (e) => e.stopPropagation());
+            moveSelect.addEventListener('change', (e) => { e.stopPropagation(); moveItemToGroup(item.id, e.target.value || null); });
+            container.appendChild(div);
+        });
+    }
+}
+
+async function renameItem(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const name = prompt('Nouveau nom du média :', item.name);
+    if (!name || !name.trim() || name.trim() === item.name) return;
+    item.name = name.trim();
+    try { await idbPutItem(item); } catch (e) { showToast('Échec du renommage.', true); return; }
+    renderItemsList(document.getElementById('item-search').value.trim());
+    if (currentItemId === id) selectItem(id);
+    syncItemsToServer(); // portabilité
+}
+
+async function moveItemToGroup(id, groupName) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    item.group = groupName || null;
+    ensureGroupExists(item.group);
+    try { await idbPutItem(item); } catch (e) { showToast('Échec du déplacement.', true); return; }
+    renderImportGroupSelect();
+    renderItemsList(document.getElementById('item-search').value.trim());
+    syncItemsToServer(); // portabilité
+}
+
+function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function deleteItem(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    if (!confirm(`Supprimer « ${item.name} » de la bibliothèque ?`)) return;
+    try { await idbDeleteItem(id); } catch (e) { console.error(e); }
+    items = items.filter(i => i.id !== id);
+    delete pdfDocCache[id]; delete pptxCache[id];
+    if (currentItemId === id) {
+        currentItemId = null;
+        document.getElementById('item-panel').innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-500"><p class="text-lg">Sélectionnez un média à gauche.</p></div>`;
+        if (onAir && onAir.itemId === id) clearOBS();
+    }
+    renderItemsList();
+    updateItemsInfo();
+    syncItemsToServer(); // portabilité
+}
+
+async function selectItem(id) {
+    currentItemId = id;
+    renderItemsList(document.getElementById('item-search').value.trim());
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    if (item.type === 'image' || item.type === 'video') {
+        renderItemPanelSimple(item);
+    } else {
+        renderItemPanelLoading(item);
+        try {
+            if (item.type === 'pdf') {
+                const doc = await getPdfDoc(item.id, item.blob);
+                item._pageCount = doc.numPages;
+            } else {
+                const data = await getPptxData(item.id, item.blob);
+                item._slideCount = data.slides.length;
+            }
+            item._cursor = item._cursor || 0;
+            renderItemPanelDeck(item);
+            goToSlide(item, item._cursor);
+        } catch (e) {
+            console.error(e);
+            document.getElementById('item-panel').innerHTML = `<div class="h-full flex flex-col items-center justify-center text-red-400 p-6 text-center"><p class="font-bold mb-2">Impossible d'analyser ce fichier.</p><p class="text-xs text-slate-500">${escapeHtml(e.message || String(e))}</p></div>`;
+        }
+    }
+}
+
+// Formate une durée en secondes vers "mm:ss" (ou "h:mm:ss" si > 1h).
+function formatTime(sec) {
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    sec = Math.floor(sec);
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+    const ss = String(s).padStart(2, '0');
+    return (h > 0 ? h + ':' : '') + mm + ':' + ss;
+}
+
+// Construit la barre de contrôle vidéo du panneau de gestion (aperçu local) :
+// lecture/pause, défilement, volume, muet, vitesse (0.5x / 1x / 1.5x / 2x), aller à une minute.
+function buildVideoControls(item) {
+    return `
+        <div class="w-full flex flex-col gap-2.5 mt-2 p-3 rounded-lg bg-slate-800/50 border border-slate-700/60">
+            <!-- Lecture / défilement -->
+            <div class="flex items-center gap-3">
+                <button id="vc-play" class="bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="Lecture / Pause">▶</button>
+                <input type="range" id="vc-seek" min="0" max="0" value="0" step="0.1" class="flex-1 accent-teal-400" title="Défiler">
+                <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap"><span id="vc-cur">0:00</span> / <span id="vc-dur">0:00</span></span>
+            </div>
+
+            <!-- Volume + vitesse -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="vc-mute" class="bg-slate-700 hover:bg-slate-600 text-white w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="Muet">🔊</button>
+                <input type="range" id="vc-volume" min="0" max="1" step="0.01" value="1" class="w-28 accent-teal-400" title="Volume">
+                <span class="text-[11px] text-slate-400 w-9">${Math.round(100)}%</span>
+                <span class="text-[11px] text-slate-400">Vitesse</span>
+                <select id="vc-rate" class="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg p-1">
+                    <option value="0.5">0.5×</option>
+                    <option value="1" selected>1×</option>
+                    <option value="1.5">1.5×</option>
+                    <option value="2">2×</option>
+                </select>
+            </div>
+
+            <!-- Aller à une minute donnée -->
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] text-slate-400">Aller à</span>
+                <input type="text" id="vc-goto" placeholder="mm:ss" class="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg p-1 w-20 text-center" title="Ex : 1:30">
+                <button id="vc-gobtn" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-1 rounded">⏩</button>
+            </div>
+
+            <!-- Options de projection -->
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" id="opt-loop" class="accent-teal-500" checked> Boucle</label>
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" id="opt-muted" class="accent-teal-500" checked> Muet (OBS)</label>
+            </div>
+        </div>
+    `;
+}
+
+// Applique une commande sur la vidéo du panneau ET, si ce média est en direct sur OBS,
+// la transmet aussi à la source OBS pour que la lecture soit réellement contrôlée à l'antenne.
+function sendVideoControl(item, control) {
+    const panel = document.getElementById('panel-video');
+    if (panel) applyVideoControl(panel, control);
+    if (onAir && onAir.itemId === item.id) {
+        bc.postMessage({ action: 'control', control });
+    }
+}
+
+// Branche les événements de la barre vidéo sur l'élément <video> du panneau.
+// Chaque action pilote le panneau ET la sortie OBS (si le média est en direct).
+function wireVideoControls(video, item) {
+    if (!video) return;
+    const playBtn = document.getElementById('vc-play');
+    const seek = document.getElementById('vc-seek');
+    const cur = document.getElementById('vc-cur');
+    const dur = document.getElementById('vc-dur');
+    const muteBtn = document.getElementById('vc-mute');
+    const volume = document.getElementById('vc-volume');
+    const rate = document.getElementById('vc-rate');
+
+    const togglePlay = () => {
+        const paused = video.paused;
+        sendVideoControl(item, { play: paused });
+        if (playBtn) playBtn.textContent = paused ? '⏸' : '▶';
+    };
+    const syncPlayBtn = () => { if (playBtn) playBtn.textContent = video.paused ? '▶' : '⏸'; };
+    const syncSeek = () => { if (seek) seek.max = video.duration || 0; if (cur) cur.textContent = formatTime(video.currentTime); };
+
+    if (playBtn) playBtn.addEventListener('click', togglePlay);
+    if (seek) seek.addEventListener('input', () => { if (video.duration) { sendVideoControl(item, { seek: seek.value }); if (cur) cur.textContent = formatTime(seek.value); } });
+    if (muteBtn) muteBtn.addEventListener('click', () => { const m = !video.muted; sendVideoControl(item, { muted: m }); if (muteBtn) muteBtn.textContent = m ? '🔇' : '🔊'; });
+    if (volume) volume.addEventListener('input', () => { const v = volume.value; sendVideoControl(item, { volume: v, muted: v === 0 }); if (muteBtn) muteBtn.textContent = v === 0 ? '🔇' : '🔊'; });
+    if (rate) rate.addEventListener('change', () => { sendVideoControl(item, { rate: parseFloat(rate.value) || 1 }); });
+
+    const goBtn = document.getElementById('vc-gobtn');
+    const gotoInput = document.getElementById('vc-goto');
+    const doGoto = () => {
+        if (!gotoInput || !video) return;
+        const m = gotoInput.value.trim().match(/^(\d+):([0-5]?\d)$/) || gotoInput.value.trim().match(/^([0-5]?\d)$/);
+        if (m) {
+            const sec = m.length === 3 ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : parseInt(m[1], 10);
+            if (video.duration) { sendVideoControl(item, { seek: Math.min(sec, video.duration) }); syncSeek(); }
+        }
+        gotoInput.value = '';
+    };
+    if (goBtn) goBtn.addEventListener('click', doGoto);
+    if (gotoInput) gotoInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doGoto(); });
+
+    video.addEventListener('timeupdate', () => { syncSeek(); syncPlayBtn(); });
+    video.addEventListener('play', syncPlayBtn);
+    video.addEventListener('pause', syncPlayBtn);
+    video.addEventListener('loadedmetadata', () => {
+        if (dur) dur.textContent = formatTime(video.duration);
+        if (seek) seek.max = video.duration || 0;
+        syncPlayBtn();
+    });
+    video.addEventListener('ended', syncPlayBtn);
+}
+
+function renderItemPanelSimple(item) {
+    const meta = TYPE_META[item.type];
+    const url = URL.createObjectURL(item.blob);
+    const isVideo = item.type === 'video';
+    const preview = item.type === 'image'
+        ? `<img src="${url}" class="max-h-full max-w-full rounded-lg shadow-2xl">`
+        : `<video id="panel-video" src="${url}" class="max-h-full max-w-full rounded-lg shadow-2xl" muted preload="metadata"></video>`;
+
+    document.getElementById('item-panel').innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full p-6 gap-3 overflow-y-auto">
+            <div class="text-xs font-bold text-teal-400 uppercase tracking-wider">${meta.label}</div>
+            <div class="flex-1 flex items-center justify-center min-h-0 w-full">${preview}</div>
+            <div class="text-sm text-slate-300 truncate max-w-full">${escapeHtml(item.name)}</div>
+            ${isVideo ? buildVideoControls(item) : ''}
+            <button id="btn-afficher-simple" class="bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold px-6 py-2.5 rounded-lg text-sm">Projeter sur OBS</button>
+            <p class="text-[10px] text-slate-500">Double-cliquez le média dans la liste pour projeter directement.</p>
+        </div>
+    `;
+    document.getElementById('btn-afficher-simple').addEventListener('click', () => pushLive(item, {}));
+    if (isVideo) {
+        const video = document.getElementById('panel-video');
+        wireVideoControls(video, item);
+        const resyncIfLive = () => { if (onAir && onAir.itemId === item.id) pushLive(item, {}); };
+        document.getElementById('opt-loop').addEventListener('change', resyncIfLive);
+        document.getElementById('opt-muted').addEventListener('change', resyncIfLive);
+    }
+}
+
+function renderItemPanelLoading(item) {
+    document.getElementById('item-panel').innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+            <div class="w-8 h-8 border-4 border-slate-600 border-t-teal-400 rounded-full animate-spin"></div>
+            <p class="text-sm">Analyse de « ${escapeHtml(item.name)} »...</p>
+        </div>
+    `;
+}
+
+function renderItemPanelDeck(item) {
+    const meta = TYPE_META[item.type];
+    const count = item.type === 'pdf' ? item._pageCount : item._slideCount;
+    document.getElementById('item-panel').innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full p-6 gap-4">
+            <div class="text-xs font-bold text-teal-400 uppercase tracking-wider">${meta.label} — ${escapeHtml(item.name)}</div>
+
+            <div id="local-preview-container" class="relative w-[55%] rounded-lg overflow-hidden border border-slate-700 shadow-xl" style="aspect-ratio:16/9; background:#000; opacity:0; transition:opacity 0.3s ease;">
+                <div id="local-preview-stage" style="position:absolute; inset:0; overflow:hidden; transition:opacity 0.2s ease;"></div>
+            </div>
+            <p class="text-[10px] text-slate-500 -mt-2">Aperçu local — n'est pas encore envoyé à OBS tant que vous ne projetez pas.</p>
+
+            <div class="text-3xl font-display font-bold text-white" id="slide-indicator">1 / ${count}</div>
+            <div class="flex items-center gap-4">
+                <button id="btn-prev-slide" class="bg-slate-700 hover:bg-slate-600 text-white w-12 h-12 rounded-full text-xl font-bold">←</button>
+                <button id="btn-project-slide" class="bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold px-5 py-2.5 rounded-lg text-sm">Projeter sur OBS</button>
+                <button id="btn-next-slide" class="bg-slate-700 hover:bg-slate-600 text-white w-12 h-12 rounded-full text-xl font-bold">→</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">Aller à :</span>
+                <input type="number" id="slide-goto" min="1" max="${count}" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg w-20 p-2 text-center">
+            </div>
+            <p class="text-[11px] text-slate-500">Double-cliquez un média dans la liste pour le projeter directement. Une fois à l'antenne, les flèches ← → du clavier et les boutons projettent immédiatement.</p>
+        </div>
+    `;
+    document.getElementById('btn-prev-slide').addEventListener('click', () => goToSlide(item, (item._cursor || 0) - 1));
+    document.getElementById('btn-next-slide').addEventListener('click', () => goToSlide(item, (item._cursor || 0) + 1));
+    document.getElementById('btn-project-slide').addEventListener('click', () => {
+        pushLive(item, item.type === 'pdf' ? { pageIndex: item._cursor || 0 } : { slideIndex: item._cursor || 0 });
+    });
+    document.getElementById('slide-goto').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { const v = parseInt(e.target.value, 10); if (!isNaN(v)) goToSlide(item, v - 1); }
+    });
+}
+
+function goToSlide(item, index) {
+    const count = item.type === 'pdf' ? item._pageCount : item._slideCount;
+    if (!count) return;
+    const clamped = Math.min(Math.max(index, 0), count - 1);
+    item._cursor = clamped;
+    const indicator = document.getElementById('slide-indicator');
+    if (indicator) indicator.innerText = `${clamped + 1} / ${count}`;
+    const gotoInput = document.getElementById('slide-goto');
+    if (gotoInput) gotoInput.value = clamped + 1;
+
+    const extra = item.type === 'pdf' ? { pageIndex: clamped } : { slideIndex: clamped };
+    if (onAir && onAir.itemId === item.id) {
+        pushLive(item, extra);
+    } else {
+        previewOnly(item, extra);
+    }
+}
+
+function buildMediaConfig(item, extra) {
+    const panel = document.getElementById('panel-video');
+    return {
+        itemId: item.id, type: item.type, name: item.name, blob: item.blob,
+        fitMode: document.getElementById('fit-mode-select').value,
+        pageIndex: extra.pageIndex, slideIndex: extra.slideIndex,
+        // Sourdine et boucle activées par défaut sur toutes les vidéos : évite le son
+        // qui surprend en direct, et une vidéo qui s'arrête net après un seul passage.
+        loop: item.type === 'video' ? (document.getElementById('opt-loop') ? !!document.getElementById('opt-loop').checked : true) : false,
+        muted: item.type === 'video' ? (document.getElementById('opt-muted') ? !!document.getElementById('opt-muted').checked : true) : false,
+        // Reprend la lecture à l'endroit (et à la vitesse) où l'opérateur l'avait laissée
+        // dans le panneau, pour que la sortie OBS démarre exactement là.
+        startAt: (item.type === 'video' && panel && isFinite(panel.currentTime) && panel.currentTime > 0) ? panel.currentTime : 0,
+        startRate: (item.type === 'video' && panel && isFinite(panel.playbackRate)) ? panel.playbackRate : 1
+    };
+}
+
+// Aperçu local uniquement : met à jour la mini-scène dans le panneau central, ne touche
+// JAMAIS à OBS ni à la sortie en direct. C'est ce que déclenche un simple clic.
+function previewOnly(item, extra) {
+    const config = buildMediaConfig(item, extra);
+    const container = document.getElementById('local-preview-container');
+    const stage = document.getElementById('local-preview-stage');
+    if (container && stage) renderMediaStage(config, container, stage, 'local');
+}
+
+// Met réellement en direct sur OBS (et garde l'aperçu Sortie Directe synchronisé).
+// C'est ce que déclenche un double-clic, le bouton "Projeter", ou la navigation
+// diapositive quand ce média est déjà à l'antenne.
+function pushLive(item, extra) {
+    const config = buildMediaConfig(item, extra);
+    onAir = { itemId: item.id, config };
+    bc.postMessage({ action: 'show', config });
+
+    const pContainer = document.getElementById('preview-container');
+    const pStage = document.getElementById('preview-stage');
+    renderMediaStage(config, pContainer, pStage, 'preview');
+
+    const lContainer = document.getElementById('local-preview-container');
+    const lStage = document.getElementById('local-preview-stage');
+    if (lContainer && lStage) renderMediaStage(config, lContainer, lStage, 'local');
+}
+
+async function activateItem(id) {
+    await selectItem(id);
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    if (item.type === 'image' || item.type === 'video') {
+        pushLive(item, {});
+    } else {
+        const cursor = item._cursor || 0;
+        pushLive(item, item.type === 'pdf' ? { pageIndex: cursor } : { slideIndex: cursor });
+    }
+}
+
+function resendCurrent() {
+    if (!onAir) return;
+    const item = items.find(i => i.id === onAir.itemId);
+    if (!item) return;
+    pushLive(item, { pageIndex: onAir.config.pageIndex, slideIndex: onAir.config.slideIndex });
+}
+
+function clearOBS() {
+    bc.postMessage({ action: 'hide' });
+    const pContainer = document.getElementById('preview-container');
+    const pStage = document.getElementById('preview-stage');
+    pContainer.style.opacity = '0';
+    stopMediaIn(pStage);
+    pStage.innerHTML = '';
+    videoEls.preview = null;
+    onAir = null;
+}
+
+// Relance le dernier média affiché (bouton "Relancer" du Studio Unifié).
+function relaunchLast() {
+    if (onAir) {
+        resendCurrent();
+    }
+}
+
+function showToast(msg, isError) {
+    const t = document.createElement('div');
+    t.className = `fixed bottom-4 left-1/2 transform -translate-x-1/2 ${isError ? 'bg-red-500 text-white' : 'bg-teal-500 text-slate-900'} px-4 py-2 rounded shadow-xl font-bold z-50 anim-show`;
+    t.innerText = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+    </script>
+</body>
+</html>

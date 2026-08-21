@@ -1,0 +1,10 @@
+{
+  "name": "obs-relay-server",
+  "version": "1.0.0",
+  "description": "Petit serveur local qui sert vos pages OBS Control/Display et relaie les messages entre elles sur le réseau, pour piloter OBS depuis un navigateur normal ou un autre PC.",
+  "private": true,
+  "main": "sync-relay-server.js",
+  "scripts": {
+    "start": "node sync-relay-server.js"
+  }
+}

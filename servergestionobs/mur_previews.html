@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mur de Sorties — Aperçu Global</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; padding: 0; height: 100%;
+        font-family: 'Inter', sans-serif;
+        background: #0b1120; color: #f8fafc;
+        overflow: hidden;
+    }
+    .shell { display: flex; flex-direction: column; height: 100vh; }
+
+    .topbar {
+        height: 52px; flex-shrink: 0;
+        background: #111a2e; border-bottom: 1px solid #1e293b;
+        display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    }
+    .topbar .brand { font-weight: 800; font-size: 14px; color: #fff; }
+    .topbar .sub { font-size: 11px; color: #64748b; }
+    .topbar .spacer { flex: 1; }
+    .btn-refresh {
+        background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
+        font-family: inherit; font-size: 12px; font-weight: 600;
+        padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    }
+    .btn-refresh:hover { background: #253347; }
+
+    .grid {
+        flex: 1; min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 10px;
+        padding: 10px;
+    }
+    .cell {
+        position: relative;
+        background: #000;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        overflow: hidden;
+        min-height: 0;
+    }
+    .cell .stage-box {
+        position: absolute; top: 0; left: 0;
+        width: 1920px; height: 1080px;
+        transform-origin: top left;
+        background: #000;
+    }
+    .cell iframe {
+        width: 1920px; height: 1080px;
+        border: none; display: block; background: #000;
+    }
+    .cell .label {
+        position: absolute; top: 8px; left: 8px; z-index: 5;
+        font-size: 11px; font-weight: 800; letter-spacing: 0.4px;
+        padding: 4px 9px; border-radius: 6px;
+        background: rgba(15,23,42,0.72); color: #e2e8f0;
+        display: flex; align-items: center; gap: 6px;
+        pointer-events: none;
+    }
+    .cell .label .accent-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .cell[data-tool="bible"] .accent-dot { background: #f59e0b; }
+    .cell[data-tool="lyrics"] .accent-dot { background: #8b5cf6; }
+    .cell[data-tool="media"] .accent-dot { background: #2dd4bf; }
+    .cell[data-tool="lt"] .accent-dot { background: #6366f1; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+    <div class="topbar">
+        <div class="brand">🖥️ Mur de Sorties</div>
+        <div class="sub">Aperçu en direct des 4 sorties OBS, sur une seule page</div>
+        <div class="spacer"></div>
+        <button class="btn-refresh" onclick="reloadAll()">🔄 Actualiser les aperçus</button>
+    </div>
+
+    <div class="grid">
+        <div class="cell" data-tool="bible">
+            <div class="label"><span class="accent-dot"></span>BIBLE</div>
+            <div class="stage-box" id="stage-bible"><iframe src="bible_control_display_pro.html?obs=true"></iframe></div>
+        </div>
+        <div class="cell" data-tool="lyrics">
+            <div class="label"><span class="accent-dot"></span>PAROLES</div>
+            <div class="stage-box" id="stage-lyrics"><iframe src="lyrics_control_display_pro.html?obs=true"></iframe></div>
+        </div>
+        <div class="cell" data-tool="media">
+            <div class="label"><span class="accent-dot"></span>MÉDIA</div>
+            <div class="stage-box" id="stage-media"><iframe src="media_control_display_pro.html?obs=true"></iframe></div>
+        </div>
+        <div class="cell" data-tool="lt">
+            <div class="label"><span class="accent-dot"></span>TITRE (LOWER THIRD)</div>
+            <div class="stage-box" id="stage-lt"><iframe src="obs_lower_third_ultimate_studio.html?obs=1"></iframe></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Chaque sortie OBS est conçue pour un canvas 1920x1080. On affiche l'iframe à sa
+    // taille réelle (1920x1080) puis on la réduit avec un transform:scale pour qu'elle
+    // remplisse exactement sa case, quelle que soit la taille de la fenêtre — c'est la
+    // même technique déjà utilisée par les mini-aperçus internes de chaque outil.
+    function rescaleStage(stageEl) {
+        const cell = stageEl.closest('.cell');
+        if (!cell) return;
+        const scale = Math.min(cell.clientWidth / 1920, cell.clientHeight / 1080);
+        stageEl.style.transform = `scale(${scale})`;
+    }
+
+    function rescaleAll() {
+        document.querySelectorAll('.stage-box').forEach(rescaleStage);
+    }
+
+    function reloadAll() {
+        document.querySelectorAll('.cell iframe').forEach(f => { f.src = f.src; });
+    }
+
+    window.addEventListener('resize', rescaleAll);
+    window.addEventListener('load', rescaleAll);
+    // Au cas où les polices/mise en page bougent un peu après le chargement initial.
+    setTimeout(rescaleAll, 300);
+    setTimeout(rescaleAll, 1000);
+</script>
+
+</body>
+</html>

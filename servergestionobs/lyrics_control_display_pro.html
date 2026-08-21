@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyrics Pro Controller - OBS</title>
+    <!-- Importation des polices -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;800&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,500;1,500&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="store.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/obs-links.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                        display: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        obs: {
+                            bg: 'rgba(15, 23, 42, 0.92)',
+                            accent: '#8b5cf6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Styles spécifiques au mode OBS */
+        body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
+
+        #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
+
+        .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
+
+        .obs-bottom { position: absolute; bottom: 60px; left: 192px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-left: 8px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; overflow: hidden; }
+
+        .obs-bottom-right { position: absolute; bottom: 60px; right: 60px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-right: 8px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; text-align: right; box-sizing: border-box; overflow: hidden; }
+
+        .obs-screen80 { position: absolute; top: 108px; left: 192px; width: 1536px; height: 864px; padding: 64px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-top: 6px solid var(--accent-color, #8b5cf6); border-bottom: 6px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 20px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; overflow: hidden; }
+
+        .obs-scrolling { position: absolute; bottom: 0; left: 0; width: 1920px; height: 80px; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border-top: 3px solid var(--accent-color, #8b5cf6); display: flex; align-items: center; overflow: hidden; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); box-sizing: border-box; }
+
+        .ticker-wrapper { display: flex; align-items: center; white-space: nowrap; will-change: transform; animation: marquee var(--speed, 30s) linear infinite; padding-left: 100vw; }
+        .ticker-content { display: inline-flex; align-items: center; padding-right: 15vw; }
+        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+
+        .lyric-text { color: var(--text-color, #ffffff); line-height: 1.35; text-shadow: 0 2px 5px rgba(0,0,0,0.6); overflow-wrap: break-word; word-break: break-word; width: 80%; max-width: 80%; margin: 0 auto; box-sizing: border-box; font-weight: 700; }
+        .obs-bottom-right .lyric-text { margin-left: auto; margin-right: 0; }
+        .lyric-line { display: block; }
+        .lyric-line + .lyric-line { margin-top: 0.45em; }
+
+        /* Transition fluide des paroles : seul le texte fait un fondu avec un léger
+           défilement vertical. Le fond reste stable (il n'est PAS recréé entre sections). */
+        @keyframes lyricFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .lyric-line { animation: lyricFadeUp 0.45s cubic-bezier(0.16,1,0.3,1); }
+
+        /* Titre / artiste / section : discrets, en bas du cadre — le texte des paroles reste
+           le seul élément visuellement fort à l'écran (modes full / screen80 / bottom / bottom-right). */
+        .lyric-meta { color: var(--text-color, #ffffff); opacity: 0.5; font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 0.3px; text-align: inherit; overflow-wrap: break-word; word-break: break-word; }
+        .lyric-meta .meta-dot { opacity: 0.7; margin: 0 2px; }
+
+        /* Méta "bas de bandeau" : épinglée en bas du cadre, centrée, très petite et très discrète,
+           pour les modes incrustation (bas centré / bas droite) où elle ne doit pas distraire. */
+        .lyric-meta-bottom {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.35;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 24px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .obs-bottom-right .lyric-meta-bottom { text-align: right; }
+
+        /* En mode bas centré, les lignes de paroles doivent être centrées (pas alignées à gauche). */
+        .obs-bottom, .obs-bottom-right { text-align: center; }
+        .obs-bottom-right .lyric-text { text-align: right; }
+
+        /* Utilisés uniquement par le mode "Ruban Défilant", où la référence doit rester lisible
+           puisqu'elle défile avec le texte (pas de notion de "bas du cadre" dans ce mode). */
+        .lyric-ref { color: var(--accent-color, #8b5cf6); font-family: 'Poppins', sans-serif; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; overflow-wrap: break-word; word-break: break-word; }
+        .section-badge { background-color: var(--accent-color, #8b5cf6); color: #0f172a; font-family: 'Inter', sans-serif; font-weight: 800; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; margin-left: 10px; vertical-align: middle; }
+
+        /* Fond d'écran (image OU vidéo) — couche réelle dans le DOM, contenue dans la forme du cadre */
+        .bg-layer { position: absolute; inset: 0; overflow: hidden; z-index: 0; border-radius: inherit; }
+        .bg-layer img, .bg-layer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .bg-layer img { filter: blur(var(--bg-blur, 18px)); transform: scale(1.08); }
+        .bg-layer .bg-tint { position: absolute; inset: 0; background: var(--bg-color, rgba(15, 23, 42, 0.85)); }
+        .has-bg-media { background: transparent !important; }
+        #obs-content-area, #preview-content { position: relative; z-index: 2; width: 100%; height: 100%; transition: opacity 0.2s ease; }
+
+        .anim-show { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .anim-hide { animation: fadeOutScale 0.5s ease-in forwards; }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95) translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)); } to { opacity: 1; transform: scale(1) translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)); } }
+        @keyframes fadeOutScale { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+
+        /* Animations de l'interface de contrôle */
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .song-item { transition: all 0.2s; cursor: pointer; }
+        .song-item:hover, .song-item.active { background: rgba(139, 92, 246, 0.15); border-left: 3px solid #8b5cf6; }
+        .section-item { transition: all 0.2s; cursor: pointer; }
+        .section-item:hover, .section-item.active { background: rgba(139, 92, 246, 0.15); border-left: 3px solid #8b5cf6; }
+
+        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+
+        #selection-bar { animation: fadeInScale 0.25s ease forwards; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .editor-section-row { background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px; }
+        .editor-section-row textarea { resize: vertical; }
+        .preset-btn { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(139,92,246,0.15); color: #c4b5fd; font-weight: 700; }
+        .preset-btn:hover { background: rgba(139,92,246,0.3); }
+    </style>
+</head>
+<body>
+
+    <div id="obs-mode-ui" class="hidden">
+        <div id="obs-container">
+            <div id="obs-card-element">
+                <div id="obs-bg-layer" class="bg-layer"></div>
+                <div id="obs-content-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controller-mode-ui" class="hidden h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="glass-panel flex items-center justify-between px-6 py-3 shrink-0 z-10">
+            <div class="flex items-center gap-3">
+                <div class="bg-violet-500 text-slate-900 p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-xl text-white tracking-wide">Lyrics Pro Controller</h1>
+                    <p class="text-xs text-slate-400" id="songs-info">Chargement...</p>
+                </div>
+                <span id="sync-badge" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-700 text-slate-400 ml-3">
+                    <span id="sync-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
+                    <span id="sync-label">Local uniquement</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button id="btn-new-song" class="bg-violet-500 hover:bg-violet-400 text-slate-900 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Nouveau chant
+                </button>
+
+                <div class="h-6 w-px bg-slate-600"></div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-300">Style OBS:</span>
+                    <select id="obs-mode-select" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-violet-500 focus:border-violet-500 block p-2">
+                        <option value="full" selected>Plein Écran (Centré)</option>
+                        <option value="screen80">80% Écran (Centré)</option>
+                        <option value="bottom">Bas Centré</option>
+                        <option value="bottom-right">Bas Droite</option>
+                        <option value="scrolling">Ruban Défilant</option>
+                    </select>
+                </div>
+
+                <button id="btn-open-settings" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Personnaliser
+                </button>
+
+                <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    Effacer OBS
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 flex overflow-hidden">
+
+            <section class="w-1/4 min-w-[300px] border-r border-slate-700/50 flex flex-col bg-slate-900/50">
+                <div class="p-4 border-b border-slate-700/50">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" id="song-search" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-violet-500 focus:border-violet-500 block w-full pl-10 p-2.5 placeholder-slate-400" placeholder="Chercher un chant...">
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-2" id="songs-list">
+                    <!-- Chants injectés ici -->
+                </div>
+            </section>
+
+            <section class="flex-1 flex flex-col relative bg-slate-900/30">
+                <!-- Info du chant sélectionné -->
+                <div id="song-header" class="p-6 border-b border-slate-700/50 glass-panel flex flex-col gap-4 hidden">
+                    <div class="flex justify-between items-end gap-3 flex-wrap">
+                        <div>
+                            <h2 id="active-song-title" class="text-3xl font-display font-bold text-violet-400">Chant</h2>
+                            <p id="active-song-stats" class="text-sm text-slate-400 mt-1">0 section(s)</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button id="btn-edit-song" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                Éditer
+                            </button>
+                            <button id="btn-multiselect" type="button" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">
+                                Sélection multiple
+                            </button>
+                            <div class="relative group">
+                                <div class="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-lg blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200"></div>
+                                <input type="text" id="smart-input" class="relative bg-slate-800 border-none text-white text-center text-lg font-bold rounded-lg focus:ring-2 focus:ring-violet-500 w-36 py-2 px-4 shadow-lg" placeholder="N° section" title="Tape le numéro de la section puis Entrée pour l'afficher">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des sections -->
+                <div class="flex-1 overflow-y-auto p-4" id="sections-list">
+                    <div class="h-full flex flex-col items-center justify-center text-slate-500">
+                        <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"></path></svg>
+                        <p class="text-lg">Sélectionnez un chant à gauche, ou créez-en un nouveau.</p>
+                    </div>
+                </div>
+
+                <!-- Barre flottante de sélection multiple -->
+                <div id="selection-bar" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 border border-violet-500 rounded-full shadow-2xl px-5 py-3 flex items-center gap-4 z-20">
+                    <span class="text-sm text-white"><span id="selection-count" class="font-bold text-violet-400">0</span> section(s) sélectionnée(s)</span>
+                    <button onclick="displaySelectedSections()" class="bg-violet-500 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold hover:bg-violet-400 transition-colors">Afficher</button>
+                    <button onclick="toggleSelectionMode()" class="text-slate-400 hover:text-white text-sm">Annuler</button>
+                </div>
+            </section>
+
+            <section class="w-1/3 min-w-[350px] max-w-[450px] border-l border-slate-700/50 flex flex-col bg-slate-900/50">
+                <!-- Live Preview OBS -->
+                <div class="p-4 border-b border-slate-700/50">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        Sortie Directe (OBS)
+                    </h3>
+                    <div id="preview-wrapper">
+                        <div id="preview-container" style="position: absolute; width: 100%; height: 100%; transform: scale(0.25); transform-origin: top left; pointer-events: none;">
+                            <div id="preview-card" class="hidden">
+                                <div id="preview-bg-layer" class="bg-layer"></div>
+                                <div id="preview-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 space-y-1.5" id="obs-links-panel">
+                        <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <div class="min-w-0">
+                                <p class="text-[9px] text-slate-500">Lien général — suit le mode choisi ci-dessus</p>
+                                <p class="text-[10px] text-violet-400 truncate font-mono" data-link-role="general">...</p>
+                            </div>
+                            <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-copy-role="general">Copier</button>
+                        </div>
+                        <details class="bg-slate-800/40 border border-slate-700/60 rounded-lg px-2 py-1.5">
+                            <summary class="text-[10px] text-slate-400 cursor-pointer select-none">Liens à mode fixe (pour d'autres scènes OBS)</summary>
+                            <p class="text-[9px] text-slate-500 mt-1 mb-2">Chacun de ces liens affiche toujours le même mode dans OBS, quel que soit le style choisi ci-dessus — pratique pour avoir une scène "plein écran" et une scène "bas centré" en même temps.</p>
+                            <div class="space-y-1.5" id="obs-fixed-links"></div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z"></path></svg>
+                            Fond d'écran actuel
+                        </h3>
+                    </div>
+                    <div class="p-4 text-sm text-slate-400 flex-1 overflow-y-auto">
+                        <p id="bg-summary" class="text-slate-300">Aucun fond image/vidéo — couleur unie.</p>
+                        <p class="mt-3 text-xs text-slate-500">Utilisez "Personnaliser" pour changer les couleurs, la police, la forme du cadre, ou ajouter une image / vidéo de fond.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Éditeur de chant -->
+    <div id="song-editor-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 relative border border-slate-700">
+            <div class="flex items-center justify-between mb-5">
+                <h2 id="song-editor-title" class="text-xl font-display font-bold text-white">Nouveau chant</h2>
+                <button id="btn-close-editor" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Titre du chant *</label>
+                    <input type="text" id="editor-title-input" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 w-full" placeholder="Ex: Grâce Infinie">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Artiste / Auteur</label>
+                    <input type="text" id="editor-artist-input" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 w-full" placeholder="Optionnel">
+                </div>
+            </div>
+
+            <div class="mb-5 p-4 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Coller des paroles (analyse automatique)</label>
+                <textarea id="editor-paste-box" rows="5" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 w-full" placeholder="Astuce: utilisez [Couplet 1], [Refrain], [Pont]... sur leur propre ligne pour délimiter les sections. Sinon, séparez simplement les blocs par une ligne vide."></textarea>
+                <div class="flex justify-end mt-2">
+                    <button id="btn-parse-paste" class="bg-violet-500 hover:bg-violet-400 text-slate-900 font-bold px-4 py-2 rounded-lg text-xs">Analyser et ajouter les sections</button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Sections</label>
+                <div class="flex flex-wrap gap-1.5" id="preset-buttons">
+                    <button type="button" class="preset-btn" data-label="Intro">+ Intro</button>
+                    <button type="button" class="preset-btn" data-label="Couplet">+ Couplet</button>
+                    <button type="button" class="preset-btn" data-label="Refrain">+ Refrain</button>
+                    <button type="button" class="preset-btn" data-label="Pont">+ Pont</button>
+                    <button type="button" class="preset-btn" data-label="Outro">+ Outro</button>
+                </div>
+            </div>
+
+            <div id="editor-sections-container" class="flex flex-col gap-3 mb-4">
+                <!-- Sections injectées ici -->
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-slate-700/50">
+                <button id="btn-delete-song" class="hidden text-sm text-red-400 hover:text-red-300 px-3 py-2">Supprimer ce chant</button>
+                <div class="flex gap-3 ml-auto">
+                    <button id="btn-cancel-editor" class="text-sm text-slate-400 hover:text-white px-4 py-2">Annuler</button>
+                    <button id="btn-save-song" class="bg-violet-500 hover:bg-violet-400 text-slate-900 font-bold px-5 py-2 rounded-lg text-sm">Enregistrer le chant</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de personnalisation du rendu -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 relative border border-slate-700">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-xl font-display font-bold text-white">Personnaliser le rendu</h2>
+                <button id="btn-close-settings" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur de fond</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="set-bg-color" class="h-9 w-12 rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                        <input type="range" id="set-bg-opacity" min="0" max="100" value="92" class="flex-1 accent-violet-500">
+                        <span id="set-bg-opacity-val" class="text-xs text-slate-400 w-9 text-right">92%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur d'accent</label>
+                    <input type="color" id="set-accent-color" class="h-9 w-full rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Couleur du texte</label>
+                    <input type="color" id="set-text-color" class="h-9 w-full rounded bg-slate-800 border border-slate-600 cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Police d'écriture</label>
+                    <select id="set-font-family" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                        <option value="Poppins">Poppins (moderne)</option>
+                        <option value="Montserrat">Montserrat (net)</option>
+                        <option value="Merriweather">Merriweather (classique)</option>
+                        <option value="Playfair Display">Playfair Display (élégant)</option>
+                        <option value="Lora">Lora (doux)</option>
+                        <option value="EB Garamond">EB Garamond (livre ancien)</option>
+                        <option value="Inter">Inter (net)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Forme du cadre</label>
+                    <select id="set-shape" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                        <option value="0">Rectangle net</option>
+                        <option value="16">Coins arrondis</option>
+                        <option value="32">Coins doux</option>
+                        <option value="60">Très arrondi</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-5 border-t border-slate-700/50">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Fond d'écran</label>
+                <div class="flex items-center gap-2 mb-3" id="bg-type-tabs">
+                    <button type="button" data-type="none" class="bg-type-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300">Aucun (couleur unie)</button>
+                    <button type="button" data-type="image" class="bg-type-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300">Image</button>
+                    <button type="button" data-type="video" class="bg-type-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300">Vidéo</button>
+                </div>
+
+                <div id="bg-image-controls" class="hidden">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            Choisir une image
+                            <input type="file" id="set-bg-image" accept="image/*" class="hidden">
+                        </label>
+                        <span id="bg-media-status" class="text-xs text-slate-500">Aucune image</span>
+                    </div>
+                    <div class="mt-3">
+                        <label class="text-xs text-slate-400">Intensité du flou</label>
+                        <input type="range" id="set-bg-blur" min="0" max="40" value="18" class="w-full accent-violet-500">
+                    </div>
+                </div>
+
+                <div id="bg-video-controls" class="hidden">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            Choisir une vidéo (MP4)
+                            <input type="file" id="set-bg-video" accept="video/*" class="hidden">
+                        </label>
+                        <span id="bg-media-status-video" class="text-xs text-slate-500">Aucune vidéo</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">La vidéo est lue automatiquement en boucle, sans son. Une teinte (couleur de fond ci-dessus) est appliquée par-dessus pour garder le texte lisible.</p>
+                </div>
+
+                <button id="btn-remove-bg-media" class="text-xs text-red-400 hover:text-red-300 mt-3">Retirer le fond actuel</button>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="btn-reset-settings" class="text-sm text-slate-400 hover:text-white px-4 py-2">Réinitialiser</button>
+                <button id="btn-apply-settings" class="bg-violet-500 hover:bg-violet-400 text-slate-900 font-bold px-5 py-2 rounded-lg text-sm">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // ÉTAT DE L'APPLICATION
+        // ============================================================
+        let songs = [];             // [{ id, title, artist, sections:[{id,label,text}], updatedAt }]
+        let currentSongId = null;
+        let onAir = null;           // { songId, sectionIds:[...] } — ce qui est actuellement affiché sur OBS
+        let selectionMode = false;
+        let selectedSectionIds = new Set();
+
+        // État temporaire de l'éditeur de chant (copie de travail, pas encore sauvegardée)
+        let editingSongId = null;
+        let editorSections = [];
+
+        function genId() {
+            return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        }
+
+        // ============================================================
+        // RÉGLAGES DE PERSONNALISATION DU RENDU (persistés en localStorage + IndexedDB pour le média)
+        // ============================================================
+        const DEFAULT_DISPLAY_SETTINGS = {
+            bgColor: 'rgba(15, 23, 42, 0.92)',
+            accentColor: '#8b5cf6',
+            textColor: '#ffffff',
+            fontFamily: 'Poppins',
+            shapeRadius: 20,
+            bgBlur: 18,
+            bgMediaType: 'none' // 'none' | 'image' | 'video'
+        };
+        let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
+        let displaySettingsMediaBlob = null; // Blob en mémoire (image ou vidéo)
+        let pendingMediaBlob = undefined;    // undefined = inchangé pendant l'édition ; null = à retirer ; Blob = nouveau média
+        // Version du fond : incrémentée à chaque changement de fond (image/vidéo), pour que le
+        // rendu OBS ne recharge le fond que lorsque celui-ci change réellement.
+        let bgVersionCounter = 0;
+
+        // Construit le lien général (qui suit le mode en direct) et un lien par mode fixe
+        // (screen80, bottom, bottom-right, full, scrolling) à coller dans OBS sur d'autres
+        // scènes. Se base sur les options déjà présentes dans le sélecteur de style, pour
+        // rester toujours synchronisé si la liste de modes change un jour.
+        
+
+        // Copie un lien dans le presse-papier, avec repli si l'API clipboard n'est pas
+        // disponible (ex: page ouverte en file:// dans certains navigateurs).
+        
+
+        
+
+        
+
+        function loadDisplaySettingsJSON() {
+            const stored = safeParseLocal('lyricsDisplaySettings', null);
+            displaySettings = stored ? { ...DEFAULT_DISPLAY_SETTINGS, ...stored } : { ...DEFAULT_DISPLAY_SETTINGS };
+        }
+
+        function saveDisplaySettingsJSON() {
+            try {
+                localStorage.setItem('lyricsDisplaySettings', JSON.stringify(displaySettings));
+            } catch (e) { /* silencieux */ }
+            // Synchronise aussi vers le serveur (axe A) pour que les réglages "suivent" l'utilisateur.
+            if (window.OpenStore) { try { OpenStore.set('lyrics', 'displaySettings', displaySettings); } catch (e) { /* silencieux */ } }
+        }
+
+        
+
+        
+
+        function populateSettingsForm() {
+            const { hex, opacity } = rgbaToHexAndOpacity(displaySettings.bgColor);
+            document.getElementById('set-bg-color').value = hex;
+            document.getElementById('set-bg-opacity').value = opacity;
+            document.getElementById('set-bg-opacity-val').innerText = opacity + '%';
+            document.getElementById('set-accent-color').value = displaySettings.accentColor;
+            document.getElementById('set-text-color').value = displaySettings.textColor;
+            document.getElementById('set-font-family').value = displaySettings.fontFamily;
+            document.getElementById('set-shape').value = String(displaySettings.shapeRadius);
+            document.getElementById('set-bg-blur').value = displaySettings.bgBlur;
+            pendingMediaBlob = undefined;
+            setBgTypeTab(displaySettings.bgMediaType);
+            updateMediaStatusLabels();
+        }
+
+        function updateMediaStatusLabels() {
+            const hasBlob = pendingMediaBlob !== undefined ? !!pendingMediaBlob : !!displaySettingsMediaBlob;
+            const imgStatus = document.getElementById('bg-media-status');
+            const vidStatus = document.getElementById('bg-media-status-video');
+            if (displaySettings.bgMediaType === 'image') {
+                imgStatus.innerText = hasBlob ? 'Image chargée' : 'Aucune image';
+            } else {
+                imgStatus.innerText = 'Aucune image';
+            }
+            if (displaySettings.bgMediaType === 'video') {
+                vidStatus.innerText = hasBlob ? 'Vidéo chargée' : 'Aucune vidéo';
+            } else {
+                vidStatus.innerText = 'Aucune vidéo';
+            }
+        }
+
+        function setBgTypeTab(type) {
+            displaySettings.bgMediaType = type;
+            document.querySelectorAll('.bg-type-btn').forEach(btn => {
+                const active = btn.dataset.type === type;
+                btn.classList.toggle('bg-violet-500', active);
+                btn.classList.toggle('text-slate-900', active);
+                btn.classList.toggle('bg-slate-700', !active);
+                btn.classList.toggle('text-slate-300', !active);
+            });
+            document.getElementById('bg-image-controls').classList.toggle('hidden', type !== 'image');
+            document.getElementById('bg-video-controls').classList.toggle('hidden', type !== 'video');
+            updateMediaStatusLabels();
+        }
+
+        function updateSettingsFromForm() {
+            const hex = document.getElementById('set-bg-color').value;
+            const opacity = document.getElementById('set-bg-opacity').value;
+            document.getElementById('set-bg-opacity-val').innerText = opacity + '%';
+            displaySettings.bgColor = hexToRgba(hex, opacity);
+            displaySettings.accentColor = document.getElementById('set-accent-color').value;
+            displaySettings.textColor = document.getElementById('set-text-color').value;
+            displaySettings.fontFamily = document.getElementById('set-font-family').value;
+            displaySettings.shapeRadius = Number(document.getElementById('set-shape').value);
+            displaySettings.bgBlur = Number(document.getElementById('set-bg-blur').value);
+        }
+
+        function handleBgMediaUpload(e, type) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (type === 'video' && file.size > 40 * 1024 * 1024) {
+                showToast("Vidéo assez lourde (>40 Mo) : ça reste possible mais le chargement peut être plus lent.");
+            }
+            pendingMediaBlob = file; // Blob en mémoire, appliqué à l'Appliquer
+            displaySettings.bgMediaType = type;
+            setBgTypeTab(type);
+            updateMediaStatusLabels();
+            e.target.value = '';
+        }
+
+        function removeBgMedia() {
+            pendingMediaBlob = null;
+            setBgTypeTab('none');
+            updateMediaStatusLabels();
+        }
+
+        function openSettingsPanel() {
+            populateSettingsForm();
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsPanel() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function refreshOnAirDisplay() {
+            if (onAir) {
+                triggerDisplay(onAir.songId, onAir.sectionIds);
+            }
+        }
+
+        function updateBgSummary() {
+            const el = document.getElementById('bg-summary');
+            if (displaySettings.bgMediaType === 'image' && displaySettingsMediaBlob) {
+                el.innerText = 'Fond : image personnalisée (floutée en arrière-plan).';
+            } else if (displaySettings.bgMediaType === 'video' && displaySettingsMediaBlob) {
+                el.innerText = 'Fond : vidéo en boucle (muette).';
+            } else {
+                el.innerText = 'Aucun fond image/vidéo — couleur unie.';
+            }
+        }
+
+        async function applySettings() {
+            updateSettingsFromForm();
+
+            if (pendingMediaBlob === null) {
+                displaySettingsMediaBlob = null;
+                displaySettings.bgMediaType = 'none';
+            } else if (pendingMediaBlob) {
+                displaySettingsMediaBlob = pendingMediaBlob;
+            }
+            pendingMediaBlob = undefined;
+            // Le fond (image/vidéo) a potentiellement changé : on incrémente sa version pour
+            // que le rendu OBS le recharge au besoin (transition fluide sinon).
+            bgVersionCounter++;
+
+            saveDisplaySettingsJSON();
+            try {
+                await idbPutMedia({ id: 'background', blob: displaySettingsMediaBlob, mediaType: displaySettings.bgMediaType });
+                // Portabilité : sauvegarde le fond (image/vidéo) vers le dossier du projet.
+                if (window.OpenStore) {
+                    OpenStore.saveHeavy('lyrics', 'background', {
+                        blob: displaySettingsMediaBlob,
+                        mediaType: displaySettings.bgMediaType
+                    }).catch(() => { /* silencieux */ });
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Le fond média n'a pas pu être sauvegardé durablement (il reste actif pour cette session).");
+            }
+            updateBgSummary();
+            closeSettingsPanel();
+            refreshOnAirDisplay();
+            showToast('Réglages du rendu appliqués.');
+        }
+
+        function initSettingsPanel() {
+            document.getElementById('btn-open-settings').addEventListener('click', openSettingsPanel);
+            document.getElementById('btn-close-settings').addEventListener('click', closeSettingsPanel);
+            document.getElementById('settings-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'settings-modal') closeSettingsPanel();
+            });
+
+            ['set-bg-color', 'set-bg-opacity', 'set-accent-color', 'set-text-color', 'set-font-family', 'set-shape', 'set-bg-blur'].forEach(id => {
+                const el = document.getElementById(id);
+                const evt = (el.type === 'color' || el.type === 'range' || el.tagName === 'SELECT') ? 'input' : 'change';
+                el.addEventListener('input', updateSettingsFromForm);
+                el.addEventListener('change', updateSettingsFromForm);
+            });
+
+            document.querySelectorAll('.bg-type-btn').forEach(btn => {
+                btn.addEventListener('click', () => setBgTypeTab(btn.dataset.type));
+            });
+
+            document.getElementById('set-bg-image').addEventListener('change', (e) => handleBgMediaUpload(e, 'image'));
+            document.getElementById('set-bg-video').addEventListener('change', (e) => handleBgMediaUpload(e, 'video'));
+            document.getElementById('btn-remove-bg-media').addEventListener('click', removeBgMedia);
+
+            document.getElementById('btn-apply-settings').addEventListener('click', applySettings);
+
+            document.getElementById('btn-reset-settings').addEventListener('click', async () => {
+                displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
+                displaySettingsMediaBlob = null;
+                pendingMediaBlob = undefined;
+                bgVersionCounter++;
+                saveDisplaySettingsJSON();
+                try { await idbPutMedia({ id: 'background', blob: null, mediaType: 'none' }); } catch (e) { /* silencieux */ }
+                populateSettingsForm();
+                updateBgSummary();
+                refreshOnAirDisplay();
+                showToast('Réglages du rendu réinitialisés.');
+            });
+        }
+
+        // ============================================================
+        // RemoteChannel — pont réseau optionnel au-dessus de BroadcastChannel
+        // ============================================================
+        // BroadcastChannel ne fonctionne qu'entre pages ouvertes dans le MÊME processus
+        // navigateur (ex: un Dock OBS + une Source Navigateur OBS, car tous deux tournent
+        // dans le moteur Chromium interne à OBS). Il NE fonctionne PAS entre un navigateur
+        // externe (Chrome, Edge...) et OBS, ni entre deux PC différents.
+        //
+        // RemoteChannel garde BroadcastChannel comme transport local (gratuit, zéro
+        // config, marche toujours), et ajoute EN PLUS une connexion WebSocket vers un petit
+        // serveur relais local (sync-relay-server.js) quand la page est chargée depuis ce
+        // serveur (via une adresse http://..., pas en ouvrant le fichier directement). Cela
+        // permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
+        // sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
+        // fonctionnement de l'application.
+        
+
+        
+
+        // Canal de communication avec OBS (local + relais réseau)
+        const bc = new RemoteChannel('obs_lyrics_channel');
+        bc.onStatusChange(updateSyncBadge);
+        // Canal partagé d'exclusion mutuelle avec la Bible : quand les Paroles s'affichent,
+        // elles le signalent pour que l'autre outil se coupe automatiquement.
+        const mutex = new RemoteChannel('obs_mutex_channel');
+        // Si la Bible s'affiche, on coupe les Paroles. Robuste en mode contrôleur ET OBS.
+        mutex.onmessage = (ev) => {
+            if (ev.data && ev.data.action === 'show' && ev.data.source === 'bible') {
+                if (isObsMode) {
+                    const c = document.getElementById('obs-container');
+                    if (c) c.style.opacity = '0';
+                } else {
+                    clearOBS();
+                }
+            }
+        };
+
+        let lastRenderCtx = null;
+
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                if (lastRenderCtx) {
+                    autoFitDisplay(lastRenderCtx.mode, lastRenderCtx.card, lastRenderCtx.contentArea);
+                }
+            });
+        }
+
+        // --- DÉTECTION DU MODE (OBS vs Controller) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const isObsMode = urlParams.get('obs') === 'true';
+        // Lien de sortie "à mode fixe" : si ?lockMode=... est présent dans l'URL, cette
+        // source OBS ignore le style choisi dans le contrôleur et reste toujours affichée
+        // dans ce mode précis. Permet d'avoir plusieurs Sources Navigateur OBS (une par
+        // scène) affichant le même contenu mais chacune dans un mode différent, en plus
+        // du lien général qui suit le mode en direct.
+        const lockedMode = urlParams.get('lockMode');
+
+        if (isObsMode) {
+            document.body.classList.add('mode-obs');
+            document.getElementById('obs-mode-ui').classList.remove('hidden');
+            initObsMode();
+        } else {
+            document.getElementById('controller-mode-ui').classList.remove('hidden');
+            initControllerMode();
+        }
+
+        function initObsMode() {
+            const container = document.getElementById('obs-container');
+            const card = document.getElementById('obs-card-element');
+            const contentArea = document.getElementById('obs-content-area');
+            const bgLayer = document.getElementById('obs-bg-layer');
+
+            bc.onmessage = (event) => {
+                const data = event.data;
+                if (data.action === 'hide') {
+                    container.style.opacity = '0';
+                    return;
+                }
+                if (data.action === 'show') {
+                    const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
+                    renderDisplay(cfg, container, card, contentArea, bgLayer);
+                }
+            };
+        }
+
+        // ============================================================
+        // RENDU PARTAGÉ (OBS + Live Preview) — avec anti-débordement auto
+        // ============================================================
+        // Les paroles sont saisies avec de vrais retours à la ligne : on découpe donc simplement
+        // sur les sauts de ligne (contrairement aux versets bibliques, pas besoin de couper à la ponctuation).
+        function splitTextIntoLines(text) {
+            const lines = String(text).split(/\n+/).map(l => l.trim()).filter(Boolean);
+            return lines.length ? lines : [text];
+        }
+
+        // Ligne discrète "titre — artiste · section", affichée en bas du cadre, bien plus petite
+        // et bien moins contrastée que le texte des paroles, qui reste l'élément principal.
+        function buildMetaLine(config, fontSize) {
+            const parts = [config.reference];
+            if (config.sectionLabel) parts.push(config.sectionLabel);
+            return `<div class="lyric-meta mt-3" style="font-size:${fontSize}px;">${parts.join(' <span class="meta-dot">&middot;</span> ')}</div>`;
+        }
+
+        // Méta épinglée tout en bas du bandeau (modes bas centré / bas droite) : très petite,
+        // très discrète, pour ne pas entrer en concurrence avec les paroles.
+        function buildMetaFooter(config) {
+            const parts = [config.reference];
+            if (config.sectionLabel) parts.push(config.sectionLabel);
+            return `<div class="lyric-meta lyric-meta-bottom">${parts.join(' <span class="meta-dot">&middot;</span> ')}</div>`;
+        }
+
+        const objectUrlTracker = { obs: null, preview: null };
+        // Mémorise la version du fond actuellement affichée par contexte. Tant qu'elle ne
+        // change pas, on ne touche pas au fond (image/vidéo) : seule la partie texte est
+        // mise à jour, pour une transition fluide entre sections d'un même chant.
+        const currentBgVersion = { obs: null, preview: null };
+
+        // Boucle vidéo garantie : l'attribut HTML "loop" suffit dans la grande majorité des cas,
+        // mais certaines sources navigateur OBS (ou politiques d'autoplay) peuvent l'ignorer
+        // silencieusement. On sécurise donc la boucle en JS : relance systématique à la fin
+        // ("ended"), et reprise automatique si la lecture est interrompue par erreur ("pause"
+        // inattendue, tentative d'autoplay bloquée, etc.) tant que cette vidéo est toujours
+        // affichée à l'écran (isCurrent le vérifie via l'URL de l'objet, propre à ce rendu).
+        function setupInfiniteLoopVideo(videoEl, url) {
+            if (!videoEl) return;
+            videoEl.loop = true;
+            videoEl.muted = true;
+            videoEl.defaultMuted = true;
+            videoEl.playsInline = true;
+
+            const isCurrent = () => videoEl.isConnected && videoEl.currentSrc && videoEl.currentSrc.indexOf(url.split('#')[0]) !== -1;
+
+            const tryPlay = () => {
+                if (!isCurrent()) return;
+                const p = videoEl.play();
+                if (p && p.catch) p.catch(() => { /* autoplay bloqué : on retentera au prochain événement */ });
+            };
+
+            videoEl.addEventListener('ended', () => {
+                if (!isCurrent()) return;
+                videoEl.currentTime = 0;
+                tryPlay();
+            });
+            videoEl.addEventListener('pause', () => {
+                // Une pause inattendue (hors fin de lecture) relance la vidéo pour ne jamais
+                // rester figée à l'écran.
+                if (!isCurrent()) return;
+                setTimeout(tryPlay, 50);
+            });
+            videoEl.addEventListener('error', () => {
+                if (!isCurrent()) return;
+                showToast("La vidéo de fond n'a pas pu être lue.");
+            });
+            videoEl.addEventListener('loadedmetadata', tryPlay);
+            videoEl.addEventListener('canplay', tryPlay);
+
+            videoEl.src = url;
+            videoEl.load();
+            tryPlay();
+        }
+
+        const crossfadeTimers = { obs: null, preview: null };
+
+        // Construit le cadre et son contenu. Si le cadre est déjà affiché DANS LE MÊME MODE
+        // (donc à la même position/forme à l'écran), on évite de rejouer l'animation d'apparition
+        // du cadre entier — seul le texte fait un fondu enchaîné, pour que la transition entre deux
+        // sections/chants se ressente uniquement comme un changement de texte, pas comme un nouveau
+        // cadre qui apparaît. L'animation complète du cadre ne se joue que lors du tout premier
+        // affichage, ou après un changement de style OBS (mode différent).
+        function renderDisplay(config, container, card, contentArea, bgLayer, layerKey) {
+            const key = layerKey || 'preview';
+            const wasVisible = container.style.opacity === '1';
+            const sameContext = wasVisible && container.dataset.currentMode === config.mode;
+
+            container.style.opacity = '1';
+            container.dataset.currentMode = config.mode;
+
+            card.style.setProperty('--bg-color', config.bgColor || 'rgba(15, 23, 42, 0.92)');
+            card.style.setProperty('--accent-color', config.accentColor || '#8b5cf6');
+            card.style.setProperty('--text-color', config.textColor || '#ffffff');
+            card.style.setProperty('--shape-radius', (config.shapeRadius != null ? config.shapeRadius : 20) + 'px');
+            card.style.setProperty('--bg-blur', (config.bgBlur != null ? config.bgBlur : 18) + 'px');
+
+            // Fond média (image ou vidéo). On ne le recrée QUE s'il a changé (nouvelle version),
+            // sinon on le garde intact : ainsi, changer de section dans un chant ne recharge pas
+            // le fond — seule la partie texte est mise à jour (transition fluide).
+            let hasMedia = false;
+            const bgVersion = config.bgVersion || '';
+            if (currentBgVersion[key] !== bgVersion) {
+                if (objectUrlTracker[key]) {
+                    URL.revokeObjectURL(objectUrlTracker[key]);
+                    objectUrlTracker[key] = null;
+                }
+                bgLayer.innerHTML = '';
+                if (config.bgMediaType === 'image' && config.bgMediaBlob) {
+                    const url = URL.createObjectURL(config.bgMediaBlob);
+                    objectUrlTracker[key] = url;
+                    bgLayer.innerHTML = `<img src="${url}"><div class="bg-tint"></div>`;
+                    hasMedia = true;
+                } else if (config.bgMediaType === 'video' && config.bgMediaBlob) {
+                    const url = URL.createObjectURL(config.bgMediaBlob);
+                    objectUrlTracker[key] = url;
+                    bgLayer.innerHTML = `<video autoplay loop muted playsinline></video><div class="bg-tint"></div>`;
+                    const videoEl = bgLayer.querySelector('video');
+                    setupInfiniteLoopVideo(videoEl, url);
+                    hasMedia = true;
+                }
+                currentBgVersion[key] = bgVersion;
+            } else {
+                // Fond déjà en place et inchangé : on sait s'il y a un média selon la version stockée.
+                hasMedia = currentBgVersion[key] !== '';
+            }
+
+            const fontFam = config.fontFamily || 'Poppins';
+            const wordCount = config.text.split(/\s+/).filter(Boolean).length;
+
+            const lines = splitTextIntoLines(config.text);
+            const textHtml = lines.map(l => `<div class="lyric-text lyric-line" style="font-family: '${fontFam}', sans-serif;">${l}</div>`).join('');
+
+            let html = '';
+            let modeClass = '';
+
+            if (config.mode === 'scrolling') {
+                modeClass = 'obs-scrolling';
+                const speed = Math.max(15, Math.min(70, wordCount * 0.55));
+                card.style.setProperty('--speed', speed + 's');
+                const flatText = lines.join(' — ');
+                html = `
+                    <div class="ticker-wrapper" style="font-family: '${fontFam}', sans-serif; font-size: 40px;">
+                        <div class="ticker-content">
+                            <span class="lyric-ref mr-6" style="font-size: 36px;">🎵 ${config.reference} <span class="section-badge" style="font-size: 24px; padding: 4px 12px;">${config.sectionLabel}</span> :</span>
+                            <span class="lyric-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">${flatText}</span>
+                        </div>
+                        <div class="ticker-content">
+                            <span class="lyric-ref mr-6" style="font-size: 36px;">🎵 ${config.reference} <span class="section-badge" style="font-size: 24px; padding: 4px 12px;">${config.sectionLabel}</span> :</span>
+                            <span class="lyric-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">${flatText}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (config.mode === 'bottom') {
+                modeClass = 'obs-bottom';
+                // Les paroles sont centrées dans le bandeau ; la méta est épinglée tout en bas,
+                // centrée et très petite (buildMetaFooter), pour ne pas gêner la lecture.
+                html = `
+                    <div class="w-full h-full flex flex-col items-center justify-center">
+                        <div class="w-full flex flex-col items-center justify-center">${textHtml}</div>
+                    </div>
+                    ${buildMetaFooter(config)}
+                `;
+            } else if (config.mode === 'bottom-right') {
+                modeClass = 'obs-bottom-right';
+                html = `
+                    <div class="w-full h-full flex flex-col items-center justify-center">
+                        <div class="w-full flex flex-col items-center justify-center">${textHtml}</div>
+                    </div>
+                    ${buildMetaFooter(config)}
+                `;
+            } else if (config.mode === 'screen80') {
+                modeClass = 'obs-screen80';
+                html = `
+                    <div class="w-full h-full flex flex-col items-center justify-center">
+                        <div class="flex-1 w-full flex flex-col items-center justify-center">${textHtml}</div>
+                        ${buildMetaLine(config, 22)}
+                    </div>
+                `;
+            } else { // full
+                modeClass = 'obs-full';
+                html = `
+                    <div class="w-full h-full flex flex-col items-center justify-center">
+                        <div class="flex-1 w-full flex flex-col items-center justify-center">${textHtml}</div>
+                        ${buildMetaLine(config, 26)}
+                    </div>
+                `;
+            }
+
+            if (hasMedia) modeClass += ' has-bg-media';
+            // L'animation d'apparition du cadre (fadeInScale) ne rejoue que si le cadre n'était pas
+            // déjà visible dans ce même mode — sinon le cadre reste stable et seul le texte transite.
+            if (!sameContext && config.mode !== 'scrolling') modeClass += ' anim-show';
+
+            card.className = modeClass;
+
+            const swapContent = () => {
+                contentArea.innerHTML = html;
+                autoFitDisplay(config.mode, card, contentArea);
+                contentArea.style.opacity = '1';
+                lastRenderCtx = { mode: config.mode, card, contentArea };
+            };
+
+            if (crossfadeTimers[key]) {
+                clearTimeout(crossfadeTimers[key]);
+                crossfadeTimers[key] = null;
+            }
+
+            if (sameContext) {
+                // Fondu enchaîné : le texte actuel disparaît doucement, puis le nouveau apparaît.
+                contentArea.style.opacity = '0';
+                crossfadeTimers[key] = setTimeout(swapContent, 80); // rendu plus réactif
+            } else {
+                // Premier affichage (ou changement de style OBS) : contenu affiché directement,
+                // c'est le cadre entier qui prend en charge la transition d'entrée.
+                contentArea.style.opacity = '1';
+                swapContent();
+            }
+        }
+
+        function autoFitDisplay(mode, card, contentArea) {
+            contentArea.style.transform = '';
+            contentArea.style.transformOrigin = 'center center';
+
+            const textEls = contentArea.querySelectorAll('.lyric-text');
+            if (!textEls.length) return;
+
+            const limits = {
+                'full':          { min: 26, max: 110 },
+                'screen80':      { min: 22, max: 95  },
+                'bottom':        { min: 14, max: 60  },
+                'bottom-right':  { min: 14, max: 60  },
+            };
+            const cfg = limits[mode];
+            if (!cfg) return;
+
+            // Mesure dans le conteneur de texte (contentArea) plutôt que la carte, pour ne pas
+            // être faussé par les couches de fond (qui peuvent gonfler le scrollHeight de la carte
+            // et faire rétrécir le texte à tort).
+            const usableWidth = contentArea.clientWidth * 0.8;
+            const usableHeight = contentArea.clientHeight;
+
+            const totalChars = Array.from(textEls).reduce((sum, el) => sum + el.textContent.length, 0) || 1;
+            const area = Math.max(usableWidth, 1) * Math.max(usableHeight, 1);
+
+            let estimate = Math.sqrt(area / (totalChars * 6.2));
+            let fontSize = Math.max(cfg.min, Math.min(cfg.max, Math.round(estimate)));
+            textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+
+            let guard = 0;
+            while (contentArea.scrollHeight > usableHeight && fontSize > cfg.min && guard < 100) {
+                fontSize -= 1;
+                textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+                guard++;
+            }
+
+            guard = 0;
+            while (fontSize < cfg.max && guard < 100) {
+                const next = fontSize + 1;
+                textEls.forEach(el => el.style.fontSize = next + 'px');
+                if (contentArea.scrollHeight > usableHeight) {
+                    textEls.forEach(el => el.style.fontSize = fontSize + 'px');
+                    break;
+                }
+                fontSize = next;
+                guard++;
+            }
+
+            if (contentArea.scrollHeight > usableHeight) {
+                const scale = Math.max(0.3, usableHeight / contentArea.scrollHeight);
+                contentArea.style.transform = `scale(${scale})`;
+            }
+        }
+
+        // ============================================================
+        // STOCKAGE PERSISTANT (IndexedDB) — chants + fond média
+        // ============================================================
+        const IDB_NAME = 'lyricsProStorage';
+        const IDB_SONGS_STORE = 'songs';
+        const IDB_MEDIA_STORE = 'media';
+        let idbAvailable = true;
+
+        function openLyricsDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) { reject(new Error('IndexedDB non supporté par ce navigateur')); return; }
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_SONGS_STORE)) {
+                        db.createObjectStore(IDB_SONGS_STORE, { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains(IDB_MEDIA_STORE)) {
+                        db.createObjectStore(IDB_MEDIA_STORE, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function idbGetAllSongs() {
+            const db = await openLyricsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_SONGS_STORE, 'readonly');
+                const req = tx.objectStore(IDB_SONGS_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function idbPutSong(song) {
+            const db = await openLyricsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_SONGS_STORE, 'readwrite');
+                tx.objectStore(IDB_SONGS_STORE).put(song);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function idbDeleteSong(id) {
+            const db = await openLyricsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_SONGS_STORE, 'readwrite');
+                tx.objectStore(IDB_SONGS_STORE).delete(id);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // Sauvegarde la bibliothèque de chants vers le dossier du projet (portabilité).
+        // Les chants sont du texte : on les envoie en arrière-plan vers /data/lyrics/songs.json.
+        function syncSongsToServer() {
+            if (window.OpenStore) {
+                try { OpenStore.saveHeavy('lyrics', 'songs', songs); } catch (e) { /* silencieux */ }
+            }
+        }
+
+        async function idbPutMedia(record) {
+            const db = await openLyricsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_MEDIA_STORE, 'readwrite');
+                tx.objectStore(IDB_MEDIA_STORE).put(record);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function idbGetMedia(id) {
+            const db = await openLyricsDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_MEDIA_STORE, 'readonly');
+                const req = tx.objectStore(IDB_MEDIA_STORE).get(id);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // ============================================================
+        // INITIALISATION DU CONTRÔLEUR
+        // ============================================================
+        async function initControllerMode() {
+            loadDisplaySettingsJSON();
+            initSettingsPanel();
+
+            try {
+                const mediaRecord = await idbGetMedia('background');
+                if (mediaRecord && mediaRecord.blob) {
+                    displaySettingsMediaBlob = mediaRecord.blob;
+                    displaySettings.bgMediaType = mediaRecord.mediaType || displaySettings.bgMediaType;
+                } else {
+                    displaySettings.bgMediaType = 'none';
+                }
+            } catch (e) {
+                idbAvailable = false;
+                showToast("Stockage persistant indisponible : les chants et le fond média ne seront pas conservés après fermeture.");
+            }
+            // Portabilité : si aucun fond en local, on le restaure depuis le dossier du projet.
+            if (window.OpenStore && !displaySettingsMediaBlob) {
+                try {
+                    const bg = await OpenStore.loadHeavy('lyrics', 'background');
+                    if (bg && bg.blob) {
+                        displaySettingsMediaBlob = bg.blob;
+                        displaySettings.bgMediaType = bg.mediaType || displaySettings.bgMediaType;
+                        try { await idbPutMedia({ id: 'background', blob: bg.blob, mediaType: displaySettings.bgMediaType }); } catch (e) {}
+                    }
+                } catch (e) { /* silencieux */ }
+            }
+            updateBgSummary();
+
+            try {
+                songs = await idbGetAllSongs();
+            } catch (e) {
+                songs = [];
+            }
+            songs.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+
+            renderSongsList();
+            updateSongsInfo();
+            restorePosition();
+            initObsLinksPanel();
+
+            // Portabilité : si la bibliothèque locale est vide (nouveau PC / navigateur),
+            // on restaure les chants depuis le dossier du projet (data/lyrics/songs.json).
+            if (window.OpenStore && songs.length === 0) {
+                OpenStore.loadHeavy('lyrics', 'songs').then((serverSongs) => {
+                    if (serverSongs && Array.isArray(serverSongs) && serverSongs.length > 0) {
+                        songs = serverSongs;
+                        songs.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+                        // On réécrit dans IndexedDB pour la session
+                        serverSongs.forEach(s => { try { idbPutSong(s); } catch (e) {} });
+                        renderSongsList();
+                        updateSongsInfo();
+                        restorePosition();
+                    }
+                }).catch(() => { /* silencieux */ });
+            }
+
+            // Synchronise depuis le serveur (axe A) : si le stockage local est vide (premier
+            // passage sur ce PC), on récupère réglages d'affichage et dernier chant sauvegardés ailleurs.
+            if (window.OpenStore) {
+                Promise.all([
+                    OpenStore.pullIfLocalEmpty('lyrics', 'displaySettings', o => o && o.bgColor),
+                    OpenStore.pullIfLocalEmpty('lyrics', 'lastSongId', v => !!v),
+                ]).then(([settingsChanged]) => {
+                    if (settingsChanged) loadDisplaySettingsJSON();
+                }).catch(() => { /* silencieux */ });
+            }
+
+            document.getElementById('btn-new-song').addEventListener('click', () => openSongEditor(null));
+            document.getElementById('song-search').addEventListener('input', handleSongSearch);
+            document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+            document.getElementById('btn-multiselect').addEventListener('click', toggleSelectionMode);
+            document.getElementById('btn-edit-song').addEventListener('click', () => { if (currentSongId) openSongEditor(currentSongId); });
+            document.getElementById('smart-input').addEventListener('input', handleSmartInput);
+            document.getElementById('smart-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') confirmSmartInput();
+            });
+
+            initSongEditor();
+        }
+
+        function updateSongsInfo() {
+            document.getElementById('songs-info').innerText = `${songs.length} chant(s) enregistré(s)`;
+        }
+
+        function savePosition() {
+            try {
+                localStorage.setItem('lyricsLastSongId', currentSongId || '');
+            } catch (e) { /* silencieux */ }
+            // Synchronise aussi vers le serveur (axe A) pour que le dernier chant "suive" l'utilisateur.
+            if (window.OpenStore) { try { OpenStore.set('lyrics', 'lastSongId', currentSongId || ''); } catch (e) { /* silencieux */ } }
+        }
+
+        function restorePosition() {
+            const id = localStorage.getItem('lyricsLastSongId');
+            if (id && songs.find(s => s.id === id)) {
+                selectSong(id);
+            }
+        }
+
+        // ============================================================
+        // LISTE DES CHANTS
+        // ============================================================
+        function renderSongsList(filter) {
+            const container = document.getElementById('songs-list');
+            container.innerHTML = '';
+
+            let list = songs;
+            if (filter) {
+                const q = filter.toLowerCase();
+                list = songs.filter(s => s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q));
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 italic p-4 text-center">${songs.length === 0 ? "Aucun chant. Cliquez sur « Nouveau chant » pour commencer." : "Aucun résultat."}</p>`;
+                return;
+            }
+
+            list.forEach(song => {
+                const div = document.createElement('div');
+                const isActive = song.id === currentSongId;
+                div.className = `song-item p-3 rounded-lg text-sm text-slate-300 font-medium mb-1 hover:bg-slate-800 flex justify-between items-center gap-2 ${isActive ? 'bg-violet-500/20 border-l-2 border-violet-500 text-violet-300' : ''}`;
+
+                div.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="truncate">${escapeHtml(song.title)}</div>
+                        ${song.artist ? `<div class="text-xs text-slate-500 truncate">${escapeHtml(song.artist)}</div>` : ''}
+                    </div>
+                    <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 shrink-0">${song.sections.length} sect.</span>
+                `;
+
+                div.onclick = () => selectSong(song.id);
+                container.appendChild(div);
+            });
+        }
+
+        function handleSongSearch(e) {
+            renderSongsList(e.target.value.trim());
+        }
+
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        // NAVIGATION : SECTIONS D'UN CHANT
+        // ============================================================
+        function selectSong(songId) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+
+            currentSongId = songId;
+            selectionMode = false;
+            selectedSectionIds.clear();
+            const msBtn = document.getElementById('btn-multiselect');
+            msBtn.classList.remove('bg-violet-500', 'text-slate-900');
+            msBtn.innerText = 'Sélection multiple';
+
+            document.getElementById('song-header').classList.remove('hidden');
+            document.getElementById('active-song-title').innerText = song.title + (song.artist ? ' — ' + song.artist : '');
+            document.getElementById('active-song-stats').innerText = `${song.sections.length} section(s)`;
+
+            document.getElementById('smart-input').value = '';
+
+            renderSongsList();
+            renderSections(song);
+            savePosition();
+        }
+
+        function renderSections(song) {
+            const container = document.getElementById('sections-list');
+            container.innerHTML = '';
+
+            if (song.sections.length === 0) {
+                container.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-500"><p>Ce chant n'a pas encore de section.</p><p class="text-sm mt-2">Cliquez sur « Éditer » pour en ajouter.</p></div>`;
+                return;
+            }
+
+            song.sections.forEach((sec, index) => {
+                const isChecked = selectedSectionIds.has(sec.id);
+
+                const div = document.createElement('div');
+                div.className = `section-item p-4 mb-2 rounded-lg border border-slate-700/50 relative group bg-slate-800/40 ${isChecked ? 'active' : ''}`;
+                div.id = `section-item-${sec.id}`;
+
+                const leftMarker = selectionMode
+                    ? `<input type="checkbox" ${isChecked ? 'checked' : ''} class="w-5 h-5 mt-1 accent-violet-500 shrink-0 pointer-events-none">`
+                    : `<div class="w-8 h-8 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-violet-400 shrink-0 select-none text-sm">${index + 1}</div>`;
+
+                div.innerHTML = `
+                    <div class="flex gap-4">
+                        ${leftMarker}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-bold text-violet-400 uppercase tracking-wider mb-1">${escapeHtml(sec.label)}</div>
+                            <div class="text-slate-200 leading-relaxed text-sm line-clamp-2" style="overflow-wrap:break-word; white-space: pre-line;">${escapeHtml(sec.text)}</div>
+                        </div>
+                    </div>
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="afficher-btn p-2 rounded bg-violet-500 text-slate-900 font-bold hover:bg-violet-400 flex items-center gap-1 text-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            Afficher
+                        </button>
+                    </div>
+                `;
+
+                div.onclick = (e) => {
+                    if (selectionMode) {
+                        toggleSectionSelection(sec.id);
+                        return;
+                    }
+                    if (e.target.closest('button') && !e.target.closest('.afficher-btn')) return;
+                    triggerDisplay(currentSongId, [sec.id]);
+
+                    document.querySelectorAll('.section-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                };
+
+                container.appendChild(div);
+            });
+
+            updateSelectionBar();
+        }
+
+        // ============================================================
+        // SÉLECTION MULTIPLE (afficher plusieurs sections à la fois)
+        // ============================================================
+        function toggleSelectionMode() {
+            selectionMode = !selectionMode;
+            selectedSectionIds.clear();
+
+            const btn = document.getElementById('btn-multiselect');
+            btn.classList.toggle('bg-violet-500', selectionMode);
+            btn.classList.toggle('text-slate-900', selectionMode);
+            btn.classList.toggle('bg-slate-700', !selectionMode);
+            btn.classList.toggle('text-slate-300', !selectionMode);
+            btn.innerText = selectionMode ? 'Annuler la sélection' : 'Sélection multiple';
+
+            const song = songs.find(s => s.id === currentSongId);
+            if (song) renderSections(song);
+            updateSelectionBar();
+        }
+
+        function toggleSectionSelection(id) {
+            if (selectedSectionIds.has(id)) selectedSectionIds.delete(id);
+            else selectedSectionIds.add(id);
+
+            const item = document.getElementById(`section-item-${id}`);
+            if (item) {
+                item.classList.toggle('active', selectedSectionIds.has(id));
+                const cb = item.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = selectedSectionIds.has(id);
+            }
+            updateSelectionBar();
+        }
+
+        function updateSelectionBar() {
+            const bar = document.getElementById('selection-bar');
+            if (!bar) return;
+            if (selectionMode && selectedSectionIds.size > 0) {
+                bar.classList.remove('hidden');
+                document.getElementById('selection-count').innerText = selectedSectionIds.size;
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function displaySelectedSections() {
+            if (selectedSectionIds.size === 0) return;
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+            // Conserve l'ordre du chant plutôt que l'ordre de sélection
+            const orderedIds = song.sections.filter(sec => selectedSectionIds.has(sec.id)).map(sec => sec.id);
+            triggerDisplay(currentSongId, orderedIds);
+        }
+
+        // ============================================================
+        // SAISIE RAPIDE (numéro de section)
+        // ============================================================
+        function handleSmartInput(e) {
+            const val = e.target.value.trim();
+            document.querySelectorAll('.section-item').forEach(el => el.classList.remove('border-violet-500', 'border-2'));
+            if (!val || isNaN(val) || !currentSongId) return;
+
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+            const sec = song.sections[Number(val) - 1];
+            if (sec) {
+                const el = document.getElementById(`section-item-${sec.id}`);
+                if (el) {
+                    el.classList.add('border-violet-500', 'border-2');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        function confirmSmartInput() {
+            const val = document.getElementById('smart-input').value.trim();
+            if (!val || isNaN(val) || !currentSongId) return;
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+            const sec = song.sections[Number(val) - 1];
+            if (!sec) return;
+            triggerDisplay(currentSongId, [sec.id]);
+            document.getElementById('smart-input').value = '';
+        }
+
+        // ============================================================
+        // DIFFUSION VERS OBS
+        // ============================================================
+        function triggerDisplay(songId, sectionIds) {
+            if (!Array.isArray(sectionIds)) sectionIds = [sectionIds];
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+
+            const secs = sectionIds.map(id => song.sections.find(s => s.id === id)).filter(Boolean);
+            if (secs.length === 0) {
+                showToast('Section introuvable.');
+                return;
+            }
+
+            const sectionLabel = secs.length > 1 ? secs.map(s => s.label).join(' + ') : secs[0].label;
+            const combinedText = secs.map(s => s.text).join('\n\n');
+
+            const config = {
+                reference: song.title + (song.artist ? ' — ' + song.artist : ''),
+                sectionLabel,
+                text: combinedText,
+                mode: document.getElementById('obs-mode-select').value,
+                bgColor: displaySettings.bgColor,
+                accentColor: displaySettings.accentColor,
+                textColor: displaySettings.textColor,
+                fontFamily: displaySettings.fontFamily,
+                shapeRadius: displaySettings.shapeRadius,
+                bgBlur: displaySettings.bgBlur,
+                bgMediaType: displaySettings.bgMediaType,
+                bgMediaBlob: displaySettings.bgMediaType !== 'none' ? displaySettingsMediaBlob : null,
+                bgVersion: bgVersionCounter
+            };
+
+            onAir = { songId, sectionIds: sectionIds.slice() };
+
+            // 1. Envoyer à OBS via BroadcastChannel (le Blob du fond est cloné vers l'autre onglet)
+            bc.postMessage({ action: 'show', config });
+            // Exclusion mutuelle : signaler à la Bible de se couper.
+            mutex.postMessage({ action: 'show', source: 'lyrics' });
+
+            // 2. Mettre à jour la Preview Locale
+            const pContainer = document.getElementById('preview-container');
+            const pCard = document.getElementById('preview-card');
+            const pContent = document.getElementById('preview-content');
+            const pBgLayer = document.getElementById('preview-bg-layer');
+
+            pContainer.style.opacity = '1';
+            const wrapperWidth = document.getElementById('preview-wrapper').offsetWidth;
+            pContainer.style.width = '1920px';
+            pContainer.style.height = '1080px';
+            pContainer.style.transform = `scale(${wrapperWidth / 1920})`;
+
+            renderDisplay(config, pContainer, pCard, pContent, pBgLayer, 'preview');
+        }
+
+        function clearOBS() {
+            bc.postMessage({ action: 'hide' });
+            document.getElementById('preview-container').style.opacity = '0';
+            onAir = null;
+        }
+
+        // Relance la dernière chose affichée à l'écran (bouton "Relancer" du Studio Unifié).
+        function relaunchLast() {
+            if (onAir) {
+                triggerDisplay(onAir.songId, onAir.sectionIds);
+            } else if (selectedSectionIds.size > 0) {
+                displaySelectedSections();
+            }
+        }
+
+        // ============================================================
+        // ÉDITEUR DE CHANT
+        // ============================================================
+        function initSongEditor() {
+            document.getElementById('btn-close-editor').addEventListener('click', closeSongEditor);
+            document.getElementById('btn-cancel-editor').addEventListener('click', closeSongEditor);
+            document.getElementById('song-editor-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'song-editor-modal') closeSongEditor();
+            });
+            document.getElementById('btn-parse-paste').addEventListener('click', handleParsePaste);
+            document.getElementById('btn-save-song').addEventListener('click', saveSongFromEditor);
+            document.getElementById('btn-delete-song').addEventListener('click', deleteSongFromEditor);
+
+            document.querySelectorAll('#preset-buttons .preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => addEditorSection(btn.dataset.label));
+            });
+        }
+
+        function openSongEditor(songId) {
+            editingSongId = songId;
+            const song = songId ? songs.find(s => s.id === songId) : null;
+
+            editorSections = song ? song.sections.map(s => ({ ...s })) : [];
+            document.getElementById('editor-title-input').value = song ? song.title : '';
+            document.getElementById('editor-artist-input').value = song ? (song.artist || '') : '';
+            document.getElementById('editor-paste-box').value = '';
+            document.getElementById('song-editor-title').innerText = song ? 'Modifier le chant' : 'Nouveau chant';
+            document.getElementById('btn-delete-song').classList.toggle('hidden', !song);
+
+            renderEditorSections();
+            document.getElementById('song-editor-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('editor-title-input').focus(), 50);
+        }
+
+        function closeSongEditor() {
+            document.getElementById('song-editor-modal').classList.add('hidden');
+            editingSongId = null;
+            editorSections = [];
+        }
+
+        function renderEditorSections() {
+            const container = document.getElementById('editor-sections-container');
+            container.innerHTML = '';
+
+            if (editorSections.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic text-center py-4">Aucune section. Collez des paroles ci-dessus ou ajoutez une section avec les boutons.</p>';
+                return;
+            }
+
+            editorSections.forEach((sec, index) => {
+                const row = document.createElement('div');
+                row.className = 'editor-section-row';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs text-slate-500 font-bold w-5 shrink-0">${index + 1}.</span>
+                        <input type="text" value="${escapeHtml(sec.label)}" data-role="label" class="bg-slate-800 border border-slate-600 text-white text-xs font-bold rounded px-2 py-1.5 w-40" placeholder="Nom de la section">
+                        <div class="flex gap-1 ml-auto shrink-0">
+                            <button type="button" data-role="up" class="p-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300" title="Monter">▲</button>
+                            <button type="button" data-role="down" class="p-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300" title="Descendre">▼</button>
+                            <button type="button" data-role="delete" class="p-1.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400" title="Supprimer">🗑</button>
+                        </div>
+                    </div>
+                    <textarea data-role="text" rows="4" class="bg-slate-800 border border-slate-600 text-white text-sm rounded p-2 w-full" placeholder="Paroles de cette section...">${escapeHtml(sec.text)}</textarea>
+                `;
+
+                row.querySelector('[data-role="label"]').addEventListener('input', (e) => { sec.label = e.target.value; });
+                row.querySelector('[data-role="text"]').addEventListener('input', (e) => { sec.text = e.target.value; });
+                row.querySelector('[data-role="up"]').addEventListener('click', () => moveEditorSection(sec.id, -1));
+                row.querySelector('[data-role="down"]').addEventListener('click', () => moveEditorSection(sec.id, 1));
+                row.querySelector('[data-role="delete"]').addEventListener('click', () => removeEditorSection(sec.id));
+
+                container.appendChild(row);
+            });
+        }
+
+        function addEditorSection(label) {
+            const count = editorSections.filter(s => s.label && s.label.toLowerCase().startsWith(String(label).toLowerCase())).length;
+            const finalLabel = count > 0 ? `${label} ${count + 1}` : label;
+            editorSections.push({ id: genId(), label: finalLabel, text: '' });
+            renderEditorSections();
+            const rows = document.querySelectorAll('#editor-sections-container textarea');
+            if (rows.length) rows[rows.length - 1].focus();
+        }
+
+        function moveEditorSection(id, dir) {
+            const idx = editorSections.findIndex(s => s.id === id);
+            if (idx < 0) return;
+            const target = idx + dir;
+            if (target < 0 || target >= editorSections.length) return;
+            const tmp = editorSections[idx];
+            editorSections[idx] = editorSections[target];
+            editorSections[target] = tmp;
+            renderEditorSections();
+        }
+
+        function removeEditorSection(id) {
+            editorSections = editorSections.filter(s => s.id !== id);
+            renderEditorSections();
+        }
+
+        // Analyse le texte collé : si des en-têtes [Nom] sont présents, ils délimitent les sections ;
+        // sinon, les blocs séparés par une ligne vide deviennent "Partie 1", "Partie 2", etc.
+        function parsePastedLyrics(text) {
+            const raw = String(text).replace(/\r\n/g, '\n').trim();
+            if (!raw) return [];
+
+            const headerRegex = /^\[(.+?)\]\s*$/;
+            const lines = raw.split('\n');
+            const hasHeaders = lines.some(l => headerRegex.test(l.trim()));
+
+            if (hasHeaders) {
+                const sections = [];
+                let current = null;
+                lines.forEach(line => {
+                    const m = line.trim().match(headerRegex);
+                    if (m) {
+                        current = { id: genId(), label: m[1].trim(), text: '' };
+                        sections.push(current);
+                    } else if (current) {
+                        current.text += (current.text ? '\n' : '') + line;
+                    } else if (line.trim() !== '') {
+                        current = { id: genId(), label: 'Intro', text: line };
+                        sections.push(current);
+                    }
+                });
+                sections.forEach(s => s.text = s.text.trim());
+                return sections.filter(s => s.text !== '');
+            }
+
+            const blocks = raw.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+            return blocks.map((b, i) => ({ id: genId(), label: 'Partie ' + (i + 1), text: b }));
+        }
+
+        function handleParsePaste() {
+            const text = document.getElementById('editor-paste-box').value;
+            const parsed = parsePastedLyrics(text);
+            if (parsed.length === 0) {
+                showToast('Aucun texte à analyser.');
+                return;
+            }
+            editorSections = editorSections.concat(parsed);
+            renderEditorSections();
+            document.getElementById('editor-paste-box').value = '';
+            showToast(`${parsed.length} section(s) ajoutée(s).`);
+        }
+
+        async function saveSongFromEditor() {
+            const title = document.getElementById('editor-title-input').value.trim();
+            if (!title) {
+                showToast('Le titre du chant est obligatoire.');
+                document.getElementById('editor-title-input').focus();
+                return;
+            }
+            if (editorSections.length === 0) {
+                showToast('Ajoutez au moins une section avant d\'enregistrer.');
+                return;
+            }
+            const emptyIdx = editorSections.findIndex(s => !s.text || !s.text.trim());
+            if (emptyIdx >= 0) {
+                showToast(`La section "${editorSections[emptyIdx].label || emptyIdx + 1}" est vide.`);
+                return;
+            }
+
+            const artist = document.getElementById('editor-artist-input').value.trim();
+
+            const song = {
+                id: editingSongId || genId(),
+                title,
+                artist,
+                sections: editorSections.map(s => ({ id: s.id, label: (s.label || 'Section').trim(), text: s.text.trim() })),
+                updatedAt: Date.now()
+            };
+
+            try {
+                await idbPutSong(song);
+            } catch (e) {
+                console.error(e);
+                showToast("Erreur lors de l'enregistrement du chant.");
+                return;
+            }
+
+            const idx = songs.findIndex(s => s.id === song.id);
+            if (idx >= 0) songs[idx] = song; else songs.push(song);
+            songs.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+
+            closeSongEditor();
+            renderSongsList();
+            updateSongsInfo();
+            selectSong(song.id);
+            syncSongsToServer(); // portabilité : sauvegarde vers le dossier du projet
+            showToast('Chant enregistré.');
+        }
+
+        async function deleteSongFromEditor() {
+            if (!editingSongId) return;
+            const song = songs.find(s => s.id === editingSongId);
+            if (!song) return;
+            if (!confirm(`Supprimer le chant "${song.title}" ? Cette action est irréversible.`)) return;
+
+            try { await idbDeleteSong(editingSongId); } catch (e) { console.error(e); }
+
+            songs = songs.filter(s => s.id !== editingSongId);
+            if (currentSongId === editingSongId) {
+                currentSongId = null;
+                document.getElementById('song-header').classList.add('hidden');
+                document.getElementById('sections-list').innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-500"><p class="text-lg">Sélectionnez un chant à gauche, ou créez-en un nouveau.</p></div>`;
+                if (onAir && onAir.songId === editingSongId) clearOBS();
+            }
+
+            closeSongEditor();
+            renderSongsList();
+            updateSongsInfo();
+            syncSongsToServer(); // portabilité
+            showToast('Chant supprimé.');
+        }
+
+        // ============================================================
+        // UTILITAIRES
+        // ============================================================
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-violet-500 text-slate-900 px-4 py-2 rounded shadow-xl font-bold z-50 anim-show';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.classList.replace('anim-show', 'anim-hide'); setTimeout(() => t.remove(), 500); }, 3000);
+        }
+
+    </script>
+</body>
+</html>

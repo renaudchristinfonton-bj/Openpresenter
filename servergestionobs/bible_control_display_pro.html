@@ -44,10 +44,22 @@
 
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
 
-        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille demandée
-           (--cw/--ch) et le rendu interne 1920×1080 est mis à l'échelle pour remplir. */
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille réelle
+           de l'écran demandée (--cw/--ch). */
         body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
-        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-sx, var(--obs-scale, 1)), var(--obs-sy, var(--obs-scale, 1))); }
+        /* ADAPTER (défaut) : la page rend directement à la taille de l'écran —
+           la mise en page (cartes en %) s'organise dedans, tout est visible,
+           sans bandes noires ni déformation. */
+        body.mode-obs.res-adapt #obs-container { width: var(--cw, 1920px); height: var(--ch, 1080px); }
+        /* Modes d'échelle : le rendu 1920×1080 est réduit/agrandi (ou étiré). */
+        body.mode-obs.res-scale #obs-container { top: 50%; left: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--obs-sx, 1), var(--obs-sy, 1)); }
+        /* Géométrie ADAPTATIVE des cartes : exactement les mêmes proportions
+           qu'en 1920×1080, exprimées en pourcentages de la taille réelle. */
+        body.res-adapt .obs-full { top: 3.7%; left: 2.08%; width: 95.84%; height: 92.6%; padding: calc(var(--ch) * 80 / 1080); }
+        body.res-adapt .obs-bottom { bottom: 5.56%; left: 10%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
+        body.res-adapt .obs-bottom-right { bottom: 5.56%; right: 3.13%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
+        body.res-adapt .obs-screen80 { top: 10%; left: 10%; width: 80%; height: 80%; padding: calc(var(--ch) * 64 / 1080); }
+        body.res-adapt .obs-scrolling { bottom: 0; left: 0; width: 100%; height: 7.41%; }
 
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 
@@ -290,9 +302,11 @@
                             <div class="flex items-center gap-1.5 mt-1">
                                 <span class="text-[9px] text-slate-500 shrink-0">Adaptation :</span>
                                 <select data-res-role="fit" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-white text-[10px] rounded px-1 py-1" title="Comment le rendu s'adapte à cette taille d'écran">
-                                    <option value="fit">Tout afficher (bandes si ratio différent)</option>
+                                    
+                                    <option value="adapt">Adapter — le contenu s'organise pour remplir l'écran (recommandé)</option>
+                                    <option value="fit">Tout afficher (bandes noires si ratio différent)</option>
                                     <option value="fill">Remplir (peut rogner les bords)</option>
-                                    <option value="stretch">Étirer (écran étiré : remplit exactement)</option>
+                                    <option value="stretch">Étirer (pixels non carrés / panneau LED)</option>
                                 </select>
                             </div>
                             <p class="text-[10px] text-amber-400 truncate font-mono mt-1" data-res-role="link">...</p>
@@ -757,17 +771,17 @@
                 // En mode ruban défiler, la seconde version (si activée) suit la
                 // première, séparée par le nom de sa traduction.
                 const dualScrolling = (config.dual && config.dual.text)
-                    ? ` <span class="verse-ref mr-6" style="font-size: 36px;">${config.dual.version} :</span><span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.dual.text}"</span>`
+                    ? ` <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">${config.dual.version} :</span><span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.dual.text}"</span>`
                     : '';
                 html = `
-                    <div class="ticker-wrapper" style="font-family: '${fontFam}', serif; font-size: 40px;">
+                    <div class="ticker-wrapper" style="font-family: '${fontFam}', serif; font-size: calc(var(--adapt-h, 1080px) * 40 / 1080);">
                         <div class="ticker-content">
-                            <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
+                            <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">📖 ${config.reference} <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.version}</span> :</span>
+                            <span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
                         </div>
                         <div class="ticker-content">
-                            <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
+                            <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">📖 ${config.reference} <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.version}</span> :</span>
+                            <span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
                         </div>
                     </div>
                 `;
@@ -775,8 +789,8 @@
                 modeClass = 'obs-bottom anim-show';
                 html = `
                     <div class="flex items-center justify-between mb-2">
-                        <div class="verse-ref" style="font-size: 38px;">📖 ${config.reference}</div>
-                        <span class="version-badge" style="font-size: 24px; padding: 6px 14px;">${config.version}</span>
+                        <div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ${config.reference}</div>
+                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">${config.version}</span>
                     </div>
                     <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
                 `;
@@ -784,25 +798,25 @@
                 modeClass = 'obs-bottom-right anim-show';
                 html = `
                     <div class="flex items-center justify-end gap-4 mb-2">
-                        <span class="version-badge" style="font-size: 24px; padding: 6px 14px;">${config.version}</span>
-                        <div class="verse-ref" style="font-size: 38px;">📖 ${config.reference}</div>
+                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">${config.version}</span>
+                        <div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ${config.reference}</div>
                     </div>
                     <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
                 `;
             } else if (config.mode === 'screen80') {
                 modeClass = 'obs-screen80 anim-show';
                 html = `
-                    <div class="verse-ref mb-6" style="font-size: 50px;">📖 ${config.reference} <span class="version-badge align-middle" style="font-size: 28px; padding: 6px 14px;">${config.version}</span></div>
+                    <div class="verse-ref mb-6" style="font-size: calc(var(--adapt-h, 1080px) * 50 / 1080);">📖 ${config.reference} <span class="version-badge align-middle" style="font-size: calc(var(--adapt-h, 1080px) * 28 / 1080); padding: 6px 14px;">${config.version}</span></div>
                     <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
                     <div class="h-8"></div>
                 `;
             } else { // full
                 modeClass = 'obs-full anim-show';
                 html = `
-                    <div class="verse-ref mb-6" style="font-size: 50px;">
-                        <span class="opacity-30" style="font-size: 40px; margin-right: 16px;">✝</span>
+                    <div class="verse-ref mb-6" style="font-size: calc(var(--adapt-h, 1080px) * 50 / 1080);">
+                        <span class="opacity-30" style="font-size: calc(var(--adapt-h, 1080px) * 40 / 1080); margin-right: 16px;">✝</span>
                         ${config.reference}
-                        <span class="version-badge align-middle" style="font-size: 28px; padding: 6px 14px;">${config.version}</span>
+                        <span class="version-badge align-middle" style="font-size: calc(var(--adapt-h, 1080px) * 28 / 1080); padding: 6px 14px;">${config.version}</span>
                     </div>
                     <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
                     <div class="h-8"></div>

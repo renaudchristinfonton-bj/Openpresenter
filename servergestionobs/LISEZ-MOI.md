@@ -171,18 +171,23 @@ l'ajout de médias ou de paroles, c'est la garantie que ça marche toujours.
 Dans chaque outil (Bible, Paroles, Médias, Lower Third), saisissez une taille
 **libre** `largeur × hauteur` dans le panneau « Résolution de sortie » : le lien
 OBS devient `...?obs=true&res=1280x720` (Lower Third : `?obs=1&res=...`), avec
-bouton **Copier**. La page OBS dimensionne l'écran à cette taille et met le rendu
-(conçu en 1920×1080) à l'échelle selon le **mode d'adaptation** choisi :
+bouton **Copier**. Le contenu s'adapte à votre écran grâce au **mode
+d'adaptation** choisi :
 
-- **Tout afficher** (par défaut) : tout le contenu est toujours visible ; bandes
-  noires si le ratio de l'écran est différent de 16:9 ;
-- **Remplir** : couvre tout l'écran, peut rogner les bords ;
-- **Étirer** : pour un écran **étiré** (ratio quelconque, ex. bandeau LED) — le
-  rendu remplit EXACTEMENT la surface.
+- **Adapter** (par défaut) : la mise en page s'organise DANS la taille réelle de
+  votre écran — cartes et textes se répartissent proportionnellement, tout est
+  visible, sans bandes noires ni déformation, quel que soit le ratio (bandeau
+  LED très large, écran portrait, etc.) ;
+- **Tout afficher** : rendu 1920×1080 réduit uniformément — tout visible, bandes
+  noires possibles si le ratio diffère ;
+- **Remplir** : rendu 1920×1080 agrandi — couvre tout l'écran, peut rogner ;
+- **Étirer** : échelle horizontale/verticale indépendante — pour les écrans à
+  pixels non carrés (panneaux LED) : remplissage exact.
 
 Le choix (taille + adaptation) est mémorisé (et suit le dossier `data/` du
-projet) ; par défaut 1920×1080 — donc rien ne change si vous n'y touchez pas.
-Dans OBS, réglez la Source Navigateur à la même taille.
+projet) ; par défaut 1920×1080 en mise en page classique — donc rien ne change
+si vous n'y touchez pas. Dans OBS, réglez la Source Navigateur à la même taille.
+Des captures d'exemple sont dans `captures/` à la racine du dépôt.
 
 ## Deux versions du même verset en direct (Bible)
 

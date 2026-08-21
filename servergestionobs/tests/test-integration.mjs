@@ -248,13 +248,14 @@ try {
         const b = document.body;
         return {
             custom: b.classList.contains('res-custom'),
+            adapt: b.classList.contains('res-adapt'),
             w: b.style.getPropertyValue('--cw'),
-            scale: b.style.getPropertyValue('--obs-scale'),
-            bodyW: getComputedStyle(b).width
+            bodyW: getComputedStyle(b).width,
+            contW: document.getElementById('obs-container').style.width || getComputedStyle(document.getElementById('obs-container')).width
         };
     });
-    check('Page OBS ?res=1280x720 : variables --cw/--obs-scale appliquées', resState.custom && resState.w === '1280px' && Math.abs(parseFloat(resState.scale) - 1280 / 1920) < 0.001, JSON.stringify(resState));
-    check('Page OBS ?res=1280x720 : body dimensionné à 1280px', resState.bodyW === '1280px', resState.bodyW);
+    check('Page OBS ?res=1280x720 : mode ADAPT appliqué (par défaut)', resState.custom && resState.adapt && resState.w === '1280px', JSON.stringify(resState));
+    check('Page OBS ?res=1280x720 : body ET conteneur à 1280px (mise en page réelle)', resState.bodyW === '1280px' && (resState.contW === '1280px' || resState.contW.includes('1280')), resState.bodyW + ' / ' + resState.contW);
     await pageRes.close();
     // Retour au défaut (1920×1080) pour ne pas influer sur le reste.
     await bibleCtrl.evaluate(() => {
@@ -264,8 +265,8 @@ try {
         w.dispatchEvent(new Event('change'));
     });
 
-    // S5b. Modes d'ADAPTATION pour écrans au ratio différent (étirés, bandes…).
-    console.log('▶ S5b. Modes d\'adaptation (écrans étirés / ratio différent)…');
+    // S5b. ADAPTATION de la mise en page (écrans étirés / ratio quelconque).
+    console.log("▶ S5b. Adaptation de la mise en page à l'écran…");
     await bibleCtrl.evaluate(() => {
         const w = document.querySelector('[data-res-role="w"]');
         const h = document.querySelector('[data-res-role="h"]');
@@ -276,23 +277,57 @@ try {
     const linkStretch = await bibleCtrl.evaluate(() => document.querySelector('[data-res-role="link"]').innerText);
     check('Lien écran étiré : res=1920x432&fit=stretch', /res=1920x432&fit=stretch/.test(linkStretch), linkStretch);
 
-    async function openObsState(url, label) {
+    async function openObsPage(url, label) {
         const p = await ctxB.newPage();
         trackErrors(p, label);
         await p.goto(BASE + url, { waitUntil: 'load', timeout: 30000 });
         await p.waitForTimeout(300);
-        const state = await p.evaluate(() => ({
-            sx: document.body.style.getPropertyValue('--obs-sx'),
-            sy: document.body.style.getPropertyValue('--obs-sy'),
-            bw: getComputedStyle(document.body).width
-        }));
-        await p.close();
-        return state;
+        return p;
     }
-    const stretchState = await openObsState('/bible_control_display_pro.html?obs=true&res=1920x432&fit=stretch', 'bible-obs-stretch');
-    check('Étirer : scaleX=1, scaleY=0.4 — remplit exactement 1920×432', stretchState.sx === '1' && Math.abs(parseFloat(stretchState.sy) - 0.4) < 0.001 && stretchState.bw === '1920px', JSON.stringify(stretchState));
-    const fitState = await openObsState('/bible_control_display_pro.html?obs=true&res=1920x432', 'bible-obs-fit');
-    check('Sans &fit (défaut) : tout afficher — échelle uniforme 0.4 (aucun rognage)', Math.abs(parseFloat(fitState.sx) - 0.4) < 0.001 && fitState.sy === fitState.sx, JSON.stringify(fitState));
+    const closeQuiet = (p) => p.close().catch(() => {});
+
+    // ADAPT (défaut, sans &fit) : la page rend réellement dans 1920×432.
+    const adaptPage = await openObsPage('/bible_control_display_pro.html?obs=true&res=1920x432', 'bible-obs-adapt');
+    await adaptPage.evaluate(() => {
+        renderDisplay({ reference: 'Jean 3:16', text: 'Car Dieu a tant aime le monde', version: 'TEST', mode: 'full', bgColor: 'rgba(0,0,0,0.9)', accentColor: '#f59e0b', textColor: '#ffffff', fontFamily: 'Merriweather' },
+            document.getElementById('obs-container'), document.getElementById('obs-card-element'), document.getElementById('obs-content-area'));
+    });
+    const adaptState = await adaptPage.evaluate(() => {
+        const cont = document.getElementById('obs-container');
+        const card = document.querySelector('.obs-full');
+        const ref = document.querySelector('.obs-full .verse-ref');
+        return {
+            cls: document.body.classList.contains('res-adapt'),
+            contW: cont.offsetWidth, contH: cont.offsetHeight,
+            cardW: card ? card.offsetWidth : 0, cardH: card ? card.offsetHeight : 0,
+            refFs: ref ? getComputedStyle(ref).fontSize : '0'
+        };
+    });
+    check('ADAPT : conteneur réellement en 1920×432 (pas de mise à l\'échelle)', adaptState.cls && adaptState.contW === 1920 && adaptState.contH === 432, JSON.stringify(adaptState));
+    check('ADAPT : la carte occupe les proportions de l\'écran (≈1840×400)', Math.abs(adaptState.cardW - 1840) <= 4 && Math.abs(adaptState.cardH - 400) <= 6, adaptState.cardW + '×' + adaptState.cardH);
+    check('ADAPT : la typo suit la hauteur (référence ≈20px sur 432px)', Math.abs(parseFloat(adaptState.refFs) - 20) <= 2, adaptState.refFs);
+    await closeQuiet(adaptPage);
+
+    // FIT : échelle uniforme 0.4 — tout visible, conteneur resté 1920×1080.
+    const fitPage = await openObsPage('/bible_control_display_pro.html?obs=true&res=1920x432&fit=fit', 'bible-obs-fit2');
+    const fitState = await fitPage.evaluate(() => ({
+        scale: document.body.classList.contains('res-scale'),
+        sx: document.body.style.getPropertyValue('--obs-sx'),
+        sy: document.body.style.getPropertyValue('--obs-sy')
+    }));
+    check('FIT : échelle uniforme 0.4 (tout affiché, bandes possibles)', fitState.scale && Math.abs(parseFloat(fitState.sx) - 0.4) < 0.001 && fitState.sy === fitState.sx, JSON.stringify(fitState));
+    await closeQuiet(fitPage);
+
+    // STRETCH : scaleX=1, scaleY=0.4 — remplissage exact.
+    const stretchPage = await openObsPage('/bible_control_display_pro.html?obs=true&res=1920x432&fit=stretch', 'bible-obs-stretch');
+    const stretchState = await stretchPage.evaluate(() => ({
+        scale: document.body.classList.contains('res-scale'),
+        sx: document.body.style.getPropertyValue('--obs-sx'),
+        sy: document.body.style.getPropertyValue('--obs-sy'),
+        bw: getComputedStyle(document.body).width
+    }));
+    check('STRETCH : scaleX=1, scaleY=0.4 — remplit exactement 1920×432', stretchState.scale && stretchState.sx === '1' && Math.abs(parseFloat(stretchState.sy) - 0.4) < 0.001 && stretchState.bw === '1920px', JSON.stringify(stretchState));
+    await closeQuiet(stretchPage);
     // Retour au défaut.
     await bibleCtrl.evaluate(() => {
         const w = document.querySelector('[data-res-role="w"]');

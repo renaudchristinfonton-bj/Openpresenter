@@ -28,10 +28,15 @@
         body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.4s ease; background: #000; overflow: hidden; }
 
-        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille demandée
-           (--cw/--ch) et le rendu interne 1920×1080 est mis à l'échelle pour remplir. */
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille réelle
+           de l'écran demandée (--cw/--ch). */
         body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
-        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-sx, var(--obs-scale, 1)), var(--obs-sy, var(--obs-scale, 1))); }
+        /* ADAPTER (défaut) : la page rend directement à la taille de l'écran —
+           la mise en page (cartes en %) s'organise dedans, tout est visible,
+           sans bandes noires ni déformation. */
+        body.mode-obs.res-adapt #obs-container { width: var(--cw, 1920px); height: var(--ch, 1080px); }
+        /* Modes d'échelle : le rendu 1920×1080 est réduit/agrandi (ou étiré). */
+        body.mode-obs.res-scale #obs-container { top: 50%; left: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--obs-sx, 1), var(--obs-sy, 1)); }
         #obs-stage, #preview-stage { position: absolute; inset: 0; overflow: hidden; transition: opacity 0.2s ease; background: #000; }
 
         .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -116,9 +121,11 @@
                             <div class="flex items-center gap-1.5 mt-1">
                                 <span class="text-[9px] text-slate-500 shrink-0">Adaptation :</span>
                                 <select data-res-role="fit" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-white text-[10px] rounded px-1 py-1" title="Comment le rendu s'adapte à cette taille d'écran">
-                                    <option value="fit">Tout afficher (bandes si ratio différent)</option>
+                                    
+                                    <option value="adapt">Adapter — le contenu s'organise pour remplir l'écran (recommandé)</option>
+                                    <option value="fit">Tout afficher (bandes noires si ratio différent)</option>
                                     <option value="fill">Remplir (peut rogner les bords)</option>
-                                    <option value="stretch">Étirer (écran étiré : remplit exactement)</option>
+                                    <option value="stretch">Étirer (pixels non carrés / panneau LED)</option>
                                 </select>
                             </div>
                             <p class="text-[10px] text-teal-300 truncate font-mono mt-1" data-res-role="link">...</p>

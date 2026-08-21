@@ -20,9 +20,9 @@
 (function () {
     'use strict';
 
-    const DEFAULT_RES = { w: 1920, h: 1080, fit: 'fit' };
+    const DEFAULT_RES = { w: 1920, h: 1080, fit: 'adapt' };
     const RES_KEY = 'output_res', RES_NS = 'settings';
-    const FITS = ['fit', 'fill', 'stretch'];
+    const FITS = ['adapt', 'fit', 'fill', 'stretch'];
 
     // ---- Résolution de sortie (persistée : localStorage + dossier data/) ----
     function getOutputResolution() {
@@ -50,11 +50,12 @@
     }
 
     // Suffixe d'URL pour la résolution choisie ('' si résolution par défaut).
+    // NB : le mode d'adaptation par défaut ('adapt') n'apparaît pas dans le lien.
     function resQuery() {
         const r = getOutputResolution();
         let q = '';
         if (r.w !== DEFAULT_RES.w || r.h !== DEFAULT_RES.h) q += '&res=' + r.w + 'x' + r.h;
-        if (q && r.fit !== DEFAULT_RES.fit) q += '&fit=' + r.fit;
+        if (q && r.fit !== 'adapt') q += '&fit=' + r.fit;
         return q;
     }
 
@@ -164,15 +165,25 @@
             body.style.setProperty('--cw', w + 'px');
             body.style.setProperty('--ch', h + 'px');
 
-            const sx = w / 1920, sy = h / 1080;
-            let kx, ky;
-            if (fit === 'stretch') { kx = sx; ky = sy; }        // écran étiré : remplissage exact
-            else if (fit === 'fill') { kx = ky = Math.max(sx, sy); } // remplit, peut rogner
-            else { kx = ky = Math.min(sx, sy); }                // tout afficher (défaut)
-            body.style.setProperty('--obs-sx', String(kx));
-            body.style.setProperty('--obs-sy', String(ky));
-            body.style.setProperty('--obs-scale', String(Math.min(kx, ky)));
             body.classList.add('res-custom');
+            if (fit === 'adapt') {
+                // ADAPTATION : la page rend directement dans la taille réelle de
+                // l'écran ; la mise en page (cartes en %) et la typo s'organisent
+                // dedans — tout est visible, sans bandes ni déformation.
+                body.style.setProperty('--adapt-h', h + 'px');
+                body.style.setProperty('--adapt-w', w + 'px');
+                body.classList.add('res-adapt');
+            } else {
+                // MISE À L'ÉCHELLE du rendu 1920×1080.
+                const sx = w / 1920, sy = h / 1080;
+                let kx, ky;
+                if (fit === 'stretch') { kx = sx; ky = sy; }            // remplissage exact (pixels non carrés)
+                else if (fit === 'fill') { kx = ky = Math.max(sx, sy); } // remplit, peut rogner
+                else { kx = ky = Math.min(sx, sy); }                     // tout afficher, bandes possibles
+                body.style.setProperty('--obs-sx', String(kx));
+                body.style.setProperty('--obs-sy', String(ky));
+                body.classList.add('res-scale');
+            }
             return true;
         } catch (e) { return false; }
     }

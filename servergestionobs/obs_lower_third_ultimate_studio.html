@@ -49,6 +49,10 @@
             width: 100vw;
             height: 100vh;
         }
+        /* Sortie à résolution personnalisée (?obs=1&res=WxH) : la page se cale
+           sur la taille demandée, et la typo (en rem) suit la hauteur — le lower
+           third s'adapte proportionnellement à n'importe quel écran. */
+        body.obs-mode.res-custom { width: var(--cw, 100vw) !important; height: var(--ch, 100vh) !important; }
 
         body.controller-mode {
             background-color: #0e0e11;
@@ -1212,6 +1216,18 @@
         if (isOBS) {
             document.body.classList.remove('controller-mode');
             document.body.classList.add('obs-mode');
+            // Sortie personnalisable (?obs=1&res=WxH) : cale la page sur la taille
+            // demandée et met la typo (rem) à l'échelle de la hauteur réelle.
+            if (typeof applyObsResolution === 'function') {
+                const applied = applyObsResolution();
+                if (applied) {
+                    const m = String(new URLSearchParams(window.location.search).get('res') || '').match(/^(\d{2,5})x(\d{2,5})$/);
+                    if (m) {
+                        const hScale = Math.max(64, Math.min(4320, parseInt(m[2], 10))) / 1080;
+                        document.documentElement.style.fontSize = (16 * hScale) + 'px';
+                    }
+                }
+            }
             document.getElementById('obs-view').classList.remove('hidden');
 
             // Aide au diagnostic : ajouter &debug=1 au lien OBS affiche la résolution que

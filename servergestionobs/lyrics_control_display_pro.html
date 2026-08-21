@@ -60,6 +60,15 @@
         body.res-adapt .obs-bottom-right { bottom: 5.56%; right: 3.13%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
         body.res-adapt .obs-screen80 { top: 10%; left: 10%; width: 80%; height: 80%; padding: calc(var(--ch) * 64 / 1080); }
         body.res-adapt .obs-scrolling { bottom: 0; left: 0; width: 100%; height: 7.41%; }
+        /* Écran PLUS LARGE que 16:9 (bandeau, écran étiré) : la mise en page
+           s'élargit pour occuper agréablement la surface — moins d'espace mort
+           aux extrémités, texte plus large (multi-lignes qui remplissent). */
+        body.res-adapt.res-wide .obs-full { left: 1%; width: 98%; }
+        body.res-adapt.res-wide .obs-screen80 { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom-right { right: 2%; width: 92%; }
+        body.res-adapt.res-wide .verse-text { width: 92%; max-width: 92%; }
+        body.res-adapt.res-wide .obs-full .verse-text, body.res-adapt.res-wide .obs-screen80 .verse-text { width: 96%; max-width: 96%; }
 
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 

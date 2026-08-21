@@ -60,6 +60,15 @@
         body.res-adapt .obs-bottom-right { bottom: 5.56%; right: 3.13%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
         body.res-adapt .obs-screen80 { top: 10%; left: 10%; width: 80%; height: 80%; padding: calc(var(--ch) * 64 / 1080); }
         body.res-adapt .obs-scrolling { bottom: 0; left: 0; width: 100%; height: 7.41%; }
+        /* Écran PLUS LARGE que 16:9 (bandeau, écran étiré) : la mise en page
+           s'élargit pour occuper agréablement la surface — moins d'espace mort
+           aux extrémités, texte plus large (multi-lignes qui remplissent). */
+        body.res-adapt.res-wide .obs-full { left: 1%; width: 98%; }
+        body.res-adapt.res-wide .obs-screen80 { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom-right { right: 2%; width: 92%; }
+        body.res-adapt.res-wide .verse-text { width: 92%; max-width: 92%; }
+        body.res-adapt.res-wide .obs-full .verse-text, body.res-adapt.res-wide .obs-screen80 .verse-text { width: 96%; max-width: 96%; }
 
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 
@@ -689,17 +698,33 @@
         // ============================================================
         // Découpe un verset en groupes de sens (à la ponctuation) pour l'affichage "ligne par ligne",
         // en fusionnant les fragments trop courts pour éviter des lignes ridicules.
-        function splitTextIntoLines(text) {
-            let parts = text.match(/[^.!?;:]+[.!?;:]?/g) || [text];
-            parts = parts.map(p => p.trim()).filter(Boolean);
+        function splitTextIntoLines(text, maxChars) {
+            // Longueur de ligne ADAPTATIVE : les lignes s'allongent ou se
+            // raccourcissent selon la place réelle, pour que le verset s'étale
+            // sur plusieurs lignes BIEN RÉPARTIES qui remplissent la largeur
+            // (au lieu d'une colonne étroite perdue au milieu du cadre).
+            const target = Math.max(28, Math.min(150, Math.round(maxChars || 45)));
+            const words = String(text).split(/\s+/).filter(Boolean);
             const lines = [];
-            let buffer = '';
-            parts.forEach(p => {
-                buffer = buffer ? buffer + ' ' + p : p;
-                if (buffer.length >= 45) { lines.push(buffer); buffer = ''; }
-            });
-            if (buffer) lines.push(buffer);
+            let cur = '';
+            for (const w of words) {
+                if (cur && (cur + ' ' + w).length > target) { lines.push(cur); cur = w; }
+                else cur = cur ? cur + ' ' + w : w;
+            }
+            if (cur) lines.push(cur);
             return lines.length ? lines : [text];
+        }
+
+        // Nombre de caractères par ligne, auto-calibré sur la police qu'autoFit
+        // estimera pour CE texte dans CETTE zone : chaque ligne remplira donc
+        // naturellement la largeur disponible, à n'importe quelle résolution.
+        function charsPerLineFor(contentArea, totalChars) {
+            const w = (contentArea && contentArea.clientWidth) ? contentArea.clientWidth : 1472;
+            const h = (contentArea && contentArea.clientHeight) ? contentArea.clientHeight : 800;
+            const usable = w * 0.8;
+            const n = Math.max(totalChars || 1, 1);
+            const estFont = Math.sqrt((usable * Math.max(h, 1)) / (n * 6.2));
+            return Math.max(28, Math.min(150, Math.round(usable / (0.55 * Math.max(estFont, 8)))));
         }
 
         function renderDisplay(config, container, card, contentArea) {
@@ -736,7 +761,7 @@
                 // Verset annoté (✏️) : HTML enrichi local, rendu tel quel (par conception).
                 textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">${config.textHtml}</div>`;
             } else if (config.lineMode) {
-                const lines = splitTextIntoLines(displayText);
+                const lines = splitTextIntoLines(displayText, charsPerLineFor(contentArea, displayText.length));
                 textHtml = lines.map(l => `<div class="verse-text verse-line" style="font-family: '${fontFam}', serif;">${l}</div>`).join('');
             } else {
                 textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${displayText}"</div>`;

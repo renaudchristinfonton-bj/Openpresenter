@@ -29,6 +29,12 @@ import { chromium as playwrightChromium } from 'playwright';
 import sparticuzChromium from '@sparticuz/chromium';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Bibliothèques NSS/NSPR embarquées pour le Chromium headless (si présentes).
+import { existsSync as __existsSync, constants as __unused } from 'node:fs';
+const __nssDir = join(dirname(fileURLToPath(import.meta.url)), 'nss');
+if (__existsSync(__nssDir)) {
+    process.env.LD_LIBRARY_PATH = (process.env.LD_LIBRARY_PATH ? process.env.LD_LIBRARY_PATH + ':' : '') + __nssDir;
+}
 const PORT = process.env.TEST_PORT ? parseInt(process.env.TEST_PORT, 10) : 8791;
 const BASE = `http://localhost:${PORT}`;
 
@@ -304,7 +310,7 @@ try {
         };
     });
     check('ADAPT : conteneur réellement en 1920×432 (pas de mise à l\'échelle)', adaptState.cls && adaptState.contW === 1920 && adaptState.contH === 432, JSON.stringify(adaptState));
-    check('ADAPT : la carte occupe les proportions de l\'écran (≈1840×400)', Math.abs(adaptState.cardW - 1840) <= 4 && Math.abs(adaptState.cardH - 400) <= 6, adaptState.cardW + '×' + adaptState.cardH);
+    check('ADAPT : la carte élargie remplit l\'écran (≈1882×400 en écran large)', adaptState.cardW >= 1870 && adaptState.cardW <= 1890 && Math.abs(adaptState.cardH - 400) <= 6, adaptState.cardW + '×' + adaptState.cardH);
     check('ADAPT : la typo suit la hauteur (référence ≈20px sur 432px)', Math.abs(parseFloat(adaptState.refFs) - 20) <= 2, adaptState.refFs);
     await closeQuiet(adaptPage);
 
@@ -333,9 +339,60 @@ try {
         const w = document.querySelector('[data-res-role="w"]');
         const h = document.querySelector('[data-res-role="h"]');
         const fit = document.querySelector('[data-res-role="fit"]');
-        w.value = '1920'; h.value = '1080'; fit.value = 'fit';
+        w.value = '1920'; h.value = '1080'; fit.value = 'adapt';
         w.dispatchEvent(new Event('change'));
     });
+
+    // S5c. Résolution personnalisée sur MÉDIAS + LOWER THIRD + remplissage large.
+    console.log('▶ S5c. Médias & Lower Third à résolution personnalisée + remplissage…');
+    const mediaPanel = await mediaCtrl.evaluate(() => {
+        const d = document.querySelector('#controller-mode-ui details');
+        const link = document.querySelector('[data-link-role="general"]');
+        return { open: !!(d && d.open), hasLink: !!link };
+    });
+    check('Médias : panneau « Sortie OBS » visible par défaut', mediaPanel.open && mediaPanel.hasLink, JSON.stringify(mediaPanel));
+    const mediaRes = await openObsPage('/media_control_display_pro.html?obs=true&res=1280x720', 'media-obs-res');
+    const mediaState = await mediaRes.evaluate(() => ({
+        adapt: document.body.classList.contains('res-adapt'),
+        w: getComputedStyle(document.body).width,
+        contW: document.getElementById('obs-container').offsetWidth
+    }));
+    await closeQuiet(mediaRes);
+    check('Médias : sortie OBS adaptée à 1280×720 (conteneur réel)', mediaState.adapt && mediaState.w === '1280px' && mediaState.contW === 1280, JSON.stringify(mediaState));
+
+    const ltRes = await openObsPage('/obs_lower_third_ultimate_studio.html?obs=1&res=1280x720', 'lt-obs-res');
+    await ltRes.waitForTimeout(600);
+    const ltState = await ltRes.evaluate(() => ({
+        custom: document.body.classList.contains('res-custom'),
+        w: getComputedStyle(document.body).width,
+        h: getComputedStyle(document.body).height,
+        rootFs: getComputedStyle(document.documentElement).fontSize
+    }));
+    await closeQuiet(ltRes);
+    check('Lower Third : page calée sur 1280×720', ltState.custom && ltState.w === '1280px' && ltState.h === '720px', JSON.stringify(ltState));
+    check('Lower Third : typo mise à la échelle de la hauteur (≈10,7px)', Math.abs(parseFloat(ltState.rootFs) - 16 * 720 / 1080) < 0.5, ltState.rootFs);
+
+    // Bible : écran large → lignes LONGUES qui remplissent la largeur.
+    const widePage = await openObsPage('/bible_control_display_pro.html?obs=true&res=1920x432', 'bible-obs-wide');
+    await widePage.evaluate(() => {
+        renderDisplay({ reference: 'Psaume 119:105', text: 'Ta parole est une lampe a mes pieds, et une lumiere sur mon sentier. Elle eclaire chacun de mes pas et me conduit dans la verite toute ma vie durant.', version: 'S21', mode: 'full', lineMode: true, bgColor: 'rgba(0,0,0,0.9)', accentColor: '#f59e0b', textColor: '#ffffff', fontFamily: 'serif' },
+            document.getElementById('obs-container'), document.getElementById('obs-card-element'), document.getElementById('obs-content-area'));
+    });
+    const wideState = await widePage.evaluate(() => {
+        const area = document.getElementById('obs-content-area');
+        const lines = Array.from(document.querySelectorAll('.verse-line'));
+        const first = lines[0];
+        let textW = 0;
+        if (first) {
+            const r = document.createRange();
+            r.selectNodeContents(first);
+            textW = r.getBoundingClientRect().width;
+        }
+        return { nLines: lines.length, textW, areaW: area.clientWidth, ratio: textW / Math.max(area.clientWidth, 1) };
+    });
+    await closeQuiet(widePage);
+    check('Bible écran large : verset long sur PLUSIEURS lignes', wideState.nLines >= 2, 'n=' + wideState.nLines);
+    check('Bible écran large : les lignes REMPLISSENT la largeur (≥70%)', wideState.ratio >= 0.7, Math.round(wideState.ratio * 100) + '%');
 
     // ============ S6. DEUX VERSIONS DU MÊME VERSET EN DIRECT ============
     console.log('▶ S6. Bible : 2 versions côte à côte…');
@@ -467,6 +524,10 @@ try {
         document.getElementById('set-line-mode').checked = true;
     });
     await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], null));
+    // Robustesse : renvoie l'affichage courant (une page OBS dont la WebSocket
+    // se reconnectait à l'instant de l'envoiinitial raterait le message — pas
+    // de rejeu par conception ; un renvoi idempotent garantit la réception).
+    await bibleCtrl.evaluate(() => relaunchLast());
     const split = await bibleCtrl.evaluate(() => ({
         parts: window.__capturedShow && window.__capturedShow.config.parts,
         partIndex: window.__capturedShow && window.__capturedShow.config.partIndex,
@@ -479,7 +540,8 @@ try {
     check('Indicateur x/y visible (1/N)', split.navVisible && split.indicator === '1/' + split.parts.length, split.indicator);
     // Sortie GÉNÉRALE (suit le mode plein écran) : verset ENTIer, jamais découpé.
     const fullOnGeneral = await bibleObs.waitForFunction(() => {
-        const el = document.querySelector('#obs-card-element .verse-text');
+        // Le verset est réparti sur plusieurs .verse-line : on lit TOUTE la zone.
+        const el = document.querySelector('#obs-content-area');
         return el && el.innerText.indexOf('et Dieu dit') >= 0;
     }, { timeout: 8000 }).then(() => true).catch(() => false);
     check('Sortie plein écran : verset ENTIer affiché (non affectée)', fullOnGeneral);
@@ -505,7 +567,7 @@ try {
     }, split.parts[1].slice(0, 14), { timeout: 10000 }).then(() => true).catch(() => false);
     check('navigatePart(1) : la sortie bas affiche la partie 2', part2OnBottom);
     const fullStillFull = await bibleObs.evaluate(() => {
-        const el = document.querySelector('#obs-card-element .verse-text');
+        const el = document.querySelector('#obs-content-area');
         return el && el.innerText.indexOf('et Dieu dit') >= 0;
     });
     check('…tandis que la sortie plein écran affiche toujours le verset entier', !!fullStillFull);

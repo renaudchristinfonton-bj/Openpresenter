@@ -166,6 +166,11 @@
             body.style.setProperty('--ch', h + 'px');
 
             body.classList.add('res-custom');
+            // Ratio de l'écran : permet aux pages d'élargir la mise en page sur
+            // les écrans plus larges que 16:9 (bandeaux) et de l'adapter en portrait.
+            const ratio = w / h;
+            if (ratio >= 2.0) body.classList.add('res-wide');
+            else if (ratio <= 0.95) body.classList.add('res-tall');
             if (fit === 'adapt') {
                 // ADAPTATION : la page rend directement dans la taille réelle de
                 // l'écran ; la mise en page (cartes en %) et la typo s'organisent

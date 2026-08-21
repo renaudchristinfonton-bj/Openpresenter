@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Bibliothèques NSS/NSPR embarquées pour le Chromium headless (si présentes).
+import { existsSync as __existsSync, constants as __unused } from 'node:fs';
+const __nssDir = join(dirname(fileURLToPath(import.meta.url)), 'nss');
+if (__existsSync(__nssDir)) {
+    process.env.LD_LIBRARY_PATH = (process.env.LD_LIBRARY_PATH ? process.env.LD_LIBRARY_PATH + ':' : '') + __nssDir;
+}
 const OUT = join(ROOT, '..', 'captures');
 mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE || 'http://localhost:8787';

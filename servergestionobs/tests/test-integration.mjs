@@ -311,6 +311,48 @@ try {
         renderVersionSelector();
     });
 
+    // ============ S7. ANNOTATION DE VERSET (✏️ surligner/gras/couleurs) ============
+    console.log('▶ S7. Bible : annotation du verset…');
+    // Ajoute un livre de test dans la version PRINCIPALE (nécessaire pour la
+    // recherche du verset) puis une annotation enregistrée.
+    await bibleCtrl.evaluate(() => {
+        bibleVersions.find(v => v.id === currentVersionId).books.push({
+            name: 'Livre E2E', totalVerses: 1,
+            chapters: [{ num: 1, verses: [{ num: 1, text: 'Texte principal avec annotation.' }] }]
+        });
+        renderBooksList(currentBooks());
+    });
+    const modalOk = await bibleCtrl.evaluate(() => {
+        openVerseEditor(null, 'Livre E2E', 1, 1);
+        const m = document.getElementById('verse-editor-modal');
+        return !m.classList.contains('hidden') && document.getElementById('verse-editor-field').innerText.includes('annotation');
+    });
+    check('Éditeur ✏️ : la modale s\'ouvre avec le texte du verset', modalOk);
+    await bibleCtrl.evaluate(() => {
+        // Simule la mise en forme (sélection + boutons) puis l'enregistrement.
+        document.getElementById('verse-editor-field').innerHTML = 'Texte <b>principal</b> avec <span style="background-color: rgb(253, 224, 71);">annotation surlignée</span>.';
+        saveVerseEditor();
+    });
+    const annSaved = await bibleCtrl.evaluate(() => !!verseAnnotations['Livre E2E|1|1']);
+    check('Annotation enregistrée (clé livre|chap|verset)', annSaved);
+    await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], null));
+    const capAnn = await bibleCtrl.evaluate(() => window.__capturedShow);
+    check('config.textHtml transmis vers OBS (HTML non échappé)', !!(capAnn && capAnn.config && capAnn.config.textHtml && /<b>/.test(capAnn.config.textHtml)), JSON.stringify(capAnn && capAnn.config && capAnn.config.textHtml));
+    const annRendered = await bibleObs.waitForFunction(() => {
+        const b = document.querySelector('#obs-card-element .verse-text b');
+        const hl = document.querySelector('#obs-card-element .verse-text span');
+        return (b && hl) ? true : false;
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('OBS : le verset annoté est rendu (gras + surlignage visibles)', annRendered);
+    // Nettoyage : retire l'annotation et le livre de test.
+    await bibleCtrl.evaluate(() => {
+        delete verseAnnotations['Livre E2E|1|1'];
+        persistAnnotations();
+        const v = bibleVersions.find(x => x.id === currentVersionId);
+        v.books = v.books.filter(b => b.name !== 'Livre E2E');
+        renderBooksList(currentBooks());
+    });
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

@@ -696,7 +696,10 @@
             // Bloc de texte : soit une seule bulle, soit découpé ligne par ligne (respecte les mêmes
             // règles de largeur 80% / anti-débordement, gérées ensuite par autoFitDisplay).
             let textHtml;
-            if (config.lineMode) {
+            if (config.textHtml) {
+                // Verset annoté (✏️) : HTML enrichi local, rendu tel quel (par conception).
+                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">${config.textHtml}</div>`;
+            } else if (config.lineMode) {
                 const lines = splitTextIntoLines(config.text);
                 textHtml = lines.map(l => `<div class="verse-text verse-line" style="font-family: '${fontFam}', serif;">${l}</div>`).join('');
             } else {
@@ -893,6 +896,8 @@
             initResolutionPanel();
             // 2 versions en direct : case + sélecteur de seconde version.
             initDualVersionUI();
+            // Annotations de versets : éditeur ✏️ + persistance.
+            initAnnotationEditor();
 
             // Event Listeners UI
             document.getElementById('xml-upload').addEventListener('change', handleFileUpload);
@@ -1462,6 +1467,7 @@
 
                 const actionsHtml = selectionMode ? '' : `
                     <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        <button onclick="openVerseEditor(event, '${bookName}', '${chapterNum}', '${verse.num}')" class="p-2 rounded ${verseAnnotations[annotationKey(bookName, chapterNum, verse.num)] ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 hover:bg-slate-600 text-slate-400'}" title="Annoter ce verset (surligner, gras, couleurs)">✏️</button>
                         <button onclick="toggleFavorite(event, '${bookName}', '${chapterNum}', '${verse.num}', '${escapeQuotes(verse.text)}')" class="p-2 rounded bg-slate-700 hover:bg-slate-600 text-${isFav ? 'pink-500' : 'slate-400'}">
                             <svg class="w-4 h-4" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                         </button>
@@ -1780,6 +1786,24 @@
             }
 
             const sortedNums = [...verseNums].sort((a, b) => Number(a) - Number(b));
+
+            // Annotations : si certains versets sélectionnés ont une mise en forme
+            // enregistrée (✏️), on transmet le HTML annoté via config.textHtml.
+            // Ce HTML est produit localement par l'éditeur : il est volontairement
+            // rendu NON échappé (contrairement au texte brut).
+            let annotatedHtml = null;
+            if (chapter && Object.keys(verseAnnotations).length > 0) {
+                const parts = [];
+                let anyAnnotated = false;
+                verseNums.forEach(n => {
+                    const v = chapter.verses.find(vv => vv.num == n);
+                    if (!v) return;
+                    const ann = verseAnnotations[annotationKey(bookName, chapterNum, n)];
+                    if (ann) { anyAnnotated = true; parts.push(ann); }
+                    else parts.push(escapeHtml(v.text));
+                });
+                if (anyAnnotated) annotatedHtml = parts.join(' ');
+            }
             let refLabel;
             if (sortedNums.length > 1 && !usedFallback) {
                 const isContiguous = sortedNums.every((n, i) => i === 0 || Number(n) === Number(sortedNums[i - 1]) + 1);
@@ -1825,6 +1849,7 @@
                 lineMode: displaySettings.lineMode
             };
             if (dual) config.dual = dual;
+            if (annotatedHtml) config.textHtml = annotatedHtml;
 
             onAir = { bookName, chapterNum, verseNums: sortedNums };
 
@@ -1861,6 +1886,139 @@
             } else if (selectedVerseNums.size > 0) {
                 displaySelectedVerses();
             }
+        }
+
+        // ============================================================
+        // ANNOTATIONS DE VERSETS (surlignage, gras, italique, couleurs)
+        // ============================================================
+        // Mise en forme d'un verset AVANT projection : l'éditeur produit du HTML
+        // (gras/italique/couleurs) stocké par verset (clé livre|chap|verset),
+        // persisté en local ET dans le dossier data/ du projet.
+        let verseAnnotations = {};
+
+        function annotationKey(bookName, chapterNum, verseNum) {
+            return bookName + '|' + chapterNum + '|' + verseNum;
+        }
+
+        function loadAnnotations() {
+            try { verseAnnotations = JSON.parse(localStorage.getItem('bibleVerseAnnotations') || '{}') || {}; }
+            catch (e) { verseAnnotations = {}; }
+            // Portabilité : restaure depuis le dossier du projet si le local est vide.
+            if (window.OpenStore && Object.keys(verseAnnotations).length === 0) {
+                OpenStore.pullIfLocalEmpty('bible', 'annotations', (v) => v && typeof v === 'object' && Object.keys(v).length > 0)
+                    .then((pulled) => { if (pulled) { try { verseAnnotations = JSON.parse(localStorage.getItem('bibleVerseAnnotations') || '{}') || {}; } catch (e) {} } })
+                    .catch(() => {});
+            }
+        }
+
+        function persistAnnotations() {
+            try { localStorage.setItem('bibleVerseAnnotations', JSON.stringify(verseAnnotations)); } catch (e) { /* silencieux */ }
+            if (window.OpenStore) { try { window.OpenStore.set('bible', 'annotations', verseAnnotations); } catch (e) { /* silencieux */ } }
+        }
+
+        function initAnnotationEditor() {
+            loadAnnotations();
+            if (document.getElementById('verse-editor-modal')) return;
+
+            const modal = document.createElement('div');
+            modal.id = 'verse-editor-modal';
+            modal.className = 'hidden fixed inset-0 z-50 flex items-center justify-center p-4';
+            modal.style.background = 'rgba(0,0,0,0.6)';
+            modal.innerHTML = `
+                <div class="glass-panel rounded-xl w-full max-w-2xl p-5 space-y-3" style="background:#1e293b;">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-white">✏️ Annoter le verset — <span id="verse-editor-ref" class="text-amber-400"></span></h3>
+                        <button id="verse-editor-close" class="text-slate-400 hover:text-white text-xl leading-none px-2" title="Fermer">×</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Sélectionnez un mot (ou plusieurs) dans le texte ci-dessous, puis appliquez un format. L'aperçu correspond à ce qui sera projeté.</p>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" data-fmt="bold" class="w-9 h-9 rounded bg-slate-700 hover:bg-slate-600 text-white font-bold" title="Gras">B</button>
+                        <button type="button" data-fmt="italic" class="w-9 h-9 rounded bg-slate-700 hover:bg-slate-600 text-white italic font-serif" title="Italique">I</button>
+                        <label class="flex items-center gap-1 text-xs text-slate-300 bg-slate-700 rounded px-2 h-9 cursor-pointer" title="Couleur de surlignage">
+                            🖍 Surligner <input type="color" data-fmt-color="hiliteColor" value="#fde047" class="w-6 h-6 bg-transparent border-0 cursor-pointer">
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-slate-300 bg-slate-700 rounded px-2 h-9 cursor-pointer" title="Couleur du texte">
+                            🎨 Texte <input type="color" data-fmt-color="foreColor" value="#f87171" class="w-6 h-6 bg-transparent border-0 cursor-pointer">
+                        </label>
+                        <button type="button" data-fmt="removeFormat" class="h-9 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 text-xs" title="Effacer la mise en forme de la sélection">Effacer le format</button>
+                    </div>
+                    <div id="verse-editor-field" contenteditable="true" spellcheck="false" class="w-full min-h-[120px] max-h-64 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900/80 p-4 text-slate-100 font-serif text-lg leading-relaxed" style="outline:none;"></div>
+                    <div class="flex justify-end gap-2">
+                        <button id="verse-editor-cancel" class="px-4 py-2 rounded-lg text-sm bg-slate-700 hover:bg-slate-600 text-white">Annuler</button>
+                        <button id="verse-editor-save" class="px-4 py-2 rounded-lg text-sm bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold">Enregistrer</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const field = modal.querySelector('#verse-editor-field');
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeVerseEditor(); });
+            modal.querySelector('#verse-editor-close').addEventListener('click', closeVerseEditor);
+            modal.querySelector('#verse-editor-cancel').addEventListener('click', closeVerseEditor);
+            modal.querySelector('#verse-editor-save').addEventListener('click', saveVerseEditor);
+
+            modal.querySelectorAll('[data-fmt]').forEach((btn) => {
+                btn.addEventListener('mousedown', (e) => e.preventDefault()); // garde la sélection
+                btn.addEventListener('click', () => {
+                    field.focus();
+                    try { document.execCommand(btn.getAttribute('data-fmt'), false, null); } catch (e) { /* silencieux */ }
+                });
+            });
+            modal.querySelectorAll('[data-fmt-color]').forEach((inp) => {
+                inp.addEventListener('input', () => {
+                    field.focus();
+                    try { document.execCommand(inp.getAttribute('data-fmt-color'), false, inp.value); } catch (e) {
+                        try { document.execCommand('backColor', false, inp.value); } catch (e2) { /* silencieux */ }
+                    }
+                });
+            });
+        }
+
+        let annotationEditorCtx = null; // { key, bookName, chapterNum, verseNum }
+
+        function openVerseEditor(ev, bookName, chapterNum, verseNum) {
+            if (ev) ev.stopPropagation();
+            const book = currentBooks().find(b => b.name === bookName);
+            const chapter = book && book.chapters.find(c => c.num == chapterNum);
+            const verse = chapter && chapter.verses.find(v => v.num == verseNum);
+            if (!verse) { showToast('Verset introuvable.'); return; }
+
+            annotationEditorCtx = { key: annotationKey(bookName, chapterNum, verseNum), bookName, chapterNum, verseNum };
+            const modal = document.getElementById('verse-editor-modal');
+            modal.querySelector('#verse-editor-ref').innerText = `${bookName} ${chapterNum}:${verseNum}`;
+            modal.querySelector('#verse-editor-field').innerHTML = verseAnnotations[annotationEditorCtx.key] || escapeHtml(verse.text);
+            modal.classList.remove('hidden');
+        }
+
+        function closeVerseEditor() {
+            const modal = document.getElementById('verse-editor-modal');
+            if (modal) modal.classList.add('hidden');
+            annotationEditorCtx = null;
+        }
+
+        function saveVerseEditor() {
+            if (!annotationEditorCtx) return;
+            const field = document.getElementById('verse-editor-field');
+            const html = field.innerHTML.trim();
+            const wasAnnotated = /<[a-z][\s\S]*>/i.test(html);
+            // Contenu sans aucune balise = pas d'annotation → on nettoie la clé.
+            if (wasAnnotated) verseAnnotations[annotationEditorCtx.key] = html;
+            else delete verseAnnotations[annotationEditorCtx.key];
+            persistAnnotations();
+
+            // Rafraîchit la liste (état du bouton ✏️) et la diffusion si ce verset
+            // est à l'antenne.
+            if (activeBookName) {
+                const book = currentBooks().find(b => b.name === activeBookName);
+                const chapter = book && book.chapters.find(c => c.num == activeChapterNum);
+                if (chapter) renderVerses(chapter.verses, book.name, activeChapterNum);
+            }
+            if (onAir && onAir.bookName === annotationEditorCtx.bookName && onAir.chapterNum == annotationEditorCtx.chapterNum
+                && onAir.verseNums.includes(Number(annotationEditorCtx.verseNum))) {
+                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            }
+            closeVerseEditor();
+            showToast(wasAnnotated ? 'Annotation enregistrée.' : 'Annotation effacée.');
         }
 
         // ============================================================

@@ -9,6 +9,7 @@
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
+    <script src="js/obs-links.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
@@ -26,6 +27,11 @@
 
         body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.4s ease; background: #000; overflow: hidden; }
+
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille demandée
+           (--cw/--ch) et le rendu interne 1920×1080 est mis à l'échelle pour remplir. */
+        body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
+        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-scale, 1)); }
         #obs-stage, #preview-stage { position: absolute; inset: 0; overflow: hidden; transition: opacity 0.2s ease; background: #000; }
 
         .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -88,6 +94,30 @@
                         <option value="contain" selected>Ajuster (image entière visible, bandes noires)</option>
                     </select>
                 </div>
+
+                <details class="bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                    <summary class="text-xs text-slate-400 cursor-pointer select-none"> Sortie OBS — lien & résolution</summary>
+                    <div class="mt-2 space-y-1.5" id="obs-links-panel">
+                        <div class="flex items-center justify-between gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <div class="min-w-0">
+                                <p class="text-[9px] text-slate-500">Lien général (Source Navigateur OBS)</p>
+                                <p class="text-[10px] text-teal-300 truncate font-mono" data-link-role="general">...</p>
+                            </div>
+                            <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-copy-role="general">Copier</button>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-slate-500">Résolution de sortie personnalisée (largeur × hauteur)</p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                                <span class="text-slate-500 text-xs">×</span>
+                                <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                                <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-res-role="copy">Copier le lien</button>
+                            </div>
+                            <p class="text-[10px] text-teal-300 truncate font-mono mt-1" data-res-role="link">...</p>
+                            <p class="text-[9px] text-slate-500 mt-0.5">Défaut 1920×1080. Dans OBS, réglez la Source Navigateur à la même taille.</p>
+                        </div>
+                    </div>
+                </details>
 
                 <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                     Effacer OBS
@@ -563,6 +593,8 @@ const isObsMode = urlParams.get('obs') === 'true';
 
 if (isObsMode) {
     document.body.classList.add('mode-obs');
+    // Sortie à résolution personnalisée (?res=WxH) : dimensionne et met à l'échelle.
+    applyObsResolution();
     document.getElementById('obs-mode-ui').classList.remove('hidden');
     initObsMode();
 } else {
@@ -879,6 +911,9 @@ async function initControllerMode() {
     document.getElementById('file-input').addEventListener('change', handleFilesAdded);
     document.getElementById('item-search').addEventListener('input', (e) => renderItemsList(e.target.value.trim()));
     document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+    // Panneau "Sortie OBS" : lien général + résolution personnalisée (&res=WxH).
+    initObsLinksPanel();
+    initResolutionPanel();
     document.getElementById('fit-mode-select').addEventListener('change', () => { if (onAir) resendCurrent(); });
     document.getElementById('btn-new-group').addEventListener('click', () => {
         const name = prompt('Nom du nouveau groupe :');

@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
+    <script src="js/obs-links.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -374,6 +375,14 @@
                     <code id="obs-url" class="text-xs text-indigo-300 font-mono select-all max-w-[200px] truncate"></code>
                     <button onclick="copyUrl()" class="text-gray-400 hover:text-white" title="Copier"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
                     <button onclick="toggleObsResHelp()" class="text-amber-400 hover:text-amber-300 shrink-0" title="Important : résolution de la Source Navigateur">⚠️</button>
+                </div>
+                <div class="bg-appBg px-3 py-1.5 rounded-md border border-gray-800 flex items-center gap-2">
+                    <span class="text-xs text-gray-400">Sortie :</span>
+                    <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-gray-900 border border-gray-700 text-white text-xs rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                    <span class="text-gray-500 text-xs">×</span>
+                    <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-gray-900 border border-gray-700 text-white text-xs rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                    <button type="button" class="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white px-2 py-1 rounded" data-res-role="copy" title="Copier le lien OBS avec cette résolution">Copier le lien</button>
+                    <code class="text-xs text-indigo-300 font-mono select-all max-w-[180px] truncate hidden md:inline" data-res-role="link"></code>
                 </div>
                 <button onclick="saveDesign()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-1.5 rounded text-sm font-semibold transition border border-gray-700">💾 Sauvegarder</button>
                 <div class="w-px h-6 bg-gray-700 mx-1"></div>
@@ -1248,7 +1257,9 @@
             document.getElementById('controller-view').classList.remove('hidden');
             
             let currentUrl = window.location.href.split('?')[0];
-            document.getElementById('obs-url').innerText = currentUrl + '?obs=1';
+            document.getElementById('obs-url').innerText = currentUrl + '?obs=1' + (typeof resQuery === 'function' ? resQuery() : '');
+            // Sorties personnalisées : saisie largeur×hauteur + lien ?obs=1&res=WxH.
+            if (typeof initResolutionPanel === 'function') initResolutionPanel({ obsParam: '?obs=1' });
             
             // Set init values
             updateLive();

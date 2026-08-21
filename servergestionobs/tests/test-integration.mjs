@@ -221,6 +221,49 @@ try {
     await sleep(1500);
     check('Studio Unifié, index, mur, file, lower third : aucune erreur JS', pageErrors.length === before, pageErrors.slice(before).join(' | '));
 
+    // ============ S5. SORTIES PERSONNALISÉES (?res=WxH) ============
+    console.log('▶ S5. Résolution de sortie personnalisée…');
+    const defRes = await bibleCtrl.evaluate(() => window.getOutputResolution());
+    check('Résolution par défaut = 1920×1080', defRes.w === 1920 && defRes.h === 1080, JSON.stringify(defRes));
+    const linkDefault = await bibleCtrl.evaluate(() => document.querySelector('[data-res-role="link"]').innerText);
+    check("Lien sans &res= en 1920×1080 (rien ne change pour l'existant)", !linkDefault.includes('res='), linkDefault);
+    await bibleCtrl.evaluate(() => {
+        const w = document.querySelector('[data-res-role="w"]');
+        const h = document.querySelector('[data-res-role="h"]');
+        w.value = '1280'; h.value = '720';
+        w.dispatchEvent(new Event('change'));
+    });
+    const linkCustom = await bibleCtrl.evaluate(() => document.querySelector('[data-res-role="link"]').innerText);
+    check('Lien contient &res=1280x720 après saisie', linkCustom.includes('res=1280x720'), linkCustom);
+    const generalLink = await bibleCtrl.evaluate(() => document.querySelector('[data-link-role="general"]').innerText);
+    check('Le lien général embarque aussi &res=1280x720', generalLink.includes('res=1280x720'), generalLink);
+    const persisted = await lyricsCtrl.evaluate(() => window.getOutputResolution());
+    check('Choix persisté et partagé entre outils', persisted.w === 1280 && persisted.h === 720, JSON.stringify(persisted));
+    // Page OBS à résolution personnalisée : dimensionnée + mise à l'échelle.
+    const pageRes = await ctxB.newPage();
+    trackErrors(pageRes, 'bible-obs-res');
+    await pageRes.goto(BASE + '/bible_control_display_pro.html?obs=true&res=1280x720', { waitUntil: 'load', timeout: 30000 });
+    await pageRes.waitForTimeout(300);
+    const resState = await pageRes.evaluate(() => {
+        const b = document.body;
+        return {
+            custom: b.classList.contains('res-custom'),
+            w: b.style.getPropertyValue('--cw'),
+            scale: b.style.getPropertyValue('--obs-scale'),
+            bodyW: getComputedStyle(b).width
+        };
+    });
+    check('Page OBS ?res=1280x720 : variables --cw/--obs-scale appliquées', resState.custom && resState.w === '1280px' && Math.abs(parseFloat(resState.scale) - 1280 / 1920) < 0.001, JSON.stringify(resState));
+    check('Page OBS ?res=1280x720 : body dimensionné à 1280px', resState.bodyW === '1280px', resState.bodyW);
+    await pageRes.close();
+    // Retour au défaut (1920×1080) pour ne pas influer sur le reste.
+    await bibleCtrl.evaluate(() => {
+        const w = document.querySelector('[data-res-role="w"]');
+        const h = document.querySelector('[data-res-role="h"]');
+        w.value = '1920'; h.value = '1080';
+        w.dispatchEvent(new Event('change'));
+    });
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

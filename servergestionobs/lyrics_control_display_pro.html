@@ -44,6 +44,11 @@
 
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
 
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille demandée
+           (--cw/--ch) et le rendu interne 1920×1080 est mis à l'échelle pour remplir. */
+        body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
+        body.mode-obs.res-custom #obs-container { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--obs-scale, 1)); }
+
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 
         .obs-bottom { position: absolute; bottom: 60px; left: 192px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-left: 8px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; overflow: hidden; }
@@ -279,6 +284,17 @@
                             <p class="text-[9px] text-slate-500 mt-1 mb-2">Chacun de ces liens affiche toujours le même mode dans OBS, quel que soit le style choisi ci-dessus — pratique pour avoir une scène "plein écran" et une scène "bas centré" en même temps.</p>
                             <div class="space-y-1.5" id="obs-fixed-links"></div>
                         </details>
+                        <div class="bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-slate-500">Résolution de sortie personnalisée (largeur × hauteur)</p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                                <span class="text-slate-500 text-xs">×</span>
+                                <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                                <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-res-role="copy">Copier le lien</button>
+                            </div>
+                            <p class="text-[10px] text-violet-400 truncate font-mono mt-1" data-res-role="link">...</p>
+                            <p class="text-[9px] text-slate-500 mt-0.5">Défaut 1920×1080. Dans OBS, réglez la Source Navigateur à la même taille.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -732,6 +748,8 @@
 
         if (isObsMode) {
             document.body.classList.add('mode-obs');
+            // Sortie à résolution personnalisée (?res=WxH) : dimensionne et met à l'échelle.
+            applyObsResolution();
             document.getElementById('obs-mode-ui').classList.remove('hidden');
             initObsMode();
         } else {
@@ -1178,6 +1196,8 @@
             updateSongsInfo();
             restorePosition();
             initObsLinksPanel();
+            // Sorties personnalisées : champs largeur×hauteur + lien &res=WxH + copier.
+            initResolutionPanel();
 
             // Portabilité : si la bibliothèque locale est vide (nouveau PC / navigateur),
             // on restaure les chants depuis le dossier du projet (data/lyrics/songs.json).
@@ -1746,3 +1766,4 @@
     </script>
 </body>
 </html>
+/html>

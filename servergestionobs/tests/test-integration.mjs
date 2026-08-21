@@ -264,6 +264,53 @@ try {
         w.dispatchEvent(new Event('change'));
     });
 
+    // ============ S6. DEUX VERSIONS DU MÊME VERSET EN DIRECT ============
+    console.log('▶ S6. Bible : 2 versions côte à côte…');
+    await bibleCtrl.evaluate(() => {
+        // Version factice contenant le livre utilisé par les tests.
+        bibleVersions.push({ id: 'v_test2', name: 'TEST2', books: [{ name: 'Livre E2E', totalVerses: 1, chapters: [{ num: 1, verses: [{ num: 1, text: 'Seconde traduction du verset de test.' }] }] }] });
+        renderVersionSelector();
+    });
+    // Espionne ce qui est envoyé vers OBS.
+    await bibleCtrl.evaluate(() => {
+        const orig = bc.postMessage.bind(bc);
+        window.__capturedShow = null;
+        bc.postMessage = (m) => { if (m && m.action === 'show') window.__capturedShow = m; orig(m); };
+    });
+    await bibleCtrl.evaluate(() => {
+        const check = document.getElementById('dual-version-check');
+        check.checked = true;
+        check.dispatchEvent(new Event('change'));
+    });
+    await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], 'Texte principal une version.'));
+    const cap = await bibleCtrl.evaluate(() => window.__capturedShow);
+    check('config.dual envoyé vers OBS (nom de la 2e version)', !!(cap && cap.config && cap.config.dual && cap.config.dual.version === 'TEST2'), JSON.stringify(cap && cap.config && cap.config.dual));
+    check('config.dual contient le texte de la 2e version', !!(cap && cap.config && cap.config.dual && /Seconde traduction/.test(cap.config.dual.text)));
+    const dualBadges = await bibleObs.waitForFunction(() => {
+        const badges = Array.from(document.querySelectorAll('#obs-card-element .version-badge')).map(e => (e.innerText || '').trim());
+        return badges.includes('TEST2') ? badges : false;
+    }, { timeout: 8000 }).then((r) => r.jsonValue()).catch(() => null);
+    check('OBS : la seconde version est affichée (badge TEST2)', !!dualBadges, JSON.stringify(dualBadges));
+    check('OBS : les deux colonnes portent leur version', dualBadges && dualBadges.length >= 3, JSON.stringify(dualBadges)); // badge d'en-tête + 2 colonnes
+    // Désactivation : la seconde version disparaît de la diffusion.
+    // (Re-déclenchement explicite : le verset de test n'existe pas dans la
+    //  version principale — en usage réel, le re-trigger automatique via onAir
+    //  suffit, comme pour switchVersion.)
+    await bibleCtrl.evaluate(() => {
+        const check = document.getElementById('dual-version-check');
+        check.checked = false;
+        check.dispatchEvent(new Event('change'));
+        triggerDisplay('Livre E2E', 1, [1], 'Texte principal une version.');
+    });
+    const dualGone = await bibleObs.waitForFunction(() => {
+        return !Array.from(document.querySelectorAll('#obs-card-element .version-badge')).some(e => (e.innerText || '').trim() === 'TEST2');
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Désactivé : la seconde version disparaît d\'OBS', dualGone);
+    await bibleCtrl.evaluate(() => {
+        bibleVersions = bibleVersions.filter(v => v.id !== 'v_test2');
+        renderVersionSelector();
+    });
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

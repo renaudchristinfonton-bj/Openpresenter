@@ -172,6 +172,11 @@
         <div class="glass-panel px-6 py-2 flex items-center gap-3 shrink-0 border-t border-slate-800">
             <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider shrink-0">Versions</span>
             <div id="version-tabs" class="flex items-center gap-2 overflow-x-auto flex-1 py-0.5"></div>
+            <label class="shrink-0 flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none px-2" title="Afficher le même verset dans deux traductions, côte à côte, en direct sur OBS">
+                <input type="checkbox" id="dual-version-check" class="accent-amber-500 w-3.5 h-3.5">
+                2 versions
+            </label>
+            <select id="dual-version-select" class="hidden shrink-0 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg px-2 py-1 max-w-[150px]" title="Seconde version affichée à côté de la principale"></select>
             <button id="btn-delete-version" class="shrink-0 text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors flex items-center gap-1" title="Supprimer la version active">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 Supprimer
@@ -411,6 +416,9 @@
         // ============================================================
         let bibleVersions = [];     // [{ id, name, books: [{name, totalVerses, chapters:[{num, verses:[{num,text}]}]}] }]
         let currentVersionId = null;
+        // 2 versions : afficher le même verset dans une seconde traduction, côte à côte.
+        let dualEnabled = false;
+        let dualVersionId = null;
         let activeBookName = null;
         let activeChapterNum = null;
         let favorites = [];
@@ -695,6 +703,24 @@
                 textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${config.text}"</div>`;
             }
 
+            // 2 versions : si une seconde traduction est fournie, le bloc de texte
+            // devient deux colonnes côte à côte — nom de chaque version au-dessus,
+            // séparateur central. Fonctionne en préview et sur OBS (même config).
+            if (config.dual && config.dual.text) {
+                const dualColumn = (badge, inner) => `
+                    <div style="flex:1 1 0; display:flex; flex-direction:column; min-width:0; padding:0 24px;">
+                        <div class="version-badge" style="font-size:22px; padding:4px 14px; align-self:center; margin-bottom:16px;">${badge}</div>
+                        <div class="flex-1 w-full flex flex-col justify-center min-h-0">${inner}</div>
+                    </div>`;
+                const dualTextHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${config.dual.text}"</div>`;
+                textHtml = `
+                    <div style="display:flex; width:100%; flex:1 1 auto; align-items:stretch;">
+                        ${dualColumn(config.version, textHtml)}
+                        <div style="width:3px; background:var(--accent-color, #f59e0b); opacity:0.55; margin:10px 0; border-radius:2px;"></div>
+                        ${dualColumn(config.dual.version, dualTextHtml)}
+                    </div>`;
+            }
+
             let html = '';
             let modeClass = '';
 
@@ -703,15 +729,20 @@
                 // Vitesse du ruban adaptée à la longueur du texte pour rester lisible
                 const speed = Math.max(15, Math.min(70, wordCount * 0.55));
                 card.style.setProperty('--speed', speed + 's');
+                // En mode ruban défiler, la seconde version (si activée) suit la
+                // première, séparée par le nom de sa traduction.
+                const dualScrolling = (config.dual && config.dual.text)
+                    ? ` <span class="verse-ref mr-6" style="font-size: 36px;">${config.dual.version} :</span><span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.dual.text}"</span>`
+                    : '';
                 html = `
                     <div class="ticker-wrapper" style="font-family: '${fontFam}', serif; font-size: 40px;">
                         <div class="ticker-content">
                             <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>
+                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
                         </div>
                         <div class="ticker-content">
                             <span class="verse-ref mr-6" style="font-size: 36px;">📖 ${config.reference} <span class="version-badge" style="font-size: 24px; padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>
+                            <span class="verse-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
                         </div>
                     </div>
                 `;
@@ -860,6 +891,8 @@
             initObsLinksPanel();
             // Sorties personnalisées : champs largeur×hauteur + lien &res=WxH + copier.
             initResolutionPanel();
+            // 2 versions en direct : case + sélecteur de seconde version.
+            initDualVersionUI();
 
             // Event Listeners UI
             document.getElementById('xml-upload').addEventListener('change', handleFileUpload);
@@ -1037,6 +1070,9 @@
                 btn.onclick = () => switchVersion(v.id);
                 container.appendChild(btn);
             });
+
+            // 2 versions : met à jour la liste des secondes versions possibles.
+            renderDualVersionUI();
         }
 
         // Bascule vers une autre version SANS recharger le livre/chapitre/verset :
@@ -1072,6 +1108,54 @@
             if (onAir) {
                 triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
             }
+        }
+
+        // ============================================================
+        // 2 VERSIONS EN DIRECT (même verset dans deux traductions)
+        // ============================================================
+        // Prépare le sélecteur de seconde version (toutes les versions sauf
+        // l'active) et restaure le dernier choix de l'utilisateur.
+        function renderDualVersionUI() {
+            const check = document.getElementById('dual-version-check');
+            const select = document.getElementById('dual-version-select');
+            if (!check || !select) return;
+
+            const others = bibleVersions.filter(v => v.id !== currentVersionId);
+            select.innerHTML = others.map(v => `<option value="${escapeHtml(v.id)}">${escapeHtml(v.name)}</option>`).join('');
+            if (others.length === 0) {
+                select.innerHTML = '<option value="">(une seule version chargée)</option>';
+            }
+            // Conserve le choix précédent s'il est encore valide.
+            if (dualVersionId && others.some(v => v.id === dualVersionId)) select.value = dualVersionId;
+            else { dualVersionId = others.length ? others[0].id : null; if (dualVersionId) select.value = dualVersionId; }
+
+            select.classList.toggle('hidden', !dualEnabled);
+            check.checked = dualEnabled;
+        }
+
+        function initDualVersionUI() {
+            const check = document.getElementById('dual-version-check');
+            const select = document.getElementById('dual-version-select');
+            if (!check || !select) return;
+            // Restaure les préférences.
+            try {
+                dualEnabled = localStorage.getItem('bibleDualEnabled') === '1';
+                dualVersionId = localStorage.getItem('bibleDualVersionId') || null;
+            } catch (e) { /* silencieux */ }
+            renderDualVersionUI();
+
+            check.addEventListener('change', () => {
+                dualEnabled = check.checked;
+                try { localStorage.setItem('bibleDualEnabled', dualEnabled ? '1' : '0'); } catch (e) {}
+                renderDualVersionUI();
+                // Rafraîchit l'affichage en direct si un verset est à l'antenne.
+                if (onAir) triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            });
+            select.addEventListener('change', () => {
+                dualVersionId = select.value || null;
+                try { localStorage.setItem('bibleDualVersionId', dualVersionId || ''); } catch (e) {}
+                if (onAir) triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+            });
         }
 
         async function addVersion(xmlString) {
@@ -1708,6 +1792,24 @@
 
             const combinedText = texts.join(' ');
 
+            // 2 versions : chercher le même verset (même livre/chapitre/versets) dans
+            // la seconde version choisie. Si le livre n'existe pas sous le même nom
+            // dans cette traduction, l'affichage reste simplement en une version.
+            let dual = null;
+            if (dualEnabled && dualVersionId && dualVersionId !== currentVersionId) {
+                const v2 = bibleVersions.find(v => v.id === dualVersionId);
+                const book2 = v2 && v2.books.find(b => b.name === bookName);
+                const chapter2 = book2 && book2.chapters.find(c => c.num == chapterNum);
+                if (chapter2) {
+                    const texts2 = [];
+                    verseNums.forEach(n => {
+                        const vv = chapter2.verses.find(vvv => vvv.num == n);
+                        if (vv) texts2.push(vv.text);
+                    });
+                    if (texts2.length > 0) dual = { version: v2.name, text: texts2.join(' ') };
+                }
+            }
+
             const config = {
                 reference: refLabel,
                 text: combinedText,
@@ -1722,6 +1824,7 @@
                 bgBlur: displaySettings.bgBlur,
                 lineMode: displaySettings.lineMode
             };
+            if (dual) config.dual = dual;
 
             onAir = { bookName, chapterNum, verseNums: sortedNums };
 

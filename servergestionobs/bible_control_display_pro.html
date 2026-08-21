@@ -162,6 +162,12 @@
                     Personnaliser
                 </button>
 
+                <div id="verse-parts-nav" class="hidden items-center gap-1 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1" title="Verset long découpé : naviguez entre les parties (uniquement en modes Bas centré / Bas droite)">
+                    <button id="btn-part-prev" type="button" class="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 text-white font-bold" title="Partie précédente">←</button>
+                    <span id="verse-parts-indicator" class="text-xs font-bold text-amber-400 min-w-[36px] text-center tabular-nums">1/1</span>
+                    <button id="btn-part-next" type="button" class="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 text-white font-bold" title="Partie suivante">→</button>
+                </div>
+
                 <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                     Effacer OBS
                 </button>
@@ -691,7 +697,15 @@
             }
 
             const fontFam = config.fontFamily || 'Merriweather';
-            const wordCount = config.text.split(/\s+/).filter(Boolean).length;
+
+            // Découpage des versets longs : en modes « bas centré » / « bas droite »,
+            // seule la partie COURANTE du verset est affichée (config.parts[partIndex]).
+            const displayText = (config.parts && config.parts.length > 1
+                && (config.mode === 'bottom' || config.mode === 'bottom-right'))
+                ? config.parts[Math.min(config.partIndex || 0, config.parts.length - 1)]
+                : config.text;
+
+            const wordCount = displayText.split(/\s+/).filter(Boolean).length;
 
             // Bloc de texte : soit une seule bulle, soit découpé ligne par ligne (respecte les mêmes
             // règles de largeur 80% / anti-débordement, gérées ensuite par autoFitDisplay).
@@ -700,10 +714,10 @@
                 // Verset annoté (✏️) : HTML enrichi local, rendu tel quel (par conception).
                 textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">${config.textHtml}</div>`;
             } else if (config.lineMode) {
-                const lines = splitTextIntoLines(config.text);
+                const lines = splitTextIntoLines(displayText);
                 textHtml = lines.map(l => `<div class="verse-text verse-line" style="font-family: '${fontFam}', serif;">${l}</div>`).join('');
             } else {
-                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${config.text}"</div>`;
+                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${displayText}"</div>`;
             }
 
             // 2 versions : si une seconde traduction est fournie, le bloc de texte
@@ -903,6 +917,15 @@
             document.getElementById('xml-upload').addEventListener('change', handleFileUpload);
             document.getElementById('book-search').addEventListener('input', handleSearch);
             document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+            // Découpage des versets longs : navigation entre les parties (← →).
+            document.getElementById('btn-part-prev').addEventListener('click', () => navigatePart(-1));
+            document.getElementById('btn-part-next').addEventListener('click', () => navigatePart(1));
+            document.addEventListener('keydown', (e) => {
+                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+                if (!document.getElementById('verse-parts-nav') || document.getElementById('verse-parts-nav').classList.contains('hidden')) return;
+                if (e.key === 'ArrowLeft') navigatePart(-1);
+                if (e.key === 'ArrowRight') navigatePart(1);
+            });
             document.getElementById('btn-delete-version').addEventListener('click', deleteCurrentVersion);
             document.getElementById('btn-multiselect').addEventListener('click', toggleSelectionMode);
             document.getElementById('smart-input').addEventListener('input', handleSmartInput);
@@ -1759,7 +1782,7 @@
         // ============================================================
         // DIFFUSION VERS OBS (un ou plusieurs versets, texte auto-converti)
         // ============================================================
-        function triggerDisplay(bookName, chapterNum, verseNums, fallbackText = null) {
+        function triggerDisplay(bookName, chapterNum, verseNums, fallbackText = null, opts = null) {
             if (!Array.isArray(verseNums)) verseNums = [verseNums];
 
             const version = getCurrentVersion();
@@ -1816,6 +1839,20 @@
 
             const combinedText = texts.join(' ');
 
+            // Découpage des versets longs (UNIQUEMENT en modes « bas centré » /
+            // « bas droite ») : le verset est affiché en plusieurs parties,
+            // navigables une par une. Ne s'applique pas aux versets annotés
+            // (leur HTML enrichi ne doit pas être coupé au milieu d'une balise).
+            const displayMode = document.getElementById('obs-mode-select').value;
+            let parts = null;
+            if ((displayMode === 'bottom' || displayMode === 'bottom-right')
+                && combinedText.length > VERSE_SPLIT_THRESHOLD && !annotatedHtml) {
+                parts = splitVerseIntoParts(combinedText, VERSE_SPLIT_MAX_CHARS);
+                if (parts.length < 2) parts = null;
+            }
+            const partIndex = (parts && opts && typeof opts.partIndex === 'number')
+                ? Math.max(0, Math.min(parts.length - 1, opts.partIndex)) : 0;
+
             // 2 versions : chercher le même verset (même livre/chapitre/versets) dans
             // la seconde version choisie. Si le livre n'existe pas sous le même nom
             // dans cette traduction, l'affichage reste simplement en une version.
@@ -1850,8 +1887,10 @@
             };
             if (dual) config.dual = dual;
             if (annotatedHtml) config.textHtml = annotatedHtml;
+            if (parts) { config.parts = parts; config.partIndex = partIndex; }
 
-            onAir = { bookName, chapterNum, verseNums: sortedNums };
+            onAir = { bookName, chapterNum, verseNums: sortedNums, parts: parts || null, partIndex: parts ? partIndex : 0 };
+            updatePartsNav();
 
             // 1. Envoyer à OBS via BroadcastChannel
             bc.postMessage({ action: 'show', config });
@@ -1876,15 +1915,57 @@
             bc.postMessage({ action: 'hide' });
             document.getElementById('preview-container').style.opacity = '0';
             onAir = null;
+            updatePartsNav();
         }
 
         // Relance la dernière chose affichée à l'écran (utilisé par le bouton "Relancer"
         // du Studio Unifié). Si rien n'est affiché, relance la sélection multiple active.
         function relaunchLast() {
             if (onAir) {
-                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+                triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums, null, { partIndex: onAir.partIndex || 0 });
             } else if (selectedVerseNums.size > 0) {
                 displaySelectedVerses();
+            }
+        }
+
+        // ============================================================
+        // DÉCOUPAGE DES VERSETS LONGS (modes « bas centré » / « bas droite »)
+        // ============================================================
+        // Au-delà d'un certain nombre de caractères, un verset est trop long pour
+        // une seule bande basse lisible : on le découpe en parties affichées une
+        // par une (boutons ← → de la barre d'actions, indicateur x/y).
+        const VERSE_SPLIT_THRESHOLD = 160; // caractères : au-delà, on découpe
+        const VERSE_SPLIT_MAX_CHARS = 150; // longueur maximale d'une partie
+
+        function splitVerseIntoParts(text, maxLen) {
+            const words = String(text).split(/\s+/).filter(Boolean);
+            const parts = [];
+            let cur = '';
+            for (const w of words) {
+                if (cur && (cur + ' ' + w).length > maxLen) { parts.push(cur); cur = w; }
+                else cur = cur ? cur + ' ' + w : w;
+            }
+            if (cur) parts.push(cur);
+            return parts;
+        }
+
+        function navigatePart(dir) {
+            if (!onAir || !onAir.parts || onAir.parts.length < 2) return;
+            const next = (onAir.partIndex || 0) + dir;
+            if (next < 0 || next >= onAir.parts.length) return;
+            triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums, null, { partIndex: next });
+        }
+
+        // Affiche/masque la navigation ← → + indicateur x/y (uniquement quand le
+        // verset à l'antenne est effectivement découpé en plusieurs parties).
+        function updatePartsNav() {
+            const nav = document.getElementById('verse-parts-nav');
+            if (!nav) return;
+            const hasParts = !!(onAir && onAir.parts && onAir.parts.length > 1);
+            nav.classList.toggle('hidden', !hasParts);
+            nav.classList.toggle('flex', hasParts);
+            if (hasParts) {
+                document.getElementById('verse-parts-indicator').innerText = `${(onAir.partIndex || 0) + 1}/${onAir.parts.length}`;
             }
         }
 

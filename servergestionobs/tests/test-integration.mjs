@@ -353,6 +353,53 @@ try {
         renderBooksList(currentBooks());
     });
 
+    // ============ S8. DÉCOUPAGE DES VERSETS LONGS (modes bas) ============
+    console.log('▶ S8. Découpage des versets longs (bas centré / bas droite)…');
+    await bibleCtrl.evaluate(() => {
+        const longText = 'Au commencement Dieu crea le ciel et la terre, et la terre etait sans forme et vide, et les tenebres etaient sur la face de labime, et lesprit de Dieu se mouvait sur les eaux, et Dieu dit.';
+        bibleVersions.find(v => v.id === currentVersionId).books.push({
+            name: 'Livre E2E', totalVerses: 1,
+            chapters: [{ num: 1, verses: [{ num: 1, text: longText }] }]
+        });
+        document.getElementById('obs-mode-select').value = 'bottom';
+        renderBooksList(currentBooks());
+    });
+    await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], null));
+    const split = await bibleCtrl.evaluate(() => ({
+        parts: window.__capturedShow && window.__capturedShow.config.parts,
+        partIndex: window.__capturedShow && window.__capturedShow.config.partIndex,
+        navVisible: !document.getElementById('verse-parts-nav').classList.contains('hidden'),
+        indicator: document.getElementById('verse-parts-indicator').innerText
+    }));
+    check('Verset long en mode bas : decoupe en plusieurs parties', !!(split.parts && split.parts.length >= 2), JSON.stringify(split.parts && split.parts.length));
+    check('Indicateur x/y visible (1/N)', split.navVisible && split.indicator === '1/' + split.parts.length, split.indicator);
+    await bibleCtrl.evaluate(() => navigatePart(1));
+    const nav = await bibleCtrl.evaluate(() => ({
+        idx: onAir.partIndex,
+        ind: document.getElementById('verse-parts-indicator').innerText,
+        cap: window.__capturedShow.config.partIndex
+    }));
+    check('navigatePart(1) : partie suivante diffusede', nav.idx === 1 && nav.cap === 1 && nav.ind === '2/' + split.parts.length, JSON.stringify(nav));
+    const part2OnObs = await bibleObs.waitForFunction((start) => {
+        const el = document.querySelector('#obs-card-element .verse-text');
+        return el && el.innerText.indexOf(start) >= 0 && el.innerText.length < 170;
+    }, split.parts[1].slice(0, 14), { timeout: 8000 }).then(() => true).catch(() => false);
+    check('OBS : seule la partie courante est affichee', part2OnObs);
+    await bibleCtrl.evaluate(() => {
+        document.getElementById('obs-mode-select').value = 'full';
+        triggerDisplay('Livre E2E', 1, [1], null);
+    });
+    const noSplit = await bibleCtrl.evaluate(() => ({
+        parts: window.__capturedShow.config.parts,
+        navVisible: !document.getElementById('verse-parts-nav').classList.contains('hidden')
+    }));
+    check('Mode plein ecran : pas de decoupage, navigation masquee', !noSplit.parts && !noSplit.navVisible, JSON.stringify(noSplit));
+    await bibleCtrl.evaluate(() => {
+        const v = bibleVersions.find(x => x.id === currentVersionId);
+        v.books = v.books.filter(b => b.name !== 'Livre E2E');
+        renderBooksList(currentBooks());
+    });
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

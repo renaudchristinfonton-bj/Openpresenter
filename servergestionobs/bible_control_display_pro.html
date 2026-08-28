@@ -70,7 +70,17 @@
         /* Ruban défilant robuste et fluide */
         .ticker-wrapper { display: flex; align-items: center; white-space: nowrap; will-change: transform; animation: marquee var(--speed, 30s) linear infinite; padding-left: 100vw; }
         .ticker-content { display: inline-flex; align-items: center; padding-right: 15vw; }
-        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        
+        /* Looks : animations d'entrée personnalisables par mode */
+        @keyframes look-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes look-zoom { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes look-slideup { from { opacity: 0; transform: translateY(80px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes look-slideleft { from { opacity: 0; transform: translateX(120px); } to { opacity: 1; transform: translateX(0); } }
+        .look-anim-fade { animation: look-fade .7s ease both; }
+        .look-anim-zoom { animation: look-zoom .7s cubic-bezier(0.16,1,0.3,1) both; }
+        .look-anim-slideup { animation: look-slideup .7s cubic-bezier(0.16,1,0.3,1) both; }
+        .look-anim-slideleft { animation: look-slideleft .7s cubic-bezier(0.16,1,0.3,1) both; }
+@keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 
         /* Le texte du verset occupe toujours 80% de la largeur du cadre, centré,
            pour garantir des marges de lisibilité constantes quel que soit l'affichage. */
@@ -713,6 +723,10 @@
         // Looks personnalisés : géométrie du cadre pour CE mode (largeur/hauteur/
         // écarts en % ou px). Vide/absent = géométrie par défaut de la page.
         function applyLookLayout(card, mode, layout) {
+            card.classList.remove('look-anim-fade', 'look-anim-zoom', 'look-anim-slideup', 'look-anim-slideleft');
+            if (layout && layout[mode] && layout[mode].anim && layout[mode].anim !== 'none') {
+                card.classList.add('look-anim-' + layout[mode].anim);
+            }
             ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => { card.style[k] = ''; });
             if (!layout) return;
             const g = layout[mode];

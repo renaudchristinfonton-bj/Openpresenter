@@ -109,19 +109,19 @@
         <div id="geo">
             <div class="row"><label style="min-width:130px">⛶ Plein écran</label>
                 L <input type="text" id="g-full-width" placeholder="96%">< H <input type="text" id="g-full-height" placeholder="93%">< Haut <input type="text" id="g-full-top" placeholder="4%">
-            </div>
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="full" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
             <div class="row"><label style="min-width:130px">▣ 80 % écran</label>
                 L <input type="text" id="g-screen80-width" placeholder="80%">< H <input type="text" id="g-screen80-height" placeholder="80%">
-            </div>
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="screen80" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
             <div class="row"><label style="min-width:130px">▬ Bas centré</label>
                 L <input type="text" id="g-bottom-width" placeholder="80%">< H <input type="text" id="g-bottom-height" placeholder="25%">< Bas <input type="text" id="g-bottom-bottom" placeholder="6%">
-            </div>
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="bottom" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
             <div class="row"><label style="min-width:130px">▭ Bas droite</label>
                 L <input type="text" id="g-bottom-right-width" placeholder="80%">< H <input type="text" id="g-bottom-right-height" placeholder="25%">< Bas <input type="text" id="g-bottom-right-bottom" placeholder="6%">< Dte <input type="text" id="g-bottom-right-right" placeholder="3%">
-            </div>
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="bottom-right" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
             <div class="row"><label style="min-width:130px">≡ Défilement</label>
                 H <input type="text" id="g-scrolling-height" placeholder="7%">
-            </div>
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="scrolling" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
         </div>
 
         <div class="row" style="margin-top:16px">
@@ -205,6 +205,8 @@
                 const v = geoFields[mode][k].value.trim();
                 if (v) g[k] = /^\d+(\.\d+)?$/.test(v) ? v + '%' : v;
             });
+            const sel = document.querySelector('[data-geoanim="' + mode + '"]');
+            if (sel && sel.value) g.anim = sel.value;
             if (Object.keys(g).length) layout[mode] = g;
         });
         d.layout = layout;
@@ -229,6 +231,8 @@
             Object.keys(geoFields[mode]).forEach(k => {
                 geoFields[mode][k].value = (g[k] || '').replace('%', '');
             });
+            const sel = document.querySelector('[data-geoanim="' + mode + '"]');
+            if (sel) sel.value = g.anim || '';
         });
         const th = $('st-bgimg-thumb');
         if (d.bgImage) { th.src = d.bgImage; th.style.display = ''; } else { th.style.display = 'none'; }

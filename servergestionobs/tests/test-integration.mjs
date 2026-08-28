@@ -935,6 +935,25 @@ try {
     check('Projection : cadre bas réellement à 60% de largeur (≈1152px)', Math.abs(cardW - 1152) <= 8, String(cardW));
     await bibleCtrl.evaluate(() => { document.getElementById('obs-mode-select').value = 'full'; clearOBS(); });
 
+    // ============ S17. ANIMATION D'ENTRÉE PAR MODE (looks) ============
+    console.log('▶ S17. Looks : animation d\'entrée du plein écran…');
+    const cc3 = await ctxA.newPage();
+    await cc3.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 });
+    await cc3.waitForTimeout(600);
+    await cc3.evaluate(() => OpenLooks.apply({ name: 'anim-e2e', bible: { layout: { full: { anim: 'slideup' } } }, lyrics: { layout: { full: { anim: 'zoom' } } } }));
+    await bibleCtrl.waitForFunction(() => displaySettings.layout && displaySettings.layout.full && displaySettings.layout.full.anim === 'slideup', { timeout: 8000 }).catch(() => {});
+    await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], 'Animation du cadre.'));
+    await bibleCtrl.evaluate(() => relaunchLast());
+    const animClass = await bibleObs.waitForFunction(() => {
+        const c = document.getElementById('obs-card-element');
+        return c.className.includes('look-anim-slideup') ? true : false;
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Plein écran : animation « glisser ↑ » appliquée au cadre (OBS)', animClass);
+    await lyricsCtrl.evaluate(() => triggerDisplay(songs[0].id, ['sec1']));
+    const animZoom = await lyricsObs.waitForFunction(() => document.getElementById('obs-card-element').className.includes('look-anim-zoom'), { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Paroles : SA propre animation (zoom) appliquée', animZoom);
+    await cc3.close().catch(() => {});
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

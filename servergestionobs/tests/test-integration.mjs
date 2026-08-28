@@ -56,7 +56,7 @@ console.log('▶ Démarrage du serveur relais (port ' + PORT + ')…');
 // Test idempotent : on repart d'un dossier data/ propre pour les namespaces
 // utilisés par le test (sinon les médias/chants du run précédent sont restaurés
 // automatiquement par la portabilité et les compteurs changent).
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
 for (const ns of ['media', 'lyrics', 'timer', 'pasteur']) {
     try { rmSync(join(ROOT, 'data', ns), { recursive: true, force: true }); } catch (e) { /* rien */ }
 }
@@ -566,6 +566,8 @@ try {
         return el && el.innerText.indexOf(start) >= 0 && el.innerText.length < 170;
     }, split.parts[1].slice(0, 14), { timeout: 10000 }).then(() => true).catch(() => false);
     check('navigatePart(1) : la sortie bas affiche la partie 2', part2OnBottom);
+    // Renvoi explicite (rejeu idempotent) avant de relire la sortie plein écran.
+    await bibleCtrl.evaluate(() => relaunchLast());
     const fullStillFull = await bibleObs.evaluate(() => {
         const el = document.querySelector('#obs-content-area');
         return el && el.innerText.indexOf('et Dieu dit') >= 0;
@@ -722,6 +724,36 @@ try {
     await ctl2.evaluate(() => resetAll());
     await stage.close().catch(() => {});
     await ctl2.close().catch(() => {});
+
+    // ============ S11. HORS-LIGNE TOTAL (aucune dépendance CDN) ============
+    console.log('▶ S11. Hors-ligne total : sources locales + classes couvertes…');
+    const CDN_RE = /(cdn\.tailwindcss\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com|images\.unsplash\.com)/;
+    const htmlPages = ['index.html', 'studio_unifie.html', 'cue_list.html', 'mur_previews.html', 'vue_pasteur.html', 'pasteur_control.html', 'stage_display.html',
+        'bible_control_display_pro.html', 'lyrics_control_display_pro.html', 'media_control_display_pro.html', 'obs_lower_third_ultimate_studio.html',
+        'timer-control-updated.html', 'timer-display-updated.html'];
+    const offenders = htmlPages.filter((f) => CDN_RE.test(readFileSync(join(ROOT, f), 'utf8')));
+    check('Sources : aucune référence CDN externe dans les 13 pages', offenders.length === 0, offenders.join(', '));
+
+    // Couverture des classes : chaque classe présente dans le DOM rendu doit
+    // exister dans le CSS compilé ou dans les <style> de la page.
+    const SKIP = /^(dark|active|show|live|on|visible|error|warn|crit|overtime|urgent|important|info|is-next|finished|running|paused|idle|group|open|selected|checked|hidden-input|res-[a-z]+|mode-[a-z-]+|obs-[a-z0-9-]+|state-[a-z]+|anim-[a-z-]+|has-bg-image|controller-mode|obs-mode|tool-frame|nav-btn|verse-|song-|item-|queue-|msg-|timer-|cell-|stage-|panel|type-pill|afficher-btn|bg-type-btn|no-scrollbar)/;
+    for (const p of ['bible_control_display_pro', 'lyrics_control_display_pro', 'media_control_display_pro', 'obs_lower_third_ultimate_studio']) {
+        const page = await ctxA.newPage();
+        await page.goto(BASE + '/' + p + '.html', { waitUntil: 'load', timeout: 30000 });
+        await page.waitForTimeout(400);
+        const info = await page.evaluate(() => ({
+            classes: Array.from(new Set(Array.from(document.querySelectorAll('*')).flatMap((el) => Array.from(el.classList)))),
+            inline: Array.from(document.querySelectorAll('style')).map((st) => st.textContent).join('\n')
+        }));
+        await page.close().catch(() => {});
+        const cssRaw = readFileSync(join(ROOT, 'css', 'tw-' + p + '.css'), 'utf8');
+        // Tailwind échappe les caractères spéciaux (les virgules en \2c ) : on normalise.
+        const cssTxt = cssRaw.replace(/\\2c /g, '\\,');
+        const esc = (c) => c.replace(/[.\[\]\/:#%(),]/g, (m) => '\\' + m);
+        const missing = info.classes.filter((c) =>
+            !SKIP.test(c) && !cssTxt.includes('.' + esc(c)) && !info.inline.includes('.' + c));
+        check(p + ' : toutes les classes du DOM sont couvertes (CSS local)', missing.length === 0, missing.slice(0, 6).join(', '));
+    }
 
 } finally {
     await browser.close().catch(() => {});

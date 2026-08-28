@@ -6,33 +6,14 @@
     <title>Bible Pro Controller - OBS</title>
     <link rel="manifest" href="manifest.webmanifest">
     <!-- Importation des polices -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;800&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="css/tw-bible_control_display_pro.css">
     <script src="store.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/obs-links.js"></script>
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                        display: ['Cinzel', 'serif'],
-                    },
-                    colors: {
-                        obs: {
-                            bg: 'rgba(15, 23, 42, 0.92)',
-                            accent: '#f59e0b'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -122,7 +103,7 @@
         .verse-item:hover, .verse-item.active { background: rgba(245, 158, 11, 0.15); border-left: 3px solid #f59e0b; }
 
         /* Conteneur de preview (simule OBS) */
-        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
 
         /* Versions & sélection multiple */
         #version-tabs::-webkit-scrollbar { height: 4px; }

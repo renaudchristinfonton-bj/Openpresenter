@@ -16,6 +16,9 @@ const CORE = [
   'media_control_display_pro.html', 'obs_lower_third_ultimate_studio.html',
   'timer-control-updated.html', 'timer-display-updated.html',
   'store.js', 'manifest.webmanifest',
+  'vendor/fonts/fonts.css', 'vendor/js/jszip.min.js', 'vendor/js/pdf.min.js', 'vendor/js/pdf.worker.min.js',
+  'css/tw-bible_control_display_pro.css', 'css/tw-lyrics_control_display_pro.css',
+  'css/tw-media_control_display_pro.css', 'css/tw-obs_lower_third_ultimate_studio.css',
   'js/remote-channel.js', 'js/live-mutex.js', 'js/obs-links.js', 'js/ui.js', 'js/qrcode.js'
 ];
 

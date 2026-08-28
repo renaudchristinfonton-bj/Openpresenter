@@ -5,21 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media Pro Controller - OBS</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="css/tw-media_control_display_pro.css">
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
     <script src="js/obs-links.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Poppins', 'sans-serif'] },
-                colors: { obsAccent: '#14b8a6' } } }
-        }
-    </script>
+    <script src="vendor/js/jszip.min.js"></script>
+    <script src="vendor/js/pdf.min.js"></script>
+    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -478,7 +472,7 @@ async function parsePptx(fileBlobOrBuffer) {
 // indisponible, tout le reste (favoris, images, vidéos, PPTX déjà importés, Relancer,
 // Effacer OBS...) continue de fonctionner normalement.
 if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/js/pdf.worker.min.js';
 }
 
 // ============================================================
@@ -496,7 +490,6 @@ if (typeof pdfjsLib !== 'undefined') {
 // permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
 // sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
 // fonctionnement de l'application.
-
 
 
 

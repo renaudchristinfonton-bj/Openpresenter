@@ -251,3 +251,16 @@ rechargements (localStorage + dossier `data/`).
 Vous avez déjà votre propre page de minuteur ? Ouvrez la vue avec
 `vue_pasteur.html?timer=timer-display.html` : elle s'affiche à la place du
 minuteur intégré, pilotée par vos boutons habituels.
+
+## 100 % hors ligne (aucune dépendance Internet)
+
+Depuis cette version, **tout est local** — coupez Internet, tout fonctionne :
+- **polices** : `vendor/fonts/` (Inter, Cinzel, Merriweather, Poppins… en woff2
+  local) — plus aucun appel à Google Fonts ;
+- **Tailwind** : compilé par page dans `css/tw-*.css` (plus de CDN) ;
+- **jszip / pdf.js** : `vendor/js/` (PDF et PowerPoint restent lisibles) ;
+- fonds d'aperçu : dégradés locaux (plus d'Unsplash).
+- **PWA** : la page peut être **installée** (menu navigateur → « Installer ») sur
+  PC/mobile ; un service worker met tout en cache pour un usage hors ligne.
+- **Vitesse** : le serveur compresse (gzip) les pages — ~20-30 Ko au lieu de
+  100+ — et le navigateur les garde en cache 1 h.

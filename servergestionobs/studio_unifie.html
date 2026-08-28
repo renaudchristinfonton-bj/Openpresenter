@@ -117,6 +117,25 @@
     }
     #shell-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     #shell-toast.error { border-color: #ef4444; color: #fecaca; }
+
+    /* ---- Recherche unifiée (chants + versets + médias) ---- */
+    .unified-search { position: relative; margin-left: 18px; flex: 1; max-width: 520px; }
+    .unified-search input {
+        width: 100%; padding: 8px 14px; border-radius: 9px; border: 1px solid #334155;
+        background: #0d1526; color: #f8fafc; font-family: inherit; font-size: 13px; outline: none;
+    }
+    .unified-search input:focus { border-color: #6366f1; }
+    .us-results {
+        position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
+        background: #0d1526; border: 1px solid #334155; border-radius: 10px;
+        box-shadow: 0 18px 50px rgba(0,0,0,.55); max-height: 60vh; overflow-y: auto; display: none;
+    }
+    .us-results.open { display: block; }
+    .us-group { padding: 6px 10px 2px; font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #64748b; }
+    .us-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; color: #e2e8f0; }
+    .us-item:hover, .us-item.sel { background: rgba(99,102,241,.18); }
+    .us-item .sub { color: #64748b; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .us-empty { padding: 12px; color: #475569; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -141,6 +160,11 @@
     <div class="main">
         <div class="topbar">
             <div class="brand">Studio Unifié</div>
+
+            <div class="unified-search">
+                <input type="text" id="us-input" placeholder="🔍 Tout chercher : chant, verset, média… (Entrée = diffuser le 1ᵉʳ résultat)" autocomplete="off">
+                <div class="us-results" id="us-results"></div>
+            </div>
 
             <div class="tool-control" id="ctrl-bible">
                 <span class="t-label"><span class="t-dot"></span>Bible</span>
@@ -220,6 +244,86 @@
             showShellToast(`Impossible de contacter "${tool}". Ouvrez ce Studio via le lien du serveur relais (http://localhost:8787/...), pas en double-cliquant le fichier.`, true);
         }
     }
+
+    // ============================================================
+    // RECHERCHE UNIFIÉE — chants + versets + médias dans un seul champ
+    // ============================================================
+    (function () {
+        const input = document.getElementById('us-input');
+        const box = document.getElementById('us-results');
+        if (!input || !box) return;
+        const win = (id) => { try { return document.getElementById(id).contentWindow; } catch (e) { return null; } };
+        const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        let debounce = null, items = [], sel = 0;
+
+        function search(q) {
+            const out = [];
+            // Chants
+            try {
+                const wl = win('frame-lyrics');
+                const songs = wl && wl.OpenPresenterLyrics ? wl.OpenPresenterLyrics.listSongs() : [];
+                const nq = norm(q);
+                songs.filter(x => norm(x.title + ' ' + (x.artist || '')).includes(nq)).slice(0, 6).forEach(x => {
+                    out.push({ tool: 'lyrics', icon: '🎤', main: x.title, sub: (x.sections || []).length + ' section(s)' + (x.artist ? ' · ' + x.artist : ''), run: () => { switchTab('lyrics'); const w = win('frame-lyrics'); if (x.sections[0]) w.triggerDisplay(x.id, [x.sections[0].id]); } });
+                });
+            } catch (e) { /* outil pas prêt */ }
+            // Médias
+            try {
+                const wm = win('frame-media');
+                const its = wm && wm.OpenPresenterMedia ? wm.OpenPresenterMedia.listItems() : [];
+                const nq = norm(q);
+                its.filter(x => norm(x.name).includes(nq)).slice(0, 6).forEach(x => {
+                    out.push({ tool: 'media', icon: '🖼️', main: x.name, sub: x.type, run: () => { switchTab('media'); win('frame-media').activateItem(x.id); } });
+                });
+            } catch (e) { /* outil pas prêt */ }
+            // Bible (nom de livre + plein texte)
+            try {
+                const wb = win('frame-bible');
+                const vs = wb && wb.OpenPresenterBible ? wb.OpenPresenterBible.search(q, 6) : [];
+                vs.forEach(v => {
+                    out.push({ tool: 'bible', icon: '📖', main: v.label, sub: v.excerpt || 'Aller au livre', run: () => { switchTab('bible'); win('frame-bible').triggerDisplay(v.bookName, v.chapterNum, [v.verseNum]); } });
+                });
+            } catch (e) { /* outil pas prêt */ }
+            return out;
+        }
+
+        function render() {
+            if (!items.length) { box.innerHTML = '<div class="us-empty">Aucun résultat (les outils finissent peut-être de charger…)</div>'; box.classList.add('open'); return; }
+            let html = '', lastTool = null;
+            const labels = { lyrics: 'Chants', media: 'Médias', bible: 'Bible' };
+            items.forEach((it, i) => {
+                if (it.tool !== lastTool) { html += `<div class="us-group">${it.icon} ${labels[it.tool]}</div>`; lastTool = it.tool; }
+                html += `<div class="us-item${i === sel ? ' sel' : ''}" data-i="${i}">${it.icon} <span>${it.main}</span>${it.sub ? `<span class="sub">— ${it.sub}</span>` : ''}</div>`;
+            });
+            box.innerHTML = html;
+            box.classList.add('open');
+        }
+
+        function refresh() {
+            const q = input.value.trim();
+            sel = 0;
+            if (q.length < 2) { box.classList.remove('open'); items = []; return; }
+            items = search(q);
+            render();
+        }
+
+        input.addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(refresh, 180); });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { box.classList.remove('open'); input.blur(); return; }
+            if (!items.length) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); render(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); render(); }
+            else if (e.key === 'Enter') { e.preventDefault(); items[sel].run(); box.classList.remove('open'); }
+        });
+        box.addEventListener('mousedown', (e) => {
+            const el = e.target.closest('.us-item');
+            if (!el) return;
+            e.preventDefault();
+            items[+el.dataset.i].run();
+            box.classList.remove('open');
+        });
+        document.addEventListener('click', (e) => { if (!e.target.closest('.unified-search')) box.classList.remove('open'); });
+    })();
 </script>
 
     <script src="js/pwa.js"></script>

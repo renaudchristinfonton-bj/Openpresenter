@@ -9,6 +9,9 @@
     <script src="js/remote-channel.js"></script>
     <link rel="stylesheet" href="vendor/fonts/fonts.css">
     <style>
+        .queue-item.dragging { opacity: 0.45; }
+        .queue-item.drop-target { outline: 2px dashed var(--accent, #f59e0b); outline-offset: 2px; }
+        .queue-item-actions .btn-icon:disabled { opacity: 0.25; cursor: default; }
         :root {
             --bg: #0a0a0f;
             --surface: rgba(255,255,255,0.04);
@@ -682,12 +685,40 @@
                     <div class="queue-item-time">${formatTime(item.duration)}</div>
                 </div>
                 <div class="queue-item-actions">
+                    <button class="btn-icon" onclick="moveItem(${i}, ${i - 1})" title="Monter" ${i === 0 ? 'disabled' : ''}>▲</button>
+                    <button class="btn-icon" onclick="moveItem(${i}, ${i + 1})" title="Descendre" ${i === queue.length - 1 ? 'disabled' : ''}>▼</button>
                     <button class="btn-icon" onclick="editItem(${i})">✎</button>
                     <button class="btn-icon danger" onclick="removeItem(${i})">✕</button>
                 </div>
             `;
+            // Glisser-déposer pour réordonner la trame du temps
+            li.draggable = true;
+            li.dataset.index = i;
+            li.addEventListener('dragstart', (e) => {
+                dragFromIndex = i;
+                li.classList.add('dragging');
+                try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); } catch (err) {}
+            });
+            li.addEventListener('dragend', () => { li.classList.remove('dragging'); document.querySelectorAll('.queue-item.drop-target').forEach(el => el.classList.remove('drop-target')); });
+            li.addEventListener('dragover', (e) => { e.preventDefault(); if (i !== dragFromIndex) li.classList.add('drop-target'); });
+            li.addEventListener('dragleave', () => li.classList.remove('drop-target'));
+            li.addEventListener('drop', (e) => { e.preventDefault(); li.classList.remove('drop-target'); moveItem(dragFromIndex, i); });
             queueList.appendChild(li);
         });
+    }
+
+    let dragFromIndex = null;
+
+    // Déplace un décompte dans la trame (boutons ▲▼ ou glisser-déposer).
+    function moveItem(from, to) {
+        if (from === to) return;
+        if (from < 0 || from >= queue.length) return;
+        to = Math.max(0, Math.min(queue.length - 1, to));
+        const moved = queue.splice(from, 1)[0];
+        queue.splice(to, 0, moved);
+        renderQueue();
+        channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
     }
 
     function removeItem(i) {

@@ -242,6 +242,12 @@ résolution, bibliothèques IndexedDB avec les médias, données du dossier `dat
 - **1/5 : messages** — la régie envoie des messages (info / important / URGENT),
   le dernier s'affiche en grand, les précédents restent en historique.
 
+**Changer l'ordre de la trame du temps** : dans le contrôle du minuteur, chaque
+décompte peut être **déplacé par glisser-déposer** ou avec les boutons **▲ ▼** —
+le nouvel ordre est diffusé en direct à tous les écrans et conservé (rechargement,
+changement de PC). « ✕ Réinitialiser » arrête le décompte en cours **sans vider**
+la file ; « ✕ » sur un élément le retire de la file.
+
 **Côté régie** : ouvrez `vue_pasteur.html?admin=1` (bouton « ⚙️ Contrôle » en haut
 de la vue, ou carte du Command Center) — préréglages 5→60 min, durée libre mm:ss,
 Démarrer/Pause/Reset, rédaction et envoi des messages. Tout transite par le relais
@@ -273,6 +279,14 @@ de couleurs/formes à la **Bible** et aux **Paroles** (fond, accent, texte, coin
 sur tous les contrôleurs ouverts (même PC ou autre appareil du réseau) et
 **persisté** (il suit le dossier `data/`). Les réglages manuels de chaque outil
 restent utilisables ; un look ne touche ni aux médias ni aux sorties.
+
+## Recherche unifiée (Studio)
+
+En haut du **Studio Unifié**, un seul champ **« Tout chercher »** : tapez quelques
+lettres — chants (titre/artiste), versets (nom de livre ou recherche plein texte)
+et médias (nom de fichier) apparaissent groupés. **Entrée** diffuse le premier
+résultat dans le bon outil, les flèches ↑↓ naviguent, Échap ferme. C'est le
+« search engine » des logiciels pros, sans quitter le Studio.
 
 ## Plan de culte — import CSV / Planning Center
 

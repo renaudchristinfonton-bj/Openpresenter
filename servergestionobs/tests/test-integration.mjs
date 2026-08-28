@@ -799,6 +799,78 @@ try {
     check('Import : étapes non reconnues → notes structurelles', plan.kinds[2] === 'note' && plan.kinds[3] === 'note', JSON.stringify(plan.kinds));
     await cuePage.close().catch(() => {});
 
+    // ============ S14. MINUTEUR : réorganiser la trame du temps ============
+    console.log('▶ S14. Minuteur : réorganisation (glisser-déposer + ▲▼)…');
+    const tctl = await ctxA.newPage();
+    trackErrors(tctl, 'timer-reorder');
+    await tctl.goto(BASE + '/timer-control-updated.html', { waitUntil: 'load', timeout: 30000 });
+    await tctl.waitForTimeout(700);
+    // NB : resetAll() de ce minuteur réinitialise le décompte COURANT mais ne vide
+    // pas la file (choix de design) — on vide explicitement pour un test propre.
+    await tctl.evaluate(() => {
+        try { resetAll(); } catch (e) {}
+        queue.length = 0; renderQueue(); persistState();
+        localStorage.removeItem('timer:state');
+        channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+    });
+    await tctl.waitForTimeout(400);
+    await tctl.evaluate(() => {
+        const add = (t, m) => { document.getElementById('inp-title').value = t; document.getElementById('inp-m').value = m; addToQueue(); };
+        add('Louange', 10); add('Prédication', 35); add('Annonces', 5);
+    });
+    // Écouteur du canal (vérifie la diffusion de la nouvelle commande QUEUE_UPDATE).
+    const tdisp = await ctxB.newPage();
+    await tdisp.goto(BASE + '/timer-display-updated.html', { waitUntil: 'load', timeout: 30000 });
+    await tdisp.waitForTimeout(400);
+    await tdisp.evaluate(() => {
+        window.__q = null;
+        channel.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'QUEUE_UPDATE') window.__q = m.queue.map(x => x.title); };
+    });
+    const btns = await tctl.evaluate(() => ({
+        up: document.querySelectorAll('#queue-list .queue-item button[title="Monter"]').length,
+        down: document.querySelectorAll('#queue-list .queue-item button[title="Descendre"]').length,
+        draggable: !!document.querySelector('#queue-list .queue-item').attributes.getNamedItem('draggable')
+    }));
+    check('File du minuteur : boutons ▲▼ présents + éléments déplaçables', btns.up === 3 && btns.down === 3 && btns.draggable, JSON.stringify(btns));
+    await tctl.evaluate(() => moveItem(0, 2)); // Louange à la fin
+    const order = await tctl.evaluate(() => queue.map(x => x.title));
+    check('moveItem(0→2) : Louange déplacé en fin de trame', order.join('|') === 'Prédication|Annonces|Louange', order.join('|'));
+    const bcast = await tdisp.waitForFunction(() => window.__q === null ? false : window.__q.join('|') === 'Prédication|Annonces|Louange', { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Nouvel ordre diffusé aux écrans (QUEUE_UPDATE)', bcast);
+    await tctl.reload({ waitUntil: 'load' });
+    await tctl.waitForTimeout(800);
+    const reloaded = await tctl.evaluate(() => queue.map(x => x.title).join('|'));
+    check('Ordre conservé après rechargement (persistance)', reloaded === 'Prédication|Annonces|Louange', reloaded);
+    await tctl.evaluate(() => resetAll());
+    await tctl.close().catch(() => {});
+    await tdisp.close().catch(() => {});
+
+    // ============ S15. RECHERCHE UNIFIÉE (Studio) ============
+    console.log('▶ S15. Studio : recherche unifiée chants + médias…');
+    const studio = await ctxA.newPage();
+    trackErrors(studio, 'studio');
+    await studio.goto(BASE + '/studio_unifie.html', { waitUntil: 'load', timeout: 30000 });
+    await studio.waitForTimeout(3000); // les 4 iframes chargent leurs données (IndexedDB)
+    await studio.fill('#us-input', 'Chant E2E');
+    await studio.waitForTimeout(500);
+    const songHit = await studio.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('#us-results .us-item'));
+        return { open: document.getElementById('us-results').classList.contains('open'), txt: items.map(e => e.innerText).join(' || ') };
+    });
+    check('Recherche unifiée : le chant trouvé (groupe 🎤)', songHit.open && /Chant E2E/.test(songHit.txt), songHit.txt.slice(0, 80));
+    await studio.press('#us-input', 'Enter');
+    const triggered = await studio.waitForFunction(() => {
+        const f = document.getElementById('frame-lyrics');
+        const p = f && f.contentDocument ? f.contentDocument.getElementById('preview-container') : null;
+        return p && p.style.opacity === '1';
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Entrée = le chant est diffusé (préview Paroles active)', triggered);
+    await studio.fill('#us-input', 'e2e-image-1');
+    await studio.waitForTimeout(500);
+    const mediaHit = await studio.evaluate(() => Array.from(document.querySelectorAll('#us-results .us-item')).map(e => e.innerText).join(' || '));
+    check('Recherche unifiée : média trouvé (groupe 🖼️)', /e2e-image-1/.test(mediaHit), mediaHit.slice(0, 80));
+    await studio.close().catch(() => {});
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

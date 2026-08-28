@@ -1393,6 +1393,34 @@
         // Recherche : d'abord par nom de livre, sinon par phrase/paraphrase dans le texte
         // des versets. En mode texte, on liste les versets correspondants (et on peut les
         // afficher en un clic).
+        // API minimale pour la recherche unifiée du Studio (additif).
+        window.OpenPresenterBible = {
+            search: (q, max = 8) => {
+                const query = String(q || '').toLowerCase().trim();
+                if (!query) return [];
+                const books = currentBooks();
+                const out = [];
+                // 1) nom de livre
+                for (const b of books) {
+                    if (b.name.toLowerCase().includes(query)) { out.push({ type: 'book', bookName: b.name, chapterNum: b.chapters[0] ? b.chapters[0].num : 1, verseNum: 1, label: b.name }); if (out.length >= max) return out; }
+                }
+                // 2) plein texte (tous les mots présents)
+                const qParts = query.split(/\s+/).filter(Boolean);
+                for (const book of books) {
+                    for (const chap of book.chapters) {
+                        for (const verse of chap.verses) {
+                            const t = String(verse.text || '').toLowerCase();
+                            if (qParts.every(w => t.includes(w))) {
+                                out.push({ type: 'verse', bookName: book.name, chapterNum: chap.num, verseNum: verse.num, label: book.name + ' ' + chap.num + ':' + verse.num, excerpt: String(verse.text || '').slice(0, 90) });
+                                if (out.length >= max) return out;
+                            }
+                        }
+                    }
+                }
+                return out;
+            }
+        };
+
         function handleSearch(e) {
             const query = e.target.value.toLowerCase().trim();
             const books = currentBooks();

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timer — Contrôle</title>
+    <script src="store.js"></script>
+    <script src="js/remote-channel.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -566,7 +568,9 @@
 </div>
 
 <script>
-    const channel = new BroadcastChannel('timer_channel');
+    // RemoteChannel = BroadcastChannel + relais réseau : pilote l'affichage sur
+    // ce PC ou n'importe quel appareil du réseau.
+    const channel = new RemoteChannel('timer_channel');
 
     let queue = [];
     let state = 'idle'; // idle | running | paused | finished
@@ -574,6 +578,36 @@
     let intervalId = null;
     let currentTitle = '';
     let remainingOnPause = 0;
+
+    // === PORTABILITÉ : la file et l'état sont sauvegardés dans le dossier du
+    // projet (data/ via OpenStore) — recharger la page ou changer de PC ne perd
+    // rien. Un décompte en cours est restauré s'il n'est pas déjà terminé.
+    function persistState() {
+        try {
+            const s = { queue, state, endTime, currentTitle, remainingOnPause, savedAt: Date.now() };
+            if (window.OpenStore) OpenStore.set('timer', 'state', s);
+            else localStorage.setItem('timer:state', JSON.stringify(s));
+        } catch (e) { /* silencieux */ }
+    }
+    async function restoreSavedState() {
+        // La copie la plus RÉCENTE gagne (savedAt) : la restauration réseau est
+        // asynchrone et ne doit jamais écraser un état local plus frais.
+        let localS = null, serverS = null;
+        try { localS = JSON.parse(localStorage.getItem('timer:state') || 'null'); } catch (e) { localS = null; }
+        if (window.OpenStore) { try { serverS = await OpenStore.fetchFromServer('timer', 'state'); } catch (e) { serverS = null; } }
+        const s = (serverS && (!localS || (serverS.savedAt || 0) > (localS.savedAt || 0))) ? serverS : localS;
+        if (!s || !Array.isArray(s.queue)) return;
+        queue = s.queue;
+        endTime = s.endTime || null;
+        currentTitle = s.currentTitle || '';
+        remainingOnPause = s.remainingOnPause || 0;
+        state = (s.state === 'running' && endTime && endTime > Date.now()) ? 'running'
+              : (s.state === 'paused' ? 'paused' : 'idle');
+        renderQueue();
+        if (state === 'running') { updateLiveUI(); startLocalTick(); updateStatus('running'); liveClock.textContent = formatTime(Math.round((endTime - Date.now()) / 1000)); }
+        else if (state === 'paused') { updateLiveUI(); updateStatus('paused'); liveClock.textContent = formatTime(remainingOnPause); }
+    }
+    restoreSavedState();
 
     // === REFS UI ===
     const queueList = document.getElementById('queue-list');
@@ -621,6 +655,7 @@
 
         renderQueue();
         channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
     }
 
     function renderQueue() {
@@ -660,6 +695,7 @@
         queue.splice(i, 1);
         renderQueue();
         channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
     }
 
     function editItem(i) {
@@ -681,6 +717,7 @@
         state = 'running';
 
         channel.postMessage({ type: 'START', title: item.title, endTime, queue });
+        persistState();
         updateLiveUI();
         startLocalTick();
         updateStatus('running');
@@ -708,6 +745,7 @@
         clearInterval(intervalId);
         liveClock.className = 'live-clock paused';
         channel.postMessage({ type: 'PAUSE', remaining: remainingOnPause });
+        persistState();
         updateStatus('paused');
         updateLiveUI();
     }
@@ -718,6 +756,7 @@
         endTime = Date.now() + (remainingOnPause * 1000);
         liveClock.className = 'live-clock';
         channel.postMessage({ type: 'RESUME', endTime });
+        persistState();
         updateStatus('running');
         startLocalTick();
         updateLiveUI();
@@ -736,6 +775,7 @@
         }
 
         channel.postMessage({ type: 'ADJUST', endTime });
+        persistState();
     }
 
     function skipToNext() {
@@ -745,6 +785,7 @@
         } else {
             state = 'finished';
             channel.postMessage({ type: 'FINISH' });
+            persistState();
             updateStatus('finished');
             updateLiveUI();
         }
@@ -759,6 +800,7 @@
         liveClock.className = 'live-clock';
         liveTitle.textContent = '—';
         channel.postMessage({ type: 'RESET' });
+        persistState();
         updateStatus('idle');
         updateLiveUI();
     }
@@ -796,6 +838,21 @@
         };
         statusText.textContent = labels[s] || s;
     }
+
+    // === RATTRAPAGE DES NOUVEAUX ÉCRANS ===
+    // Un affichage qui rejoint en cours de route (rechargement, nouvel appareil,
+    // OBS redémarré...) a raté les messages passés : il demande une synchronisation
+    // (SYNC_REQ) et on lui renvoie l'état réel actuel.
+    channel.onmessage = (ev) => {
+        try {
+            if (ev.data && ev.data.type === 'SYNC_REQ') {
+                if (state === 'running') channel.postMessage({ type: 'START', title: currentTitle, endTime, queue });
+                else if (state === 'paused') channel.postMessage({ type: 'PAUSE', remaining: remainingOnPause });
+                else if (state === 'finished') channel.postMessage({ type: 'FINISH' });
+                channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+            }
+        } catch (e) { /* silencieux */ }
+    };
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {

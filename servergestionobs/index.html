@@ -318,7 +318,9 @@
         { key: 'cue',    icon: '📋', name: 'File de déroulement', color: '#f43f5e',   desc: 'Composez l\u2019ordre de service et enchaînez en une touche (mobile-friendly).', file: 'cue_list.html', modes: [], controller: 'Contrôleur mobile' },
         { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' },
         { key: 'pasteur', icon: '✝️', name: 'Vue Pasteur',     color: '#22c55e',       desc: 'Écran du pasteur : diffusion en direct (3/5), minuteur (1/5), messages de la régie (1/5).', file: 'vue_pasteur.html', modes: [], controller: 'Écran compagnon' },
-        { key: 'pasteurAdmin', icon: '⚙️', name: 'Contrôle Pasteur', color: '#14b8a6',  desc: 'Piloter le minuteur et envoyer des messages à la Vue Pasteur (même réseau).', file: 'vue_pasteur.html?admin=1', modes: [], controller: 'Régie' }
+        { key: 'pasteurCtl', icon: '⚙️', name: 'Régie Pasteur', color: '#14b8a6',       desc: 'Piloter la file de décomptes et envoyer des messages au pasteur (même réseau).', file: 'pasteur_control.html', modes: [], controller: 'Régie' },
+        { key: 'timerCtl', icon: '⏱️', name: 'Minuteur — Contrôle', color: '#f59e0b',   desc: 'File de décomptes (titres + durées), pause/reprise, ajustement ±1 min, raccourcis clavier.', file: 'timer-control-updated.html', modes: [], controller: 'Régie' },
+        { key: 'timerDisp', icon: '⏳', name: 'Minuteur — Écran', color: '#f43f5e',     desc: 'Écran géant du minuteur (Source Navigateur OBS ou vidéoprojecteur face à la scène).', file: 'timer-display-updated.html', modes: [{ label: 'Plein écran', q: '' }], controller: 'Écran / OBS' }
     ];
 
     var base = location.origin;

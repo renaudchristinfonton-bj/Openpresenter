@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timer — Affichage</title>
+    <script src="js/remote-channel.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -186,17 +187,20 @@
         <div id="state-badge">PAUSE</div>
         <div id="timer-title"></div>
         <div id="timer-display">00:00:00</div>
-        
+        <div id="queue-preview"></div>
     </div>
 
     <script>
-        const channel = new BroadcastChannel('timer_channel');
+        // RemoteChannel = BroadcastChannel + relais réseau : l'affichage peut tourner
+        // sur un autre PC / appareil du réseau que le contrôle (multi-appareils).
+        const channel = new RemoteChannel('timer_channel');
 
         const timerScreen = document.getElementById('timer-screen');
         const waitingScreen = document.getElementById('waiting-screen');
         const display = document.getElementById('timer-display');
         const titleEl = document.getElementById('timer-title');
         const stateBadge = document.getElementById('state-badge');
+        const queuePreview = document.getElementById('queue-preview');
         
 
         let endTime = null;
@@ -225,6 +229,7 @@
 
         function showTimer(title, remaining, queue) {
             waitingScreen.style.display = 'none';
+            if (queuePreview) queuePreview.innerHTML = '';
             timerScreen.classList.add('visible');
 
             titleEl.textContent = title || '';
@@ -298,11 +303,18 @@
                     waitingScreen.style.display = 'flex';
                     display.textContent = '00:00:00';
                     titleEl.textContent = '';
+                    if (queuePreview) queuePreview.innerHTML = '';
                     
                     break;
 
             }
         };
+        // Rattrapage : ce panneau vient peut-être de rejoindre en cours de route —
+        // on demande l'état actuel au contrôle (présent avant nous dans 99% des
+        // cas ; le second essai couvre les chargements simultanés).
+        function requestSync() { try { channel.postMessage({ type: 'SYNC_REQ' }); } catch (e) {} }
+        setTimeout(requestSync, 300);
+        setTimeout(requestSync, 1200);
     </script>
 </body>
 </html>

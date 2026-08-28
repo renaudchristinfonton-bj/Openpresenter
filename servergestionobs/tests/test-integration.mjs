@@ -57,7 +57,7 @@ console.log('▶ Démarrage du serveur relais (port ' + PORT + ')…');
 // utilisés par le test (sinon les médias/chants du run précédent sont restaurés
 // automatiquement par la portabilité et les compteurs changent).
 import { rmSync } from 'node:fs';
-for (const ns of ['media', 'lyrics']) {
+for (const ns of ['media', 'lyrics', 'timer', 'pasteur']) {
     try { rmSync(join(ROOT, 'data', ns), { recursive: true, force: true }); } catch (e) { /* rien */ }
 }
 const server = spawn(process.execPath, ['sync-relay-server.js'], {
@@ -589,62 +589,102 @@ try {
         renderBooksList(currentBooks());
     });
 
-    // ============ S9. VUE PASTEUR (3/5 écran · 1/5 minuteur · 1/5 messages) ============
-    console.log('▶ S9. Vue Pasteur : écran + minuteur + messages…');
+    // ============ S9. VUE PASTEUR + MINUTEUR + MESSAGES ============
+    console.log('▶ S9. Vue Pasteur : écran + minuteur (fichiers utilisateur) + messages…');
     const pastor = await ctxB.newPage();
     trackErrors(pastor, 'pasteur');
     await pastor.goto(BASE + '/vue_pasteur.html', { waitUntil: 'load', timeout: 30000 });
-    await pastor.waitForTimeout(800);
-    const pastorFrames = await pastor.evaluate(() => document.querySelectorAll('#stage-box iframe').length);
-    check('Vue Pasteur : 4 sorties embarquées (Bible/Paroles/Médias/Titre)', pastorFrames === 4, 'iframes=' + pastorFrames);
-    check('Vue Pasteur : libellé initial sans diffusion', (await pastor.evaluate(() => document.getElementById('onair-label').innerText)) === 'Aucune diffusion');
+    await pastor.waitForTimeout(900);
+    const framesInfo = await pastor.evaluate(() => Array.from(document.querySelectorAll('#stage-box iframe')).map(f => f.src.split('/').pop().split('?')[0]));
+    check('Vue Pasteur : 4 sorties embarquées (Bible/Paroles/Médias/Titre)', framesInfo.length === 4, JSON.stringify(framesInfo));
 
-    const admin = await ctxA.newPage();
-    trackErrors(admin, 'pasteur-admin');
-    await admin.goto(BASE + '/vue_pasteur.html?admin=1', { waitUntil: 'load', timeout: 30000 });
-    await admin.waitForTimeout(500);
+    // --- Le minuteur utilisateur, intégré : contrôleur (régie) → affichage (pasteur) ---
+    const timerCtl = await ctxA.newPage();
+    trackErrors(timerCtl, 'timer-ctl');
+    await timerCtl.goto(BASE + '/timer-control-updated.html', { waitUntil: 'load', timeout: 30000 });
+    // Laisse la restauration asynchrone (localStorage + dossier data/) se terminer
+    // avant de piloter — sinon elle pourrait s'appliquer APRÈS nos actions.
+    await timerCtl.waitForTimeout(700);
+    await timerCtl.evaluate(() => { try { resetAll(); } catch (e) {} localStorage.removeItem('timer:state'); });
+    await timerCtl.waitForTimeout(300);
 
-    // Envoi d'un message → affiché chez le pasteur (via le relais, comme 2 appareils).
-    await admin.evaluate(() => {
-        document.getElementById('m-text').value = 'Encore 5 minutes, on termine';
+    await timerCtl.evaluate(() => {
+        document.getElementById('inp-title').value = 'Louange';
+        document.getElementById('inp-m').value = 12; document.getElementById('inp-s').value = 0;
+        addToQueue();
+        document.getElementById('inp-title').value = 'Prédication';
+        document.getElementById('inp-m').value = 35; document.getElementById('inp-s').value = 0;
+        addToQueue();
+        document.getElementById('btn-start').click(); // lance « Louange »
+    });
+    // L'affichage du minuteur embarqué dans la vue pasteur reçoit le START (relais).
+    // Rattrapage déterministe : l'affichage embarqué redemande l'état au contrôleur
+    // (couvre le cas où sa connexion WebSocket était en reconnexion à l'envoi).
+    await pastor.evaluate(() => {
+        const f = document.querySelector('#timer-body iframe');
+        if (f && f.contentWindow) { try { f.contentWindow.eval("channel.postMessage({ type: 'SYNC_REQ' })"); } catch (e) {} }
+    });
+    const pastorTimer = await pastor.waitForFunction(() => {
+        const f = document.querySelector('#timer-body iframe');
+        if (!f || !f.contentDocument) return false;
+        const t = f.contentDocument.getElementById('timer-display');
+        const title = f.contentDocument.getElementById('timer-title');
+        return t && /^00:1[12]:/.test(t.innerText) && title && /louange/i.test(title.innerText) ? true : false;
+    }, { timeout: 10000 }).then(() => true).catch(() => false);
+    check('Minuteur utilisateur : « Louange 12:00 » affiché chez le pasteur (via relais)', pastorTimer);
+    const nextChip = await pastor.evaluate(() => {
+        const f = document.querySelector('#timer-body iframe');
+        const chips = f && f.contentDocument ? f.contentDocument.querySelectorAll('#queue-preview .queue-chip') : [];
+        return chips.length ? chips[0].innerText : '';
+    });
+    check('Minuteur : le décompte suivant (« Prédication ») s\'affiche en file', /prédication/i.test(nextChip), nextChip);
+
+    // Pause depuis la régie → badge PAUSE chez le pasteur.
+    await timerCtl.evaluate(() => pauseTimer());
+    const paused = await pastor.waitForFunction(() => {
+        const f = document.querySelector('#timer-body iframe');
+        if (!f || !f.contentDocument) return false;
+        const b = f.contentDocument.getElementById('state-badge');
+        return b && b.innerText === 'PAUSE';
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Minuteur : pause → badge PAUSE chez le pasteur', paused);
+    await timerCtl.evaluate(() => resumeTimer());
+
+    // Persistance de la file du minuteur (rechargement du contrôleur).
+    await timerCtl.reload({ waitUntil: 'load' });
+    await timerCtl.waitForTimeout(700);
+    const queueRestored = await timerCtl.evaluate(() => document.querySelectorAll('#queue-list .queue-item').length);
+    check('Minuteur : file restaurée après rechargement (« Prédication » restante)', queueRestored === 1, 'items=' + queueRestored);
+    await timerCtl.evaluate(() => resetAll());
+
+    // --- Gestionnaire de messages (pasteur_control.html) → vue pasteur ---
+    const ctl = await ctxA.newPage();
+    trackErrors(ctl, 'pasteur-ctl');
+    await ctl.goto(BASE + '/pasteur_control.html', { waitUntil: 'load', timeout: 30000 });
+    await ctl.waitForTimeout(600);
+    await ctl.evaluate(() => {
+        document.getElementById('m-text').value = 'On coupe la 2e caméra dans 1 minute';
         document.getElementById('m-from').value = 'Régie';
         document.getElementById('m-tone').value = 'important';
         document.getElementById('m-send').click();
     });
     const msgOk = await pastor.waitForFunction(() => {
         const el = document.getElementById('msg-current');
-        return el && el.innerText.includes('Encore 5 minutes');
+        return el && el.innerText.includes('caméra');
     }, { timeout: 8000 }).then(() => true).catch(() => false);
-    check('Message de la régie affiché chez le pasteur', msgOk);
+    check('Gestionnaire : message reçu sur la vue pasteur', msgOk);
     const msgMeta = await pastor.evaluate(() => document.getElementById('msg-meta').innerText);
-    check('Message : expéditeur « Régie » visible', msgMeta.includes('Régie'), msgMeta);
+    check('Gestionnaire : expéditeur « Régie » visible', msgMeta.includes('Régie'), msgMeta);
 
-    // Minuteur : preset 10 min + démarrage → décompte visible qui décroît.
-    await admin.evaluate(() => {
-        document.getElementById('t-label').value = 'Prédication';
-        document.querySelector('[data-min="10"]').click();
-        document.getElementById('t-start').click();
-    });
-    const t1 = await pastor.waitForFunction(() => /^(10:00|09:5\d)$/.test(document.getElementById('timer-main').innerText), { timeout: 8000 }).then(() => pastor.evaluate(() => document.getElementById('timer-main').innerText)).catch(() => null);
-    check('Minuteur : compte à rebours démarré (10:00 → 09:5x)', !!t1, t1 || '');
-    await pastor.waitForTimeout(1600);
-    const t2 = await pastor.evaluate(() => document.getElementById('timer-main').innerText);
-    check('Minuteur : le décompte décroît', !!(t1 && t2 !== t1), (t1 || '?') + ' → ' + t2);
-    const tLabel = await pastor.evaluate(() => document.getElementById('timer-label').innerText);
-    check('Minuteur : libellé Prédication affiché', tLabel.toUpperCase() === 'PRÉDICATION', tLabel);
-
-    // Persistance : rechargement de la vue pasteur → message et minuteur restaurés.
+    // Persistance : rechargement de la vue pasteur → message restauré.
     await pastor.reload({ waitUntil: 'load' });
-    await pastor.waitForTimeout(900);
-    const restored = await pastor.evaluate(() => ({
-        msg: document.getElementById('msg-current').innerText,
-        timer: document.getElementById('timer-main').innerText
-    }));
-    check('Rechargement : message restauré', restored.msg.includes('Encore 5 minutes'), restored.msg.slice(0, 30));
-    check('Rechargement : minuteur restauré (libellé + décompte actifs)', /^\d{2}:\d{2}$/.test(restored.timer) && restored.timer !== '--:--', restored.timer);
+    await pastor.waitForTimeout(1000);
+    const restored = await pastor.evaluate(() => document.getElementById('msg-current').innerText);
+    check('Rechargement : message restauré', restored.includes('caméra'), restored.slice(0, 30));
 
     await pastor.close().catch(() => {});
-    await admin.close().catch(() => {});
+    await timerCtl.close().catch(() => {});
+    await ctl.close().catch(() => {});
 
 } finally {
     await browser.close().catch(() => {});

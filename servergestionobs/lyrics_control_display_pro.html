@@ -892,6 +892,18 @@
         // sections/chants se ressente uniquement comme un changement de texte, pas comme un nouveau
         // cadre qui apparaît. L'animation complète du cadre ne se joue que lors du tout premier
         // affichage, ou après un changement de style OBS (mode différent).
+        // Looks personnalisés : géométrie du cadre pour CE mode (largeur/hauteur/
+        // écarts en % ou px). Vide/absent = géométrie par défaut de la page.
+        function applyLookLayout(card, mode, layout) {
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => { card.style[k] = ''; });
+            if (!layout) return;
+            const g = layout[mode];
+            if (!g) return;
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => {
+                if (g[k]) card.style[k] = String(g[k]);
+            });
+        }
+
         function renderDisplay(config, container, card, contentArea, bgLayer, layerKey) {
             const key = layerKey || 'preview';
             const wasVisible = container.style.opacity === '1';
@@ -1004,6 +1016,7 @@
             if (!sameContext && config.mode !== 'scrolling') modeClass += ' anim-show';
 
             card.className = modeClass;
+            applyLookLayout(card, config.mode, config.layout);
 
             const swapContent = () => {
                 contentArea.innerHTML = html;
@@ -1212,11 +1225,11 @@
             initObsLinksPanel();
             // Sorties personnalisées : champs largeur×hauteur + lien &res=WxH + copier.
             initResolutionPanel();
-            // Looks : habillage global appliqué en direct (Command Center).
+            // Looks : habillage global appliqué en direct (Command Center / éditeur).
             if (window.OpenLooks) {
-                OpenLooks.installLiveListener({
-                    apply: (s2) => {
-                        displaySettings = Object.assign({}, displaySettings, s2);
+                OpenLooks.installLiveListener('lyrics', {
+                    apply: (part) => {
+                        displaySettings = Object.assign({}, displaySettings, part);
                         populateSettingsForm();
                         saveDisplaySettingsJSON();
                         refreshOnAirDisplay();
@@ -1534,6 +1547,8 @@
                     config.next = { label: nx.label, text: nx.text };
                 }
             } catch (e) { /* jamais casser l'affichage */ }
+
+            if (displaySettings.layout) config.layout = displaySettings.layout;
 
             onAir = { songId, sectionIds: sectionIds.slice() };
 

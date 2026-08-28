@@ -11,7 +11,7 @@
 const CACHE = 'openpresenter-v1';
 const CORE = [
   '/', 'index.html', 'studio_unifie.html', 'cue_list.html', 'mur_previews.html',
-  'vue_pasteur.html', 'pasteur_control.html', 'stage_display.html',
+  'vue_pasteur.html', 'pasteur_control.html', 'stage_display.html', 'looks_editor.html',
   'bible_control_display_pro.html', 'lyrics_control_display_pro.html',
   'media_control_display_pro.html', 'obs_lower_third_ultimate_studio.html',
   'timer-control-updated.html', 'timer-display-updated.html',

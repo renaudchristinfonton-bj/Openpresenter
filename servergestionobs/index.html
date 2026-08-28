@@ -198,6 +198,10 @@
             Les réglages manuels de chaque outil restent prioritaires si vous les modifiez ensuite.
         </p>
         <div id="looks-row" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        <div id="looks-custom-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+        <div style="margin-top:10px">
+            <a class="btn-action" href="looks_editor.html" target="_blank" style="text-decoration:none;display:inline-block">🎨 Créer / modifier un look (fond, cadre, modes…)</a>
+        </div>
     </div>
 
     <!-- Adresses d'accès -->
@@ -737,8 +741,8 @@
         OpenLooks.presets.forEach(function (p) {
             var b = document.createElement('button');
             b.className = 'btn-action';
-            b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + p.settings.accentColor + ';';
-            b.innerHTML = '<span style="width:14px;height:14px;border-radius:4px;background:' + p.settings.accentColor + ';display:inline-block;"></span>' + p.icon + ' ' + p.name;
+            b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + p.bible.accentColor + ';';
+            b.innerHTML = '<span style="width:14px;height:14px;border-radius:4px;background:' + p.bible.accentColor + ';display:inline-block;"></span>' + p.icon + ' ' + p.name;
             b.title = 'Appliquer le look « ' + p.name + ' » à la Bible et aux Paroles';
             b.onclick = function () {
                 OpenLooks.applyPreset(p.id);
@@ -746,6 +750,30 @@
                 b.style.background = '#14532d';
             };
             row.appendChild(b);
+        });
+        // Looks personnalisés (créés dans looks_editor.html, stockés dans data/)
+        OpenLooks.loadCustom().then(function (list) {
+            var row2 = document.getElementById('looks-custom-row');
+            if (!row2) return;
+            list.forEach(function (l) {
+                var b = document.createElement('button');
+                b.className = 'btn-action';
+                b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + ((l.bible && l.bible.accentColor) || '#334155') + ';';
+                b.innerHTML = (l.icon || '🎨') + ' ' + l.name;
+                b.title = 'Appliquer le look « ' + l.name + ' » (Bible : ' + (l.bible && l.bible.accentColor || '?') + ' · Paroles : ' + (l.lyrics && l.lyrics.accentColor || '?') + ')';
+                b.onclick = function () { OpenLooks.apply(l); };
+                var del = document.createElement('button');
+                del.className = 'btn-action';
+                del.style.cssText = 'padding:4px 8px;color:#fca5a5;';
+                del.innerText = '✕';
+                del.title = 'Supprimer ce look';
+                del.onclick = function () {
+                    if (!confirm('Supprimer le look « ' + l.name + ' » ?')) return;
+                    OpenLooks.deleteCustom(l.id).then(function () { b.remove(); del.remove(); });
+                };
+                row2.appendChild(b);
+                row2.appendChild(del);
+            });
         });
     })();
 </script>

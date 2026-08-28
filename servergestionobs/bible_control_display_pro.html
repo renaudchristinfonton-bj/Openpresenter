@@ -710,6 +710,18 @@
             return Math.max(28, Math.min(150, Math.round(usable / (0.55 * Math.max(estFont, 8)))));
         }
 
+        // Looks personnalisés : géométrie du cadre pour CE mode (largeur/hauteur/
+        // écarts en % ou px). Vide/absent = géométrie par défaut de la page.
+        function applyLookLayout(card, mode, layout) {
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => { card.style[k] = ''; });
+            if (!layout) return;
+            const g = layout[mode];
+            if (!g) return;
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => {
+                if (g[k]) card.style[k] = String(g[k]);
+            });
+        }
+
         function renderDisplay(config, container, card, contentArea) {
             container.style.opacity = '1';
             card.className = '';
@@ -834,6 +846,7 @@
             if (config.bgImage) modeClass += ' has-bg-image';
 
             card.className = modeClass;
+            applyLookLayout(card, config.mode, config.layout);
             contentArea.innerHTML = html;
 
             // Ajustement automatique de la taille du texte pour ne jamais déborder du cadre
@@ -942,11 +955,11 @@
             initDualVersionUI();
             // Annotations de versets : éditeur ✏️ + persistance.
             initAnnotationEditor();
-            // Looks : habillage global appliqué en direct (Command Center).
+            // Looks : habillage global appliqué en direct (Command Center / éditeur).
             if (window.OpenLooks) {
-                OpenLooks.installLiveListener({
-                    apply: (s) => {
-                        displaySettings = Object.assign({}, displaySettings, s);
+                OpenLooks.installLiveListener('bible', {
+                    apply: (part) => {
+                        displaySettings = Object.assign({}, displaySettings, part);
                         populateSettingsForm();
                         saveDisplaySettings();
                         refreshOnAirDisplay();
@@ -1959,6 +1972,7 @@
             };
             if (dual) config.dual = dual;
             if (annotatedHtml) config.textHtml = annotatedHtml;
+            if (displaySettings.layout) config.layout = displaySettings.layout;
             if (parts) { config.parts = parts; config.partIndex = partIndex; }
 
             onAir = { bookName, chapterNum, verseNums: sortedNums, parts: parts || null, partIndex: parts ? partIndex : 0 };

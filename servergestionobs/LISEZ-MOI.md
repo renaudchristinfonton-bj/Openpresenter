@@ -271,14 +271,23 @@ Depuis cette version, **tout est local** — coupez Internet, tout fonctionne :
 - **Vitesse** : le serveur compresse (gzip) les pages — ~20-30 Ko au lieu de
   100+ — et le navigateur les garde en cache 1 h.
 
-## Looks — habillage global en 1 clic
+## Looks — habillage global en 1 clic + ÉDITEUR complet
 
-Sur la page d'accueil (`/`), la carte **🎨 Looks** applique instantanément un jeu
-de couleurs/formes à la **Bible** et aux **Paroles** (fond, accent, texte, coins)
-: Sobre, Festif, Carême, Noël, Aube, Mission. Le look est appliqué **en direct**
-sur tous les contrôleurs ouverts (même PC ou autre appareil du réseau) et
-**persisté** (il suit le dossier `data/`). Les réglages manuels de chaque outil
-restent utilisables ; un look ne touche ni aux médias ni aux sorties.
+Sur la page d'accueil (`/`), la carte **🎨 Looks** applique instantanément un
+habillage à la **Bible** et aux **Paroles** : 6 préréglages (Sobre, Festif,
+Carême, Noël, Aube, Mission) **+ vos looks personnalisés** créés dans
+**`looks_editor.html`** (bouton « Créer / modifier un look »). Tout est appliqué
+**en direct** sur les contrôleurs ouverts et **persisté** (suit le dossier `data/`).
+
+**L'éditeur de looks** permet de créer, comme les modèles de FreeShow :
+- **couleurs** : fond (+ opacité), accentuation, texte ; **police** ; **coins du cadre** ;
+- **photo de fond** (enregistrée DANS le look, portable) + **flou** ;
+- **géométrie de chaque mode** : plein écran, 80 % écran, bas centré, bas droite,
+  ruban défilant — largeur, hauteur, écarts, en % (vide = défaut) ;
+- **Bible et Paroles réglées séparément dans un même look** (onglets 📖/🎤,
+  case « Lié » pour tout régler identiquement) ;
+- **aperçu en direct** avec les vraies pages de projection ;
+- enregistrer (autant de looks que voulu), recharger, modifier, supprimer.
 
 ## Recherche unifiée (Studio)
 

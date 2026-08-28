@@ -57,7 +57,7 @@ console.log('▶ Démarrage du serveur relais (port ' + PORT + ')…');
 // utilisés par le test (sinon les médias/chants du run précédent sont restaurés
 // automatiquement par la portabilité et les compteurs changent).
 import { rmSync, readFileSync } from 'node:fs';
-for (const ns of ['media', 'lyrics', 'timer', 'pasteur']) {
+for (const ns of ['media', 'lyrics', 'timer', 'pasteur', 'looks']) {
     try { rmSync(join(ROOT, 'data', ns), { recursive: true, force: true }); } catch (e) { /* rien */ }
 }
 const server = spawn(process.execPath, ['sync-relay-server.js'], {
@@ -870,6 +870,70 @@ try {
     const mediaHit = await studio.evaluate(() => Array.from(document.querySelectorAll('#us-results .us-item')).map(e => e.innerText).join(' || '));
     check('Recherche unifiée : média trouvé (groupe 🖼️)', /e2e-image-1/.test(mediaHit), mediaHit.slice(0, 80));
     await studio.close().catch(() => {});
+
+    // ============ S16. ÉDITEUR DE LOOKS (personnalisés, Bible/Paroles distincts) ============
+    console.log('▶ S16. Éditeur de Looks : créer, enregistrer, appliquer…');
+    // a) Vue pasteur : le tiroir renvoie vers le VRAI contrôleur (file réorganisable).
+    const adminChk = await ctxA.newPage();
+    await adminChk.goto(BASE + '/vue_pasteur.html?admin=1', { waitUntil: 'load', timeout: 30000 });
+    await adminChk.waitForTimeout(500);
+    const drawer = await adminChk.evaluate(() => ({
+        oldPresets: !!document.getElementById('t-presets'),
+        hasLink: !!Array.from(document.querySelectorAll('#admin-drawer a')).find(a => a.href.includes('timer-control-updated'))
+    }));
+    await adminChk.close().catch(() => {});
+    check('Vue pasteur (tiroir) : ouvre le contrôle du minuteur avec file', !drawer.oldPresets && drawer.hasLink, JSON.stringify(drawer));
+
+    // b) Créer un look dans l'éditeur : nom + accents DIFFÉRENTS Bible/Paroles + géométrie bas.
+    const editor = await ctxA.newPage();
+    trackErrors(editor, 'looks-editor');
+    editor.on('dialog', (d) => d.accept().catch(() => {}));
+    await editor.goto(BASE + '/looks_editor.html', { waitUntil: 'load', timeout: 30000 });
+    await editor.waitForTimeout(1500); // iframes d'aperçu + premier envoi
+    await editor.fill('#lk-name', 'Culte E2E');
+    // Bible : accent rose + bas centré à 60% de largeur.
+    await editor.evaluate(() => { document.getElementById('lk-link').checked = false; });
+    await editor.fill('#st-accent', '#e11d48');
+    await editor.evaluate(() => { document.getElementById('st-accent').dispatchEvent(new Event('input')); });
+    await editor.fill('#g-bottom-width', '60');
+    await editor.evaluate(() => { document.getElementById('g-bottom-width').dispatchEvent(new Event('input')); });
+    // Paroles : accent cyan (distinct).
+    await editor.click('#tab-lyrics');
+    await editor.fill('#st-accent', '#06b6d4');
+    await editor.evaluate(() => { document.getElementById('st-accent').dispatchEvent(new Event('input')); });
+    await editor.click('#lk-save');
+    await editor.waitForTimeout(1200);
+    let looksJson = null;
+    try { looksJson = await (await fetch(BASE + '/data/looks/list.json')).json(); } catch (e) { /* absent */ }
+    check('Éditeur : look enregistré dans data/looks/list.json', Array.isArray(looksJson) && looksJson.some(l => l.name === 'Culte E2E'));
+    const saved = looksJson && looksJson.find(l => l.name === 'Culte E2E');
+    check('Éditeur : réglages DISTINCTS Bible/Paroles dans le même look', !!(saved && saved.bible && saved.lyrics && saved.bible.accentColor === '#e11d48' && saved.lyrics.accentColor === '#06b6d4'), JSON.stringify(saved && { b: saved.bible.accentColor, l: saved.lyrics.accentColor }));
+    await editor.close().catch(() => {});
+
+    // c) Le look apparaît sur la carte du Command Center et s'applique en direct.
+    const cc2 = await ctxA.newPage();
+    trackErrors(cc2, 'command-center-2');
+    await cc2.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 });
+    await cc2.waitForTimeout(800);
+    const hasBtn = await cc2.evaluate(() => Array.from(document.querySelectorAll('#looks-custom-row button')).some(b => b.innerText.includes('Culte E2E')));
+    check('Command Center : le look personnalisé apparaît sur la carte', hasBtn);
+    await cc2.evaluate(() => { Array.from(document.querySelectorAll('#looks-custom-row button')).find(b => b.innerText.includes('Culte E2E')).click(); });
+    const gotIt = await bibleCtrl.waitForFunction(() => displaySettings.accentColor === '#e11d48' && displaySettings.layout && displaySettings.layout.bottom && displaySettings.layout.bottom.width === '60%', { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Look appliqué : Bible reçoit accent + géométrie (en direct)', gotIt);
+    const lyricsGot = await lyricsCtrl.waitForFunction(() => displaySettings.accentColor === '#06b6d4', { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Look appliqué : Paroles reçoit SON accent (distinct)', lyricsGot);
+    await cc2.close().catch(() => {});
+
+    // d) La géométrie s'applique réellement à la projection (bas centré → 60% de largeur).
+    await bibleCtrl.evaluate(() => { document.getElementById('obs-mode-select').value = 'bottom'; });
+    await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], 'Texte de géométrie.'));
+    await bibleCtrl.evaluate(() => relaunchLast());
+    const cardW = await bibleObs.waitForFunction(() => {
+        const c = document.querySelector('#obs-card-element.obs-bottom');
+        return c ? Math.round(c.getBoundingClientRect().width) : false;
+    }, { timeout: 8000 }).then((r) => r.jsonValue()).catch(() => null);
+    check('Projection : cadre bas réellement à 60% de largeur (≈1152px)', Math.abs(cardW - 1152) <= 8, String(cardW));
+    await bibleCtrl.evaluate(() => { document.getElementById('obs-mode-select').value = 'full'; clearOBS(); });
 
 } finally {
     await browser.close().catch(() => {});

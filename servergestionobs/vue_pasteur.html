@@ -195,29 +195,15 @@
 <!-- Panneau de contrôle (s'affiche avec ?admin=1) -->
 <div id="admin-drawer">
     <h4>⏱ Minuteur</h4>
-    <p style="font-size:10px;color:#64748b;margin:0 0 6px">Le minuteur (file de décomptes) se pilote désormais dans <a href="pasteur_control.html" target="_blank" style="color:#93c5fd">pasteur_control.html</a> — les boutons ci-dessous restent fonctionnels pour le minuteur intégré (?timer=none).</p>
+    <p style="font-size:11px;color:#94a3b8;margin:0 0 8px;line-height:1.5">
+        La <b>file de décomptes</b> (ajouter, glisser pour changer l ordre, boutons ▲▼, pause, ±1 min)
+        se pilote dans le contrôle du minuteur — le même que la Régie Pasteur.
+    </p>
     <div class="row">
-        <input type="text" id="t-label" placeholder="Libellé (ex : Prédication)" style="flex:1">
-        <select id="t-mode">
-            <option value="down">Compte à rebours</option>
-            <option value="up">Chronomètre</option>
-        </select>
+        <a href="timer-control-updated.html" target="_blank" style="flex:1;text-align:center;background:#1d4ed8;color:#fff;border-radius:7px;font-weight:700;font-size:12px;padding:8px 10px;text-decoration:none">⏱ Contrôle du minuteur</a>
+        <a href="pasteur_control.html" target="_blank" style="flex:1;text-align:center;background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:7px;font-weight:700;font-size:12px;padding:8px 10px;text-decoration:none">⚙️ Régie complète</a>
     </div>
-    <div class="row" id="t-presets">
-        <button class="preset" data-min="5">5 min</button>
-        <button class="preset" data-min="10">10</button>
-        <button class="preset" data-min="15">15</button>
-        <button class="preset" data-min="20">20</button>
-        <button class="preset" data-min="30">30</button>
-        <button class="preset" data-min="45">45</button>
-        <button class="preset" data-min="60">60</button>
-    </div>
-    <div class="row">
-        <input type="text" id="t-custom" placeholder="mm:ss (ex : 12:30)" style="width:90px">
-        <button id="t-start">▶ Démarrer</button>
-        <button id="t-pause" class="ghost">⏸ Pause</button>
-        <button id="t-reset" class="ghost">⟲ Reset</button>
-    </div>
+    <div style="height:10px"></div>
     <h4 style="margin-top:10px">✉️ Message au pasteur</h4>
     <textarea id="m-text" rows="2" placeholder="Votre message…"></textarea>
     <div class="row" style="margin-top:6px">
@@ -473,6 +459,8 @@
     function broadcast() { if (chan) { try { chan.postMessage({ type: 'state', state: state }); } catch (e) {} } persist(); }
 
     if (params.get('admin') === '1') {
+        // (Le minuteur du tiroir a laissé place au contrôle complet avec file
+        //  réorganisable : timer-control-updated.html / pasteur_control.html.)
         var drawer = document.getElementById('admin-drawer');
         drawer.classList.add('open');
 
@@ -489,13 +477,13 @@
             renderTimer(); broadcast();
         }
 
-        $('t-presets').addEventListener('click', function (e) {
+        var __e = $('t-presets'); if (__e) __e.addEventListener('click', function (e) {
             var b = e.target.closest('[data-min]');
             if (!b) return;
             setCountdown(parseInt(b.getAttribute('data-min'), 10) * 60000, $('t-label').value.trim() || state.timer.label);
         });
 
-        $('t-custom').addEventListener('change', function () {
+        var __e = $('t-custom'); if (__e) __e.addEventListener('change', function () {
             var v = this.value.trim().match(/^(\d{1,2}):(\d{1,2})$/) || this.value.trim().match(/^(\d{1,4})$/);
             if (!v) { alert('Format attendu : mm:ss (ex : 12:30) ou minutes (ex : 90)'); return; }
             var ms;
@@ -505,14 +493,14 @@
             this.value = '';
         });
 
-        $('t-mode').addEventListener('change', function () {
+        var __e = $('t-mode'); if (__e) __e.addEventListener('change', function () {
             state.timer.mode = this.value;
             state.timer.baseMs = 0; state.timer.startedAt = null; state.timer.endsAt = null;
             state.timer.running = false;
             renderTimer(); broadcast();
         });
 
-        $('t-start').addEventListener('click', function () {
+        var __e = $('t-start'); if (__e) __e.addEventListener('click', function () {
             var t = state.timer, now = Date.now();
             if (t.running) return;
             if (t.mode === 'down') {
@@ -526,7 +514,7 @@
             renderTimer(); broadcast();
         });
 
-        $('t-pause').addEventListener('click', function () {
+        var __e = $('t-pause'); if (__e) __e.addEventListener('click', function () {
             var t = state.timer, now = Date.now();
             if (!t.running) return;
             if (t.mode === 'down') t.baseMs = t.durationMs - Math.max(0, (t.endsAt || now) - now);
@@ -535,7 +523,7 @@
             renderTimer(); broadcast();
         });
 
-        $('t-reset').addEventListener('click', function () {
+        var __e = $('t-reset'); if (__e) __e.addEventListener('click', function () {
             state.timer.baseMs = 0; state.timer.startedAt = null; state.timer.endsAt = null;
             state.timer.running = false;
             renderTimer(); broadcast();

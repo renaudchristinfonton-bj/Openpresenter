@@ -127,3 +127,182 @@ second PC apparaîtra en direct dans OBS sur le premier PC.
 - Vos 3 outils continuent de fonctionner exactement comme avant même sans ce serveur
   (en ouvrant les fichiers directement) — c'est juste que dans ce cas, vous retombez
   dans la limitation d'origine (obligé de tout garder dans les docks OBS).
+
+## Exclusion mutuelle des 3 outils (Bible / Paroles / Médias)
+
+**La règle :** si l'un des trois outils « plein écran » passe à l'antenne, les deux
+autres se coupent automatiquement. Exemple : un verset s'affiche → le média en cours
+disparaît ; vous relancez un média → la Bible s'efface. Le **Lower Third, lui, reste
+permanent** : il n'est jamais coupé par cette règle (il est conçu pour rester à
+l'écran en même temps que les autres).
+
+- Ça marche **entre le contrôleur et OBS**, mais aussi **entre plusieurs PC**
+  (l'événement transite par le même relais réseau que le reste).
+- C'est géré par un petit module partagé : `js/live-mutex.js`. Il est volontairement
+  défensif : aucune erreur dans ce module ne peut casser une page (chaque callback
+  est protégée, et un outil ne peut jamais se masquer lui-même).
+
+## Tests automatisés (dossier `tests/`)
+
+Pour vérifier que tout marche **avant/après chaque modification** (règle d'or du
+projet : ne rien casser) :
+
+```
+cd servergestionobs/tests
+npm install        # une seule fois (télécharge Playwright + Chromium)
+npm test           # syntaxe des pages + exclusion mutuelle + intégration navigateur
+```
+
+- `check-syntax.sh` : vérifie la syntaxe JavaScript de tous les blocs `<script>`
+  des pages (une coquille de syntaxe dans une page = page muette).
+- `test-live-mutex.mjs` : test unitaire du module d'exclusion mutuelle
+  (14 vérifications : doublons, messages malformés, callback fautive…).
+- `test-integration.mjs` : démarre le serveur relais + un vrai Chromium, ouvre les
+  3 contrôleurs et les 3 sorties OBS **dans deux contextes séparés** (tout passe
+  donc par le relais réseau, comme entre deux PC), puis vérifie : ajout de médias,
+  ajout de chant, exclusion mutuelle dans les 4 sens, chargement de toutes les
+  pages sans erreur. C'est le test qui a validé la correction du bug d'ajout.
+
+**Après chaque modification du code, relancez `npm test`.** Si vous touchez à
+l'ajout de médias ou de paroles, c'est la garantie que ça marche toujours.
+
+## Résolution de sortie personnalisée (tous les outils)
+
+Dans chaque outil (Bible, Paroles, Médias, Lower Third), saisissez une taille
+**libre** `largeur × hauteur` dans le panneau « Résolution de sortie » : le lien
+OBS devient `...?obs=true&res=1280x720` (Lower Third : `?obs=1&res=...`), avec
+bouton **Copier**. Le contenu s'adapte à votre écran grâce au **mode
+d'adaptation** choisi :
+
+- **Adapter** (par défaut) : la mise en page s'organise DANS la taille réelle de
+  votre écran — cartes et textes se répartissent proportionnellement, tout est
+  visible, sans bandes noires ni déformation, quel que soit le ratio (bandeau
+  LED très large, écran portrait, etc.) ;
+- **Tout afficher** : rendu 1920×1080 réduit uniformément — tout visible, bandes
+  noires possibles si le ratio diffère ;
+- **Remplir** : rendu 1920×1080 agrandi — couvre tout l'écran, peut rogner ;
+- **Étirer** : échelle horizontale/verticale indépendante — pour les écrans à
+  pixels non carrés (panneaux LED) : remplissage exact.
+
+Le choix (taille + adaptation) est mémorisé (et suit le dossier `data/` du
+projet) ; par défaut 1920×1080 en mise en page classique — donc rien ne change
+si vous n'y touchez pas. Dans OBS, réglez la Source Navigateur à la même taille.
+Des captures d'exemple sont dans `captures/` à la racine du dépôt.
+
+## Deux versions du même verset en direct (Bible)
+
+Cochez **« 2 versions »** dans la barre des versions et choisissez la seconde
+traduction : à l'affichage, le verset apparaît **côte à côte** dans les deux
+versions (nom de chacune au-dessus, séparateur central) — en préview comme sur
+OBS, et ça se rafraîchit en direct. Si un livre n'existe pas sous le même nom
+dans la seconde version, l'affichage reste simple.
+
+## Annoter un verset avant projection (Bible)
+
+Bouton **✏️** sur chaque verset : sélectionnez un mot dans l'éditeur, puis
+**B** (gras), *I* (italique), 🖍 surlignage, 🎨 couleur du texte, ou effacez le
+format. **Contraste intelligent** : quand vous surlignez, la couleur du texte
+s'adapte automatiquement (noir sur un surlignage clair, blanc sur un surlignage
+foncé) pour rester toujours lisible. La mise en forme est enregistrée par verset
+(et suit le dossier `data/`) et apparaît telle quelle à la projection. Le bouton
+✏️ passe en orange quand un verset est annoté.
+
+## Découpage des versets longs (uniquement les sorties « bas »)
+
+Le découpage est piloté par l'option **« Afficher ligne par ligne (versets
+longs) »** des réglages d'affichage — pas par le mode du contrôleur. Quand elle
+est active et qu'un verset dépasse ~160 caractères, il est découpé en parties
+lisibles (~150 caractères, coupure à l'espace) et des boutons **← →** avec un
+indicateur **x/y** apparaissent (aussi les flèches du clavier).
+
+**Seules les sorties « Bas centré » et « Bas droite » affichent une partie à la
+fois** : le lien général quand le mode sélectionné est « bas », ou les liens
+verrouillés `?obs=true&lockMode=bottom` / `lockMode=bottom-right` du panneau de
+liens. Toutes les autres sorties (plein écran, 80%, ruban défiler) affichent
+toujours le verset **ENTIER** et ne sont en aucun cas affectées — vous pouvez
+donc diffuser en même temps un verset complet au plein écran et par parties en
+bandeau bas. Un verset annoté (✏️) n'est jamais découpé.
+
+## Sauvegardes globales (Command Center)
+
+Sur la page d'accueil (`/`) : **⬇️ Sauvegarder tout** télécharge UN fichier
+contenant tout (favoris, réglages, présets, file, groupes, 2 versions, annotations,
+résolution, bibliothèques IndexedDB avec les médias, données du dossier `data/`).
+**⬆️ Restaurer** remet tout en place (sur n'importe quel PC).
+
+## Vue Pasteur (écran compagnon)
+
+`vue_pasteur.html` — l'écran à installer face au pasteur (tablette, PC, TV) :
+- **3/5 de l'écran** : tout ce qui se passe réellement à l'antenne (les sorties
+  Bible / Paroles / Médias / Titres y sont embarquées en direct, avec un libellé
+  « en direct » et un badge quand un titre est affiché) ;
+- **1/5 : minuteur** — horloge + compte à rebours ou chronomètre, libellé
+  (« Prédication »…), couleurs d'alerte (orange à 5 min, rouge à 1 min, clignotant
+  en dépassement) ;
+- **1/5 : messages** — la régie envoie des messages (info / important / URGENT),
+  le dernier s'affiche en grand, les précédents restent en historique.
+
+**Changer l'ordre de la trame du temps** : dans le contrôle du minuteur, chaque
+décompte peut être **déplacé par glisser-déposer** ou avec les boutons **▲ ▼** —
+le nouvel ordre est diffusé en direct à tous les écrans et conservé (rechargement,
+changement de PC). « ✕ Réinitialiser » arrête le décompte en cours **sans vider**
+la file ; « ✕ » sur un élément le retire de la file.
+
+**Côté régie** : ouvrez `vue_pasteur.html?admin=1` (bouton « ⚙️ Contrôle » en haut
+de la vue, ou carte du Command Center) — préréglages 5→60 min, durée libre mm:ss,
+Démarrer/Pause/Reset, rédaction et envoi des messages. Tout transite par le relais
+local : ça marche depuis n'importe quel appareil du réseau, et l'état survit aux
+rechargements (localStorage + dossier `data/`).
+
+Vous avez déjà votre propre page de minuteur ? Ouvrez la vue avec
+`vue_pasteur.html?timer=timer-display.html` : elle s'affiche à la place du
+minuteur intégré, pilotée par vos boutons habituels.
+
+## 100 % hors ligne (aucune dépendance Internet)
+
+Depuis cette version, **tout est local** — coupez Internet, tout fonctionne :
+- **polices** : `vendor/fonts/` (Inter, Cinzel, Merriweather, Poppins… en woff2
+  local) — plus aucun appel à Google Fonts ;
+- **Tailwind** : compilé par page dans `css/tw-*.css` (plus de CDN) ;
+- **jszip / pdf.js** : `vendor/js/` (PDF et PowerPoint restent lisibles) ;
+- fonds d'aperçu : dégradés locaux (plus d'Unsplash).
+- **PWA** : la page peut être **installée** (menu navigateur → « Installer ») sur
+  PC/mobile ; un service worker met tout en cache pour un usage hors ligne.
+- **Vitesse** : le serveur compresse (gzip) les pages — ~20-30 Ko au lieu de
+  100+ — et le navigateur les garde en cache 1 h.
+
+## Looks — habillage global en 1 clic + ÉDITEUR complet
+
+Sur la page d'accueil (`/`), la carte **🎨 Looks** applique instantanément un
+habillage à la **Bible** et aux **Paroles** : 6 préréglages (Sobre, Festif,
+Carême, Noël, Aube, Mission) **+ vos looks personnalisés** créés dans
+**`looks_editor.html`** (bouton « Créer / modifier un look »). Tout est appliqué
+**en direct** sur les contrôleurs ouverts et **persisté** (suit le dossier `data/`).
+
+**L'éditeur de looks** permet de créer, comme les modèles de FreeShow :
+- **couleurs** : fond (+ opacité), accentuation, texte ; **police** ; **coins du cadre** ;
+- **photo de fond** (enregistrée DANS le look, portable) + **flou** ;
+- **géométrie de chaque mode** : plein écran, 80 % écran, bas centré, bas droite,
+  ruban défilant — largeur, hauteur, écarts, en % (vide = défaut) ;
+- **Bible et Paroles réglées séparément dans un même look** (onglets 📖/🎤,
+  case « Lié » pour tout régler identiquement) ;
+- **aperçu en direct** avec les vraies pages de projection ;
+- enregistrer (autant de looks que voulu), recharger, modifier, supprimer.
+
+## Recherche unifiée (Studio)
+
+En haut du **Studio Unifié**, un seul champ **« Tout chercher »** : tapez quelques
+lettres — chants (titre/artiste), versets (nom de livre ou recherche plein texte)
+et médias (nom de fichier) apparaissent groupés. **Entrée** diffuse le premier
+résultat dans le bon outil, les flèches ↑↓ naviguent, Échap ferme. C'est le
+« search engine » des logiciels pros, sans quitter le Studio.
+
+## Plan de culte — import CSV / Planning Center
+
+Dans la **File de déroulement** (`cue_list.html`), bouton **⬆️ Importer un plan** :
+- **CSV / texte** : une ligne par étape — « Jean 3:16 » devient un verset biblique,
+  « Grâce Infinie » est appariée au chant du même nom (première section), toute
+  autre ligne devient une **note structurelle** (repère du culte, rien n'est diffusé) ;
+- **JSON Planning Center** (export d'un plan) : les items deviennent des étapes,
+  les chants sont appariés par titre quand ils existent dans vos Paroles.
+Choisissez ensuite « remplacer la file » ou « ajouter à la fin ».

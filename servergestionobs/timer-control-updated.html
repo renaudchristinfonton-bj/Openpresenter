@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer — Contrôle</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <script src="store.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <style>
+        .queue-item.dragging { opacity: 0.45; }
+        .queue-item.drop-target { outline: 2px dashed var(--accent, #f59e0b); outline-offset: 2px; }
+        .queue-item-actions .btn-icon:disabled { opacity: 0.25; cursor: default; }
+        :root {
+            --bg: #0a0a0f;
+            --surface: rgba(255,255,255,0.04);
+            --surface-hover: rgba(255,255,255,0.07);
+            --border: rgba(255,255,255,0.1);
+            --border-focus: rgba(59,130,246,0.6);
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #ffffff;
+            --text-secondary: #888;
+            --text-muted: #444;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        /* === LAYOUT === */
+        .app {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+            gap: 0;
+        }
+
+        /* === HEADER === */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.2rem 2rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.4);
+        }
+
+        .header-title {
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .header-title span {
+            color: var(--accent);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s;
+        }
+
+        .status-dot.running { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse-dot 1.5s infinite; }
+        .status-dot.paused { background: var(--warning); }
+        .status-dot.finished { background: var(--danger); }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+        /* === COLONNE GAUCHE : SAISIE === */
+        .col-input {
+            padding: 2rem;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"], input[type="number"] {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+
+        .input-title {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .input-title::placeholder { color: var(--text-muted); }
+
+        .time-inputs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-unit label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        input[type="number"] {
+            width: 78px;
+            padding: 10px;
+            text-align: center;
+            font-size: 1.8rem;
+            font-family: 'Bebas Neue', monospace;
+            letter-spacing: 2px;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+        .time-sep {
+            font-size: 1.8rem;
+            color: var(--text-muted);
+            font-family: 'Bebas Neue', monospace;
+            margin-bottom: 20px;
+        }
+
+        /* Quick durations */
+        .quick-durations {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 1.5rem;
+        }
+
+        .quick-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.78rem;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.5px;
+        }
+
+        .quick-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-success { background: var(--success); color: #fff; margin-top: 10px; }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-success:disabled { background: #1a3a2e; color: #2d6a4f; cursor: not-allowed; }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .btn-outline:hover { background: var(--surface-hover); color: var(--text); }
+
+        /* === COLONNE DROITE : FILE + CONTRÔLE === */
+        .col-control {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* File d'attente */
+        .queue-section {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .queue-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 2rem 0;
+            letter-spacing: 1px;
+        }
+
+        .queue-list {
+            list-style: none;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            transition: background 0.15s;
+        }
+
+        .queue-item.is-next {
+            border-color: rgba(59,130,246,0.35);
+            background: rgba(59,130,246,0.06);
+        }
+
+        .queue-item-index {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .queue-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-item-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: 0.5px;
+        }
+
+        .queue-item-title.no-title {
+            color: var(--text-muted);
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .queue-item-time {
+            font-family: 'Bebas Neue', monospace;
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            letter-spacing: 2px;
+        }
+
+        .queue-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            padding: 5px 9px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-icon:hover { background: var(--surface-hover); color: var(--text); }
+        .btn-icon.danger:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: var(--danger); }
+
+        /* Panneau de contrôle live */
+        .live-section {
+            padding: 1.5rem 2rem 2rem;
+        }
+
+        /* Affichage timer en cours dans le contrôle */
+        .live-display {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+
+        .live-current-title {
+            font-size: 0.72rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .live-clock {
+            font-family: 'Bebas Neue', monospace;
+            font-size: 3.5rem;
+            letter-spacing: 4px;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .live-clock.paused { color: var(--warning); }
+        .live-clock.finished { color: var(--danger); animation: blink 1s step-start infinite; }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Ajustements live */
+        .adjust-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-adjust {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-adjust:hover { background: var(--surface-hover); color: var(--text); }
+
+        .adjust-sep { color: var(--text-muted); align-self: center; font-size: 0.9rem; padding: 0 3px; }
+
+        /* Contrôles principaux */
+        .main-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn-control {
+            padding: 12px;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-control:active { transform: scale(0.97); }
+
+        .btn-pause { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: var(--warning); }
+        .btn-pause:hover { background: rgba(245,158,11,0.25); }
+
+        .btn-resume { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: var(--success); }
+        .btn-resume:hover { background: rgba(16,185,129,0.25); }
+
+        .btn-skip { background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-skip:hover { background: var(--surface-hover); color: var(--text); }
+
+        .btn-reset { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: var(--danger); }
+        .btn-reset:hover { background: rgba(239,68,68,0.2); }
+
+        /* État du panneau live selon mode */
+        .live-section.state-idle .live-display { opacity: 0.4; }
+        .live-section.state-idle .adjust-panel { opacity: 0.3; pointer-events: none; }
+        .live-section.state-idle .main-controls { opacity: 0.4; pointer-events: none; }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 700px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+            .col-input { border-right: none; border-bottom: 1px solid var(--border); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-title">Timer <span>·</span> Contrôle</div>
+        <div class="status-indicator">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">En attente</span>
+        </div>
+    </header>
+
+    <!-- COLONNE GAUCHE : SAISIE -->
+    <section class="col-input">
+        <div class="section-label">Nouveau décompte</div>
+
+        <div class="form-group">
+            <label class="form-label">Titre (optionnel)</label>
+            <input type="text" id="inp-title" class="input-title" placeholder="ex : LOUANGE" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Durée</label>
+            <div class="time-inputs">
+                <div class="time-unit">
+                    <input type="number" id="inp-h" min="0" placeholder="00" value="0">
+                    <label>Heures</label>
+                </div>
+                <div class="time-sep">:</div>
+                <div class="time-unit">
+                    <input type="number" id="inp-m" min="0" max="59" placeholder="00" value="0">
+                    <label>Min</label>
+                </div>
+                <div class="time-sep">:</div>
+                <div class="time-unit">
+                    <input type="number" id="inp-s" min="0" max="59" placeholder="00" value="0">
+                    <label>Sec</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raccourcis rapides -->
+        <div class="quick-durations">
+            <button class="quick-btn" onclick="setQuick(0,1,0)">1 min</button>
+            <button class="quick-btn" onclick="setQuick(0,2,0)">2 min</button>
+            <button class="quick-btn" onclick="setQuick(0,5,0)">5 min</button>
+            <button class="quick-btn" onclick="setQuick(0,10,0)">10 min</button>
+            <button class="quick-btn" onclick="setQuick(0,15,0)">15 min</button>
+            <button class="quick-btn" onclick="setQuick(0,20,0)">20 min</button>
+            <button class="quick-btn" onclick="setQuick(0,30,0)">30 min</button>
+            <button class="quick-btn" onclick="setQuick(0,45,0)">45 min</button>
+            <button class="quick-btn" onclick="setQuick(1,0,0)">1 h</button>
+        </div>
+
+        <button class="btn btn-primary" onclick="addToQueue()">+ Ajouter à la file</button>
+        <button id="btn-start" class="btn btn-success" onclick="launchNext()" disabled>▶ Démarrer</button>
+    </section>
+
+    <!-- COLONNE DROITE -->
+    <section class="col-control">
+
+        <!-- FILE D'ATTENTE -->
+        <div class="queue-section">
+            <div class="section-label">File d'attente (<span id="queue-count">0</span>)</div>
+            <ul class="queue-list" id="queue-list">
+                <li class="queue-empty" id="queue-empty">Aucun décompte ajouté</li>
+            </ul>
+        </div>
+
+        <!-- CONTRÔLE LIVE -->
+        <div class="live-section state-idle" id="live-section">
+            <div class="section-label">En cours</div>
+
+            <div class="live-display">
+                <div class="live-current-title" id="live-title">—</div>
+                <div class="live-clock" id="live-clock">00:00:00</div>
+            </div>
+
+            <!-- Ajustements -->
+            <div class="adjust-panel">
+                <button class="btn-adjust" onclick="adjust(-3600)">−1h</button>
+                <button class="btn-adjust" onclick="adjust(-1800)">−30m</button>
+                <button class="btn-adjust" onclick="adjust(-900)">−15m</button>
+                <button class="btn-adjust" onclick="adjust(-600)">−10m</button>
+                <button class="btn-adjust" onclick="adjust(-300)">−5m</button>
+                <button class="btn-adjust" onclick="adjust(-60)">−1m</button>
+                <button class="btn-adjust" onclick="adjust(-30)">−30s</button>
+                <span class="adjust-sep">|</span>
+                <button class="btn-adjust" onclick="adjust(30)">+30s</button>
+                <button class="btn-adjust" onclick="adjust(60)">+1m</button>
+                <button class="btn-adjust" onclick="adjust(300)">+5m</button>
+                <button class="btn-adjust" onclick="adjust(600)">+10m</button>
+                <button class="btn-adjust" onclick="adjust(900)">+15m</button>
+                <button class="btn-adjust" onclick="adjust(1800)">+30m</button>
+                <button class="btn-adjust" onclick="adjust(3600)">+1h</button>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="main-controls">
+                <button class="btn-control btn-pause" id="btn-pause" onclick="pauseTimer()">⏸ Pause</button>
+                <button class="btn-control btn-skip" id="btn-skip" onclick="skipToNext()">⏭ Suivant</button>
+                <button class="btn-control btn-resume" id="btn-resume" onclick="resumeTimer()" style="display:none">▶ Reprendre</button>
+                <button class="btn-control btn-reset" onclick="resetAll()">✕ Réinitialiser</button>
+            </div>
+        </div>
+
+    </section>
+</div>
+
+<script>
+    // RemoteChannel = BroadcastChannel + relais réseau : pilote l'affichage sur
+    // ce PC ou n'importe quel appareil du réseau.
+    const channel = new RemoteChannel('timer_channel');
+
+    let queue = [];
+    let state = 'idle'; // idle | running | paused | finished
+    let endTime = null;
+    let intervalId = null;
+    let currentTitle = '';
+    let remainingOnPause = 0;
+
+    // === PORTABILITÉ : la file et l'état sont sauvegardés dans le dossier du
+    // projet (data/ via OpenStore) — recharger la page ou changer de PC ne perd
+    // rien. Un décompte en cours est restauré s'il n'est pas déjà terminé.
+    function persistState() {
+        try {
+            const s = { queue, state, endTime, currentTitle, remainingOnPause, savedAt: Date.now() };
+            if (window.OpenStore) OpenStore.set('timer', 'state', s);
+            else localStorage.setItem('timer:state', JSON.stringify(s));
+        } catch (e) { /* silencieux */ }
+    }
+    async function restoreSavedState() {
+        // La copie la plus RÉCENTE gagne (savedAt) : la restauration réseau est
+        // asynchrone et ne doit jamais écraser un état local plus frais.
+        let localS = null, serverS = null;
+        try { localS = JSON.parse(localStorage.getItem('timer:state') || 'null'); } catch (e) { localS = null; }
+        if (window.OpenStore) { try { serverS = await OpenStore.fetchFromServer('timer', 'state'); } catch (e) { serverS = null; } }
+        const s = (serverS && (!localS || (serverS.savedAt || 0) > (localS.savedAt || 0))) ? serverS : localS;
+        if (!s || !Array.isArray(s.queue)) return;
+        queue = s.queue;
+        endTime = s.endTime || null;
+        currentTitle = s.currentTitle || '';
+        remainingOnPause = s.remainingOnPause || 0;
+        state = (s.state === 'running' && endTime && endTime > Date.now()) ? 'running'
+              : (s.state === 'paused' ? 'paused' : 'idle');
+        renderQueue();
+        if (state === 'running') { updateLiveUI(); startLocalTick(); updateStatus('running'); liveClock.textContent = formatTime(Math.round((endTime - Date.now()) / 1000)); }
+        else if (state === 'paused') { updateLiveUI(); updateStatus('paused'); liveClock.textContent = formatTime(remainingOnPause); }
+    }
+    restoreSavedState();
+
+    // === REFS UI ===
+    const queueList = document.getElementById('queue-list');
+    const queueEmpty = document.getElementById('queue-empty');
+    const queueCount = document.getElementById('queue-count');
+    const btnStart = document.getElementById('btn-start');
+    const liveSection = document.getElementById('live-section');
+    const liveClock = document.getElementById('live-clock');
+    const liveTitle = document.getElementById('live-title');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const btnPause = document.getElementById('btn-pause');
+    const btnResume = document.getElementById('btn-resume');
+    const btnSkip = document.getElementById('btn-skip');
+
+    function formatTime(totalSeconds) {
+        const negative = totalSeconds < 0;
+        const s = Math.abs(totalSeconds);
+        const h = Math.floor(s / 3600).toString().padStart(2, '0');
+        const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+        const sec = (s % 60).toString().padStart(2, '0');
+        return (negative ? '-' : '') + `${h}:${m}:${sec}`;
+    }
+
+    function setQuick(h, m, s) {
+        document.getElementById('inp-h').value = h;
+        document.getElementById('inp-m').value = m;
+        document.getElementById('inp-s').value = s;
+    }
+
+    function addToQueue() {
+        const title = document.getElementById('inp-title').value.trim();
+        const h = parseInt(document.getElementById('inp-h').value) || 0;
+        const m = parseInt(document.getElementById('inp-m').value) || 0;
+        const s = parseInt(document.getElementById('inp-s').value) || 0;
+        const duration = (h * 3600) + (m * 60) + s;
+        if (duration <= 0) return;
+
+        queue.push({ title, duration });
+
+        document.getElementById('inp-title').value = '';
+        document.getElementById('inp-h').value = 0;
+        document.getElementById('inp-m').value = 0;
+        document.getElementById('inp-s').value = 0;
+
+        renderQueue();
+        channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
+    }
+
+    function renderQueue() {
+        queueList.innerHTML = '';
+        queueCount.textContent = queue.length;
+        btnStart.disabled = queue.length === 0;
+
+        if (queue.length === 0) {
+            queueList.innerHTML = '<li class="queue-empty">Aucun décompte ajouté</li>';
+            return;
+        }
+
+        queue.forEach((item, i) => {
+            const li = document.createElement('li');
+            li.className = 'queue-item' + (i === 0 ? ' is-next' : '');
+
+            const titleHtml = item.title
+                ? `<div class="queue-item-title">${item.title}</div>`
+                : `<div class="queue-item-title no-title">Sans titre</div>`;
+
+            li.innerHTML = `
+                <span class="queue-item-index">${i + 1}</span>
+                <div class="queue-item-info">
+                    ${titleHtml}
+                    <div class="queue-item-time">${formatTime(item.duration)}</div>
+                </div>
+                <div class="queue-item-actions">
+                    <button class="btn-icon" onclick="moveItem(${i}, ${i - 1})" title="Monter" ${i === 0 ? 'disabled' : ''}>▲</button>
+                    <button class="btn-icon" onclick="moveItem(${i}, ${i + 1})" title="Descendre" ${i === queue.length - 1 ? 'disabled' : ''}>▼</button>
+                    <button class="btn-icon" onclick="editItem(${i})">✎</button>
+                    <button class="btn-icon danger" onclick="removeItem(${i})">✕</button>
+                </div>
+            `;
+            // Glisser-déposer pour réordonner la trame du temps
+            li.draggable = true;
+            li.dataset.index = i;
+            li.addEventListener('dragstart', (e) => {
+                dragFromIndex = i;
+                li.classList.add('dragging');
+                try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); } catch (err) {}
+            });
+            li.addEventListener('dragend', () => { li.classList.remove('dragging'); document.querySelectorAll('.queue-item.drop-target').forEach(el => el.classList.remove('drop-target')); });
+            li.addEventListener('dragover', (e) => { e.preventDefault(); if (i !== dragFromIndex) li.classList.add('drop-target'); });
+            li.addEventListener('dragleave', () => li.classList.remove('drop-target'));
+            li.addEventListener('drop', (e) => { e.preventDefault(); li.classList.remove('drop-target'); moveItem(dragFromIndex, i); });
+            queueList.appendChild(li);
+        });
+    }
+
+    let dragFromIndex = null;
+
+    // Déplace un décompte dans la trame (boutons ▲▼ ou glisser-déposer).
+    function moveItem(from, to) {
+        if (from === to) return;
+        if (from < 0 || from >= queue.length) return;
+        to = Math.max(0, Math.min(queue.length - 1, to));
+        const moved = queue.splice(from, 1)[0];
+        queue.splice(to, 0, moved);
+        renderQueue();
+        channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
+    }
+
+    function removeItem(i) {
+        queue.splice(i, 1);
+        renderQueue();
+        channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+        persistState();
+    }
+
+    function editItem(i) {
+        const item = queue[i];
+        document.getElementById('inp-title').value = item.title;
+        document.getElementById('inp-h').value = Math.floor(item.duration / 3600);
+        document.getElementById('inp-m').value = Math.floor((item.duration % 3600) / 60);
+        document.getElementById('inp-s').value = item.duration % 60;
+        removeItem(i);
+    }
+
+    function launchNext() {
+        if (queue.length === 0) return;
+        const item = queue.shift();
+        renderQueue();
+
+        currentTitle = item.title;
+        endTime = Date.now() + (item.duration * 1000);
+        state = 'running';
+
+        channel.postMessage({ type: 'START', title: item.title, endTime, queue });
+        persistState();
+        updateLiveUI();
+        startLocalTick();
+        updateStatus('running');
+    }
+
+    function startLocalTick() {
+        clearInterval(intervalId);
+        intervalId = setInterval(() => {
+            if (state !== 'running') return;
+            const remaining = Math.round((endTime - Date.now()) / 1000);
+            liveClock.textContent = formatTime(remaining);
+            liveClock.className = 'live-clock';
+            if (remaining <= 0) {
+                liveClock.className='live-clock finished';
+                state='finished';
+                updateStatus('finished');
+            }
+        }, 250);
+    }
+
+    function pauseTimer() {
+        if (state !== 'running') return;
+        state = 'paused';
+        remainingOnPause = Math.round((endTime - Date.now()) / 1000);
+        clearInterval(intervalId);
+        liveClock.className = 'live-clock paused';
+        channel.postMessage({ type: 'PAUSE', remaining: remainingOnPause });
+        persistState();
+        updateStatus('paused');
+        updateLiveUI();
+    }
+
+    function resumeTimer() {
+        if (state !== 'paused') return;
+        state = 'running';
+        endTime = Date.now() + (remainingOnPause * 1000);
+        liveClock.className = 'live-clock';
+        channel.postMessage({ type: 'RESUME', endTime });
+        persistState();
+        updateStatus('running');
+        startLocalTick();
+        updateLiveUI();
+    }
+
+    function adjust(deltaSeconds) {
+        if (state === 'idle') return;
+
+        if (state === 'paused') {
+            remainingOnPause = remainingOnPause + deltaSeconds;
+            liveClock.textContent = formatTime(remainingOnPause);
+            endTime = Date.now() + (remainingOnPause * 1000);
+        } else {
+            endTime += deltaSeconds * 1000;
+            
+        }
+
+        channel.postMessage({ type: 'ADJUST', endTime });
+        persistState();
+    }
+
+    function skipToNext() {
+        clearInterval(intervalId);
+        if (queue.length > 0) {
+            launchNext();
+        } else {
+            state = 'finished';
+            channel.postMessage({ type: 'FINISH' });
+            persistState();
+            updateStatus('finished');
+            updateLiveUI();
+        }
+    }
+
+    function resetAll() {
+        clearInterval(intervalId);
+        state = 'idle';
+        endTime = null;
+        currentTitle = '';
+        liveClock.textContent = '00:00:00';
+        liveClock.className = 'live-clock';
+        liveTitle.textContent = '—';
+        channel.postMessage({ type: 'RESET' });
+        persistState();
+        updateStatus('idle');
+        updateLiveUI();
+    }
+
+    function updateLiveUI() {
+        liveTitle.textContent = currentTitle || '—';
+        liveSection.className = 'live-section state-' + state;
+
+        if (state === 'running') {
+            btnPause.style.display = '';
+            btnResume.style.display = 'none';
+            btnSkip.style.display = '';
+        } else if (state === 'paused') {
+            btnPause.style.display = 'none';
+            btnResume.style.display = '';
+            btnSkip.style.display = '';
+        } else if (state === 'finished') {
+            btnPause.style.display = '';
+            btnResume.style.display = 'none';
+            if (queue.length > 0) btnSkip.style.display = '';
+        } else {
+            // idle
+            btnPause.style.display = '';
+            btnResume.style.display = 'none';
+        }
+    }
+
+    function updateStatus(s) {
+        statusDot.className = 'status-dot ' + s;
+        const labels = {
+            idle: 'En attente',
+            running: 'En cours',
+            paused: 'En pause',
+            finished: 'Terminé'
+        };
+        statusText.textContent = labels[s] || s;
+    }
+
+    // === RATTRAPAGE DES NOUVEAUX ÉCRANS ===
+    // Un affichage qui rejoint en cours de route (rechargement, nouvel appareil,
+    // OBS redémarré...) a raté les messages passés : il demande une synchronisation
+    // (SYNC_REQ) et on lui renvoie l'état réel actuel.
+    channel.onmessage = (ev) => {
+        try {
+            if (ev.data && ev.data.type === 'SYNC_REQ') {
+                if (state === 'running') channel.postMessage({ type: 'START', title: currentTitle, endTime, queue });
+                else if (state === 'paused') channel.postMessage({ type: 'PAUSE', remaining: remainingOnPause });
+                else if (state === 'finished') channel.postMessage({ type: 'FINISH' });
+                channel.postMessage({ type: 'QUEUE_UPDATE', queue });
+            }
+        } catch (e) { /* silencieux */ }
+    };
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (state === 'running') pauseTimer();
+            else if (state === 'paused') resumeTimer();
+            else if (state === 'idle' && queue.length > 0) launchNext();
+        }
+        if (e.code === 'ArrowRight') adjust(60);
+        if (e.code === 'ArrowLeft') adjust(-60);
+    });
+</script>
+    <script src="js/pwa.js"></script>
+</body>
+</html>

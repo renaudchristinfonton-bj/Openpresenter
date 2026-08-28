@@ -4,31 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ultimate OBS Lower Third Studio</title>
+    <link rel="manifest" href="manifest.webmanifest">
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Montserrat:wght@400;700;900&family=Bebas+Neue&family=Oswald:wght@400;700&family=Poppins:wght@400;600;800&family=Rajdhani:wght@500;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="css/tw-obs_lower_third_ultimate_studio.css">
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        appBg: '#0e0e11',
-                        panelBg: '#18181b',
-                        inputBg: '#27272a',
-                        accent: '#6366f1',
-                        accentHover: '#4f46e5'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="js/obs-links.js"></script>
+    
 
     <style>
         :root {
@@ -48,6 +31,10 @@
             width: 100vw;
             height: 100vh;
         }
+        /* Sortie à résolution personnalisée (?obs=1&res=WxH) : la page se cale
+           sur la taille demandée, et la typo (en rem) suit la hauteur — le lower
+           third s'adapte proportionnellement à n'importe quel écran. */
+        body.obs-mode.res-custom { width: var(--cw, 100vw) !important; height: var(--ch, 100vh) !important; }
 
         body.controller-mode {
             background-color: #0e0e11;
@@ -374,6 +361,14 @@
                     <code id="obs-url" class="text-xs text-indigo-300 font-mono select-all max-w-[200px] truncate"></code>
                     <button onclick="copyUrl()" class="text-gray-400 hover:text-white" title="Copier"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
                     <button onclick="toggleObsResHelp()" class="text-amber-400 hover:text-amber-300 shrink-0" title="Important : résolution de la Source Navigateur">⚠️</button>
+                </div>
+                <div class="bg-appBg px-3 py-1.5 rounded-md border border-gray-800 flex items-center gap-2">
+                    <span class="text-xs text-gray-400">Sortie :</span>
+                    <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-gray-900 border border-gray-700 text-white text-xs rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                    <span class="text-gray-500 text-xs">×</span>
+                    <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-gray-900 border border-gray-700 text-white text-xs rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                    <button type="button" class="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white px-2 py-1 rounded" data-res-role="copy" title="Copier le lien OBS avec cette résolution">Copier le lien</button>
+                    <code class="text-xs text-indigo-300 font-mono select-all max-w-[180px] truncate hidden md:inline" data-res-role="link"></code>
                 </div>
                 <button onclick="saveDesign()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-1.5 rounded text-sm font-semibold transition border border-gray-700">💾 Sauvegarder</button>
                 <div class="w-px h-6 bg-gray-700 mx-1"></div>
@@ -1203,6 +1198,18 @@
         if (isOBS) {
             document.body.classList.remove('controller-mode');
             document.body.classList.add('obs-mode');
+            // Sortie personnalisable (?obs=1&res=WxH) : cale la page sur la taille
+            // demandée et met la typo (rem) à l'échelle de la hauteur réelle.
+            if (typeof applyObsResolution === 'function') {
+                const applied = applyObsResolution();
+                if (applied) {
+                    const m = String(new URLSearchParams(window.location.search).get('res') || '').match(/^(\d{2,5})x(\d{2,5})$/);
+                    if (m) {
+                        const hScale = Math.max(64, Math.min(4320, parseInt(m[2], 10))) / 1080;
+                        document.documentElement.style.fontSize = (16 * hScale) + 'px';
+                    }
+                }
+            }
             document.getElementById('obs-view').classList.remove('hidden');
 
             // Aide au diagnostic : ajouter &debug=1 au lien OBS affiche la résolution que
@@ -1248,7 +1255,9 @@
             document.getElementById('controller-view').classList.remove('hidden');
             
             let currentUrl = window.location.href.split('?')[0];
-            document.getElementById('obs-url').innerText = currentUrl + '?obs=1';
+            document.getElementById('obs-url').innerText = currentUrl + '?obs=1' + (typeof resQuery === 'function' ? resQuery() : '');
+            // Sorties personnalisées : saisie largeur×hauteur + lien ?obs=1&res=WxH.
+            if (typeof initResolutionPanel === 'function') initResolutionPanel({ obsParam: '?obs=1' });
             
             // Set init values
             updateLive();
@@ -1514,5 +1523,6 @@
             }
         }
     </script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>

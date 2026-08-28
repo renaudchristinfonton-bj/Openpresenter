@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OpenPresenter — Command Center</title>
+    <link rel="manifest" href="manifest.webmanifest">
 <style>
     :root {
         --bg: #0b1120; --panel: #111a2e; --panel2: #172033; --border: #1e293b;
@@ -188,6 +189,21 @@
         <a class="btn-hero" href="studio_unifie.html" target="_blank">▶ Ouvrir le Studio Unifié</a>
     </div>
 
+    <!-- Looks : habillage global en 1 clic -->
+    <div class="card-box">
+        <h3 class="card-title">🎨 Looks — habillage global en 1 clic</h3>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
+            Applique instantanément un jeu de couleurs et de formes à la <b>Bible</b> et aux <b>Paroles</b>
+            (fond, accent, texte, coins) — sur tous les contrôleurs ouverts, et durablement.
+            Les réglages manuels de chaque outil restent prioritaires si vous les modifiez ensuite.
+        </p>
+        <div id="looks-row" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        <div id="looks-custom-row" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
+        <div style="margin-top:10px">
+            <a class="btn-action" href="looks_editor.html" target="_blank" style="text-decoration:none;display:inline-block">🎨 Créer / modifier un look (fond, cadre, modes…)</a>
+        </div>
+    </div>
+
     <!-- Adresses d'accès -->
     <div class="card-box">
         <h3 class="card-title">Adresses d'accès</h3>
@@ -297,6 +313,8 @@
 </div>
 
 <script src="js/qrcode.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script src="js/looks.js"></script>
 <script>
     // Données injectées par le serveur relais (adresses réseau). Si la page est ouverte
     // directement en double-clic (file://) ou hors serveur, on se replie sur localhost.
@@ -316,7 +334,12 @@
         { key: 'media',  icon: '🖼️', name: 'Médias',          color: 'var(--media)',  desc: 'Images, vidéos, PDF et PowerPoint, organisés par groupes.', file: 'media_control_display_pro.html', modes: [{ label: 'Plein écran', q: '?obs=true' }] },
         { key: 'lt',     icon: '🏷️', name: 'Lower Third',     color: 'var(--lt)',     desc: 'Titres et bandeaux animés, logo, animations.', file: 'obs_lower_third_ultimate_studio.html', modes: [{ label: 'Titres (OBS)', q: '?obs=1' }] },
         { key: 'cue',    icon: '📋', name: 'File de déroulement', color: '#f43f5e',   desc: 'Composez l\u2019ordre de service et enchaînez en une touche (mobile-friendly).', file: 'cue_list.html', modes: [], controller: 'Contrôleur mobile' },
-        { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' }
+        { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' },
+        { key: 'pasteur', icon: '✝️', name: 'Vue Pasteur',     color: '#22c55e',       desc: 'Écran du pasteur : diffusion en direct (3/5), minuteur (1/5), messages de la régie (1/5).', file: 'vue_pasteur.html', modes: [], controller: 'Écran compagnon' },
+        { key: 'pasteurCtl', icon: '⚙️', name: 'Régie Pasteur', color: '#14b8a6',       desc: 'Piloter la file de décomptes et envoyer des messages au pasteur (même réseau).', file: 'pasteur_control.html', modes: [], controller: 'Régie' },
+        { key: 'timerCtl', icon: '⏱️', name: 'Minuteur — Contrôle', color: '#f59e0b',   desc: 'File de décomptes (titres + durées), pause/reprise, ajustement ±1 min, raccourcis clavier.', file: 'timer-control-updated.html', modes: [], controller: 'Régie' },
+        { key: 'timerDisp', icon: '⏳', name: 'Minuteur — Écran', color: '#f43f5e',     desc: 'Écran géant du minuteur (Source Navigateur OBS ou vidéoprojecteur face à la scène).', file: 'timer-display-updated.html', modes: [{ label: 'Plein écran', q: '' }], controller: 'Écran / OBS' },
+        { key: 'stage', icon: '🎼', name: 'Écran Scène', color: '#a78bfa',             desc: 'Face aux musiciens : section courante en grand, section suivante, horloge, minuteur et messages.', file: 'stage_display.html', modes: [], controller: 'Écran compagnon' }
     ];
 
     var base = location.origin;
@@ -551,7 +574,10 @@
         function log(m) { if (logEl) logEl.textContent += (logEl.textContent ? '\n' : '') + m; }
         function clear() { if (logEl) logEl.textContent = ''; }
 
-        var LS_KEYS = ['bibleFavs', 'bibleCurrentVersionId', 'bibleLastPosition', 'bibleDisplaySettings', 'lyricsDisplaySettings', 'lyricsLastSongId', 'lt_presets', 'cue_list', 'media_groups_list'];
+        var LS_KEYS = ['bibleFavs', 'bibleCurrentVersionId', 'bibleLastPosition', 'bibleDisplaySettings', 'lyricsDisplaySettings', 'lyricsLastSongId', 'lt_presets', 'cue_list', 'media_groups_list',
+            // Préférences des fonctionnalités récentes : 2 versions Bible, annotations
+            // de versets, résolution de sortie personnalisée (incluse dans les sauvegardes).
+            'bibleDualEnabled', 'bibleDualVersionId', 'bibleVerseAnnotations', 'settings:output_res'];
         var DBS = [
             { name: 'bibleProStorage', stores: ['versions'] },
             { name: 'lyricsProStorage', stores: ['songs', 'media'] },
@@ -705,6 +731,51 @@
 
     WIZ.bind();
     WIZ.maybeFirstLaunch();
+</script>
+    <script src="js/pwa.js"></script>
+<script>
+    // Carte Looks : boutons générés depuis les préréglages du module partagé.
+    (function () {
+        var row = document.getElementById('looks-row');
+        if (!row || !window.OpenLooks) return;
+        OpenLooks.presets.forEach(function (p) {
+            var b = document.createElement('button');
+            b.className = 'btn-action';
+            b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + p.bible.accentColor + ';';
+            b.innerHTML = '<span style="width:14px;height:14px;border-radius:4px;background:' + p.bible.accentColor + ';display:inline-block;"></span>' + p.icon + ' ' + p.name;
+            b.title = 'Appliquer le look « ' + p.name + ' » à la Bible et aux Paroles';
+            b.onclick = function () {
+                OpenLooks.applyPreset(p.id);
+                document.querySelectorAll('#looks-row button').forEach(function (x) { x.style.background = ''; });
+                b.style.background = '#14532d';
+            };
+            row.appendChild(b);
+        });
+        // Looks personnalisés (créés dans looks_editor.html, stockés dans data/)
+        OpenLooks.loadCustom().then(function (list) {
+            var row2 = document.getElementById('looks-custom-row');
+            if (!row2) return;
+            list.forEach(function (l) {
+                var b = document.createElement('button');
+                b.className = 'btn-action';
+                b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + ((l.bible && l.bible.accentColor) || '#334155') + ';';
+                b.innerHTML = (l.icon || '🎨') + ' ' + l.name;
+                b.title = 'Appliquer le look « ' + l.name + ' » (Bible : ' + (l.bible && l.bible.accentColor || '?') + ' · Paroles : ' + (l.lyrics && l.lyrics.accentColor || '?') + ')';
+                b.onclick = function () { OpenLooks.apply(l); };
+                var del = document.createElement('button');
+                del.className = 'btn-action';
+                del.style.cssText = 'padding:4px 8px;color:#fca5a5;';
+                del.innerText = '✕';
+                del.title = 'Supprimer ce look';
+                del.onclick = function () {
+                    if (!confirm('Supprimer le look « ' + l.name + ' » ?')) return;
+                    OpenLooks.deleteCustom(l.id).then(function () { b.remove(); del.remove(); });
+                };
+                row2.appendChild(b);
+                row2.appendChild(del);
+            });
+        });
+    })();
 </script>
 </body>
 </html>

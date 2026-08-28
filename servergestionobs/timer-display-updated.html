@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer — Affichage</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <script src="js/remote-channel.js"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* === ÉCRAN D'ATTENTE === */
+        #waiting-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            opacity: 0.3;
+        }
+
+        .waiting-dot {
+            width: 10px; height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        .waiting-dot:nth-child(2) { animation-delay: 0.3s; }
+        .waiting-dot:nth-child(3) { animation-delay: 0.6s; }
+        .waiting-dots { display: flex; gap: 10px; }
+
+        #waiting-label {
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #666;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.4); opacity: 1; }
+        }
+
+        /* === ÉCRAN TIMER === */
+        #timer-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        #timer-title {
+            position: absolute;
+            top: 7vh;
+            left: 0; right: 0;
+            text-align: center;
+            font-size: clamp(1.8rem, 5.5vw, 5rem);
+            font-weight: 300;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 60px rgba(255,255,255,0.15);
+            transition: opacity 0.4s;
+        }
+
+        #timer-display {
+            font-family: 'Bebas Neue', monospace;
+            font-size: min(28.5vw, 62vh);
+            line-height: 1;
+            letter-spacing: 0.01em;
+            color: #fff;
+            text-shadow: 0 0 80px rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.8);
+            transition: color 0.5s;
+        }
+
+        /* États */
+        body.mode-finished #timer-display {
+            color: #ff2222;
+            text-shadow: 0 0 80px rgba(255,30,30,0.6), 0 0 160px rgba(255,30,30,0.3);
+            animation: blink 1s step-start infinite;
+        }
+
+        body.mode-paused #timer-display {
+            color: #f59e0b;
+            text-shadow: 0 0 80px rgba(245,158,11,0.4);
+        }
+
+        /* Badge état */
+        #state-badge {
+            position: absolute;
+            top: 3vh;
+            right: 3vw;
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #555;
+            display: none;
+        }
+
+        body.mode-paused #state-badge {
+            display: block;
+            color: #f59e0b;
+            border-color: rgba(245,158,11,0.4);
+        }
+
+        body.mode-finished #state-badge {
+            display: block;
+            color: #ff2222;
+            border-color: rgba(255,34,34,0.4);
+        }
+
+        /* File d'attente en bas */
+        #queue-preview {
+            position: absolute;
+            bottom: 4vh;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90vw;
+        }
+
+        .queue-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 0.8rem;
+            color: #555;
+            letter-spacing: 1px;
+        }
+
+        .queue-chip.next {
+            color: #aaa;
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Transition entrée */
+        #timer-screen.visible {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Écran d'attente -->
+    <div id="waiting-screen">
+        <div class="waiting-dots">
+            <div class="waiting-dot"></div>
+            <div class="waiting-dot"></div>
+            <div class="waiting-dot"></div>
+        </div>
+        <div id="waiting-label">En attente du contrôle...</div>
+    </div>
+
+    <!-- Écran timer -->
+    <div id="timer-screen">
+        <div id="state-badge">PAUSE</div>
+        <div id="timer-title"></div>
+        <div id="timer-display">00:00:00</div>
+        <div id="queue-preview"></div>
+    </div>
+
+    <script>
+        // RemoteChannel = BroadcastChannel + relais réseau : l'affichage peut tourner
+        // sur un autre PC / appareil du réseau que le contrôle (multi-appareils).
+        const channel = new RemoteChannel('timer_channel');
+
+        const timerScreen = document.getElementById('timer-screen');
+        const waitingScreen = document.getElementById('waiting-screen');
+        const display = document.getElementById('timer-display');
+        const titleEl = document.getElementById('timer-title');
+        const stateBadge = document.getElementById('state-badge');
+        const queuePreview = document.getElementById('queue-preview');
+        
+
+        let endTime = null;
+        let intervalId = null;
+        let isPaused = false;
+        let remainingOnPause = 0;
+
+        function formatTime(totalSeconds) {
+            const negative = totalSeconds < 0;
+            const s = Math.abs(totalSeconds);
+            const h = Math.floor(s / 3600).toString().padStart(2, '0');
+            const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+            const sec = (s % 60).toString().padStart(2, '0');
+            return (negative ? '-' : '') + `${h}:${m}:${sec}`;
+        }
+
+        function tick() {
+            if (isPaused) return;
+            const remaining = Math.round((endTime - Date.now()) / 1000);
+            display.textContent = formatTime(remaining);
+            if (remaining <= 0) {
+                document.body.className='mode-finished';
+                stateBadge.textContent='TEMPS DÉPASSÉ';
+            }
+        }
+
+        function showTimer(title, remaining, queue) {
+            waitingScreen.style.display = 'none';
+            if (queuePreview) queuePreview.innerHTML = '';
+            timerScreen.classList.add('visible');
+
+            titleEl.textContent = title || '';
+
+            // File d'attente preview
+            
+            if (queue && queue.length > 0) {
+                queue.forEach((item, i) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'queue-chip' + (i === 0 ? ' next' : '');
+                    chip.textContent = (item.title ? item.title + ' · ' : '') + formatTime(item.duration);
+                    queuePreview.appendChild(chip);
+                });
+            }
+        }
+
+        channel.onmessage = (event) => {
+            const msg = event.data;
+
+            switch (msg.type) {
+                case 'START':
+                    clearInterval(intervalId);
+                    isPaused = false;
+                    endTime = msg.endTime;
+                    document.body.className = 'mode-running';
+                    stateBadge.textContent = '';
+                    showTimer(msg.title, Math.round((msg.endTime - Date.now()) / 1000), msg.queue);
+                    display.textContent = formatTime(Math.round((msg.endTime - Date.now()) / 1000));
+                    intervalId = setInterval(tick, 250);
+                    break;
+
+                case 'PAUSE':
+                    isPaused = true;
+                    remainingOnPause = msg.remaining;
+                    clearInterval(intervalId);
+                    document.body.className = 'mode-paused';
+                    stateBadge.textContent = 'PAUSE';
+                    display.textContent = formatTime(msg.remaining);
+                    break;
+
+                case 'RESUME':
+                    isPaused = false;
+                    endTime = msg.endTime;
+                    document.body.className = 'mode-running';
+                    stateBadge.textContent = '';
+                    intervalId = setInterval(tick, 250);
+                    break;
+
+                case 'ADJUST':
+                    endTime = msg.endTime;
+                    tick();
+                    break;
+
+                case 'UPDATE_TITLE':
+                    titleEl.textContent = msg.title;
+                    break;
+
+                case 'FINISH':
+                    clearInterval(intervalId);
+                    document.body.className = 'mode-finished';
+                    display.textContent = '00:00:00';
+                    stateBadge.textContent = 'TERMINÉ';
+                    break;
+
+                case 'RESET':
+                    clearInterval(intervalId);
+                    isPaused = false;
+                    endTime = null;
+                    document.body.className = '';
+                    timerScreen.classList.remove('visible');
+                    waitingScreen.style.display = 'flex';
+                    display.textContent = '00:00:00';
+                    titleEl.textContent = '';
+                    if (queuePreview) queuePreview.innerHTML = '';
+                    
+                    break;
+
+            }
+        };
+        // Rattrapage : ce panneau vient peut-être de rejoindre en cours de route —
+        // on demande l'état actuel au contrôle (présent avant nous dans 99% des
+        // cas ; le second essai couvre les chargements simultanés).
+        function requestSync() { try { channel.postMessage({ type: 'SYNC_REQ' }); } catch (e) {} }
+        setTimeout(requestSync, 300);
+        setTimeout(requestSync, 1200);
+    </script>
+    <script src="js/pwa.js"></script>
+</body>
+</html>

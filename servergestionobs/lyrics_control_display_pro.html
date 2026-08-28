@@ -4,33 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lyrics Pro Controller - OBS</title>
+    <link rel="manifest" href="manifest.webmanifest">
     <!-- Importation des polices -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;800&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,500;1,500&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="css/tw-lyrics_control_display_pro.css">
     <script src="store.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/obs-links.js"></script>
     <script src="js/remote-channel.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                        display: ['Poppins', 'sans-serif'],
-                    },
-                    colors: {
-                        obs: {
-                            bg: 'rgba(15, 23, 42, 0.92)',
-                            accent: '#8b5cf6'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="js/live-mutex.js"></script>
+    <script src="js/looks.js"></script>
+    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -42,6 +26,32 @@
         body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
 
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
+
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille réelle
+           de l'écran demandée (--cw/--ch). */
+        body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
+        /* ADAPTER (défaut) : la page rend directement à la taille de l'écran —
+           la mise en page (cartes en %) s'organise dedans, tout est visible,
+           sans bandes noires ni déformation. */
+        body.mode-obs.res-adapt #obs-container { width: var(--cw, 1920px); height: var(--ch, 1080px); }
+        /* Modes d'échelle : le rendu 1920×1080 est réduit/agrandi (ou étiré). */
+        body.mode-obs.res-scale #obs-container { top: 50%; left: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--obs-sx, 1), var(--obs-sy, 1)); }
+        /* Géométrie ADAPTATIVE des cartes : exactement les mêmes proportions
+           qu'en 1920×1080, exprimées en pourcentages de la taille réelle. */
+        body.res-adapt .obs-full { top: 3.7%; left: 2.08%; width: 95.84%; height: 92.6%; padding: calc(var(--ch) * 80 / 1080); }
+        body.res-adapt .obs-bottom { bottom: 5.56%; left: 10%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
+        body.res-adapt .obs-bottom-right { bottom: 5.56%; right: 3.13%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
+        body.res-adapt .obs-screen80 { top: 10%; left: 10%; width: 80%; height: 80%; padding: calc(var(--ch) * 64 / 1080); }
+        body.res-adapt .obs-scrolling { bottom: 0; left: 0; width: 100%; height: 7.41%; }
+        /* Écran PLUS LARGE que 16:9 (bandeau, écran étiré) : la mise en page
+           s'élargit pour occuper agréablement la surface — moins d'espace mort
+           aux extrémités, texte plus large (multi-lignes qui remplissent). */
+        body.res-adapt.res-wide .obs-full { left: 1%; width: 98%; }
+        body.res-adapt.res-wide .obs-screen80 { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom { left: 4%; width: 92%; }
+        body.res-adapt.res-wide .obs-bottom-right { right: 2%; width: 92%; }
+        body.res-adapt.res-wide .verse-text { width: 92%; max-width: 92%; }
+        body.res-adapt.res-wide .obs-full .verse-text, body.res-adapt.res-wide .obs-screen80 .verse-text { width: 96%; max-width: 96%; }
 
         .obs-full { position: absolute; top: 40px; left: 40px; width: 1840px; height: 1000px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; text-align: center; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border: 2px solid var(--accent-color, #8b5cf6); border-radius: var(--shape-radius, 24px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); backdrop-filter: blur(12px); box-sizing: border-box; overflow: hidden; }
 
@@ -55,7 +65,17 @@
 
         .ticker-wrapper { display: flex; align-items: center; white-space: nowrap; will-change: transform; animation: marquee var(--speed, 30s) linear infinite; padding-left: 100vw; }
         .ticker-content { display: inline-flex; align-items: center; padding-right: 15vw; }
-        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        
+        /* Looks : animations d'entrée personnalisables par mode */
+        @keyframes look-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes look-zoom { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes look-slideup { from { opacity: 0; transform: translateY(80px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes look-slideleft { from { opacity: 0; transform: translateX(120px); } to { opacity: 1; transform: translateX(0); } }
+        .look-anim-fade { animation: look-fade .7s ease both; }
+        .look-anim-zoom { animation: look-zoom .7s cubic-bezier(0.16,1,0.3,1) both; }
+        .look-anim-slideup { animation: look-slideup .7s cubic-bezier(0.16,1,0.3,1) both; }
+        .look-anim-slideleft { animation: look-slideleft .7s cubic-bezier(0.16,1,0.3,1) both; }
+@keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 
         .lyric-text { color: var(--text-color, #ffffff); line-height: 1.35; text-shadow: 0 2px 5px rgba(0,0,0,0.6); overflow-wrap: break-word; word-break: break-word; width: 80%; max-width: 80%; margin: 0 auto; box-sizing: border-box; font-weight: 700; }
         .obs-bottom-right .lyric-text { margin-left: auto; margin-right: 0; }
@@ -121,7 +141,7 @@
         .section-item { transition: all 0.2s; cursor: pointer; }
         .section-item:hover, .section-item.active { background: rgba(139, 92, 246, 0.15); border-left: 3px solid #8b5cf6; }
 
-        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        #preview-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background-image: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%); background-size: cover; background-position: center; border-radius: 0.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
 
         #selection-bar { animation: fadeInScale 0.25s ease forwards; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -278,6 +298,27 @@
                             <p class="text-[9px] text-slate-500 mt-1 mb-2">Chacun de ces liens affiche toujours le même mode dans OBS, quel que soit le style choisi ci-dessus — pratique pour avoir une scène "plein écran" et une scène "bas centré" en même temps.</p>
                             <div class="space-y-1.5" id="obs-fixed-links"></div>
                         </details>
+                        <div class="bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-slate-500">Résolution de sortie personnalisée (largeur × hauteur)</p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                                <span class="text-slate-500 text-xs">×</span>
+                                <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                                <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-res-role="copy">Copier le lien</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="text-[9px] text-slate-500 shrink-0">Adaptation :</span>
+                                <select data-res-role="fit" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-white text-[10px] rounded px-1 py-1" title="Comment le rendu s'adapte à cette taille d'écran">
+                                    
+                                    <option value="adapt">Adapter — le contenu s'organise pour remplir l'écran (recommandé)</option>
+                                    <option value="fit">Tout afficher (bandes noires si ratio différent)</option>
+                                    <option value="fill">Remplir (peut rogner les bords)</option>
+                                    <option value="stretch">Étirer (pixels non carrés / panneau LED)</option>
+                                </select>
+                            </div>
+                            <p class="text-[10px] text-violet-400 truncate font-mono mt-1" data-res-role="link">...</p>
+                            <p class="text-[9px] text-slate-500 mt-0.5">Défaut 1920×1080. Dans OBS, réglez la Source Navigateur à la même taille.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -704,20 +745,10 @@
         // Canal de communication avec OBS (local + relais réseau)
         const bc = new RemoteChannel('obs_lyrics_channel');
         bc.onStatusChange(updateSyncBadge);
-        // Canal partagé d'exclusion mutuelle avec la Bible : quand les Paroles s'affichent,
-        // elles le signalent pour que l'autre outil se coupe automatiquement.
-        const mutex = new RemoteChannel('obs_mutex_channel');
-        // Si la Bible s'affiche, on coupe les Paroles. Robuste en mode contrôleur ET OBS.
-        mutex.onmessage = (ev) => {
-            if (ev.data && ev.data.action === 'show' && ev.data.source === 'bible') {
-                if (isObsMode) {
-                    const c = document.getElementById('obs-container');
-                    if (c) c.style.opacity = '0';
-                } else {
-                    clearOBS();
-                }
-            }
-        };
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // gérée par le module partagé js/live-mutex.js, installé plus bas, JUSTE
+        // APRÈS la détection du mode — plus aucune variable utilisée avant sa
+        // déclaration (c'est ce type d'erreur qui avait cassé le module Médias).
 
         let lastRenderCtx = null;
 
@@ -741,12 +772,32 @@
 
         if (isObsMode) {
             document.body.classList.add('mode-obs');
+            // Sortie à résolution personnalisée (?res=WxH) : dimensionne et met à l'échelle.
+            applyObsResolution();
             document.getElementById('obs-mode-ui').classList.remove('hidden');
             initObsMode();
         } else {
             document.getElementById('controller-mode-ui').classList.remove('hidden');
-            initControllerMode();
+            // Filet de sécurité : une erreur d'initialisation ne doit jamais laisser
+            // la page muette — elle est tracée (et affichée) pour être corrigée.
+            Promise.resolve(initControllerMode()).catch((err) => {
+                console.error('[Paroles] Erreur d\'initialisation :', err);
+            });
         }
+
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // quand les Paroles passent à l'antenne, les deux autres se masquent, et
+        // réciproquement. Le Lower Third reste permanent (hors exclusion).
+        // Déclaré ici, APRÈS la détection du mode : isObsMode et clearOBS()
+        // existent déjà à ce stade.
+        const mutex = LiveMutex.claim('lyrics', () => {
+            if (isObsMode) {
+                const c = document.getElementById('obs-container');
+                if (c) c.style.opacity = '0';
+            } else {
+                clearOBS();
+            }
+        });
 
         function initObsMode() {
             const container = document.getElementById('obs-container');
@@ -851,6 +902,22 @@
         // sections/chants se ressente uniquement comme un changement de texte, pas comme un nouveau
         // cadre qui apparaît. L'animation complète du cadre ne se joue que lors du tout premier
         // affichage, ou après un changement de style OBS (mode différent).
+        // Looks personnalisés : géométrie du cadre pour CE mode (largeur/hauteur/
+        // écarts en % ou px). Vide/absent = géométrie par défaut de la page.
+        function applyLookLayout(card, mode, layout) {
+            card.classList.remove('look-anim-fade', 'look-anim-zoom', 'look-anim-slideup', 'look-anim-slideleft');
+            if (layout && layout[mode] && layout[mode].anim && layout[mode].anim !== 'none') {
+                card.classList.add('look-anim-' + layout[mode].anim);
+            }
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => { card.style[k] = ''; });
+            if (!layout) return;
+            const g = layout[mode];
+            if (!g) return;
+            ['width', 'height', 'top', 'bottom', 'left', 'right'].forEach(k => {
+                if (g[k]) card.style[k] = String(g[k]);
+            });
+        }
+
         function renderDisplay(config, container, card, contentArea, bgLayer, layerKey) {
             const key = layerKey || 'preview';
             const wasVisible = container.style.opacity === '1';
@@ -910,14 +977,14 @@
                 card.style.setProperty('--speed', speed + 's');
                 const flatText = lines.join(' — ');
                 html = `
-                    <div class="ticker-wrapper" style="font-family: '${fontFam}', sans-serif; font-size: 40px;">
+                    <div class="ticker-wrapper" style="font-family: '${fontFam}', sans-serif; font-size: calc(var(--adapt-h, 1080px) * 40 / 1080);">
                         <div class="ticker-content">
-                            <span class="lyric-ref mr-6" style="font-size: 36px;">🎵 ${config.reference} <span class="section-badge" style="font-size: 24px; padding: 4px 12px;">${config.sectionLabel}</span> :</span>
-                            <span class="lyric-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">${flatText}</span>
+                            <span class="lyric-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">🎵 ${config.reference} <span class="section-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.sectionLabel}</span> :</span>
+                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
                         </div>
                         <div class="ticker-content">
-                            <span class="lyric-ref mr-6" style="font-size: 36px;">🎵 ${config.reference} <span class="section-badge" style="font-size: 24px; padding: 4px 12px;">${config.sectionLabel}</span> :</span>
-                            <span class="lyric-text" style="font-size: 46px; width: auto; max-width: none; margin: 0;">${flatText}</span>
+                            <span class="lyric-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">🎵 ${config.reference} <span class="section-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.sectionLabel}</span> :</span>
+                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
                         </div>
                     </div>
                 `;
@@ -963,6 +1030,7 @@
             if (!sameContext && config.mode !== 'scrolling') modeClass += ' anim-show';
 
             card.className = modeClass;
+            applyLookLayout(card, config.mode, config.layout);
 
             const swapContent = () => {
                 contentArea.innerHTML = html;
@@ -1169,6 +1237,19 @@
             updateSongsInfo();
             restorePosition();
             initObsLinksPanel();
+            // Sorties personnalisées : champs largeur×hauteur + lien &res=WxH + copier.
+            initResolutionPanel();
+            // Looks : habillage global appliqué en direct (Command Center / éditeur).
+            if (window.OpenLooks) {
+                OpenLooks.installLiveListener('lyrics', {
+                    apply: (part) => {
+                        displaySettings = Object.assign({}, displaySettings, part);
+                        populateSettingsForm();
+                        saveDisplaySettingsJSON();
+                        refreshOnAirDisplay();
+                    }
+                });
+            }
 
             // Portabilité : si la bibliothèque locale est vide (nouveau PC / navigateur),
             // on restaure les chants depuis le dossier du projet (data/lyrics/songs.json).
@@ -1470,12 +1551,25 @@
                 bgVersion: bgVersionCounter
             };
 
+            // Écran scène (stage_display.html) : aperçu de la section SUIVANTE
+            // du chant pour les musiciens/chanteurs. Additif : les pages qui ne
+            // connaissent pas config.next l'ignorent simplement.
+            try {
+                const lastIdx = song.sections.findIndex(sec => sec.id === sectionIds[sectionIds.length - 1]);
+                if (lastIdx >= 0 && lastIdx + 1 < song.sections.length) {
+                    const nx = song.sections[lastIdx + 1];
+                    config.next = { label: nx.label, text: nx.text };
+                }
+            } catch (e) { /* jamais casser l'affichage */ }
+
+            if (displaySettings.layout) config.layout = displaySettings.layout;
+
             onAir = { songId, sectionIds: sectionIds.slice() };
 
             // 1. Envoyer à OBS via BroadcastChannel (le Blob du fond est cloné vers l'autre onglet)
             bc.postMessage({ action: 'show', config });
-            // Exclusion mutuelle : signaler à la Bible de se couper.
-            mutex.postMessage({ action: 'show', source: 'lyrics' });
+            // Exclusion mutuelle : signaler aux autres outils (Bible, Médias) de se couper.
+            mutex.show();
 
             // 2. Mettre à jour la Preview Locale
             const pContainer = document.getElementById('preview-container');
@@ -1726,6 +1820,12 @@
         // ============================================================
         // UTILITAIRES
         // ============================================================
+        // API minimale pour la file de déroulement (cue_list.html) : les `let`
+        // du script ne sont pas accessibles depuis une autre fenêtre.
+        window.OpenPresenterLyrics = {
+            listSongs: () => songs.map(s => ({ id: s.id, title: s.title, sections: s.sections.map(x => ({ id: x.id, label: x.label })) }))
+        };
+
         function showToast(msg) {
             const t = document.createElement('div');
             t.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-violet-500 text-slate-900 px-4 py-2 rounded shadow-xl font-bold z-50 anim-show';
@@ -1735,5 +1835,7 @@
         }
 
     </script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>
+/html>

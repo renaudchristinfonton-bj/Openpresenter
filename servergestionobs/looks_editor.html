@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Éditeur de Looks — OpenPresenter</title>
+<link rel="manifest" href="manifest.webmanifest">
+<script src="store.js"></script>
+<script src="js/remote-channel.js"></script>
+<script src="js/looks.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #0b1120; color: #f8fafc; overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    .app { display: grid; grid-template-columns: 400px 1fr; height: 100vh; }
+
+    /* ---- Panneau formulaire ---- */
+    .form { overflow-y: auto; padding: 16px; border-right: 1px solid #1e293b; background: #0d1526; }
+    h1 { font-size: 16px; margin: 0 0 2px; }
+    .sub { font-size: 11.5px; color: #64748b; margin: 0 0 14px; line-height: 1.45; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .row label { font-size: 11px; color: #94a3b8; font-weight: 700; min-width: 92px; }
+    input[type="text"], input[type="number"], select {
+        background: #111a2e; border: 1px solid #334155; color: #f8fafc; border-radius: 8px;
+        font-family: inherit; font-size: 12.5px; padding: 7px 9px; flex: 1; min-width: 0;
+    }
+    input[type="color"] { width: 42px; height: 32px; border: 1px solid #334155; border-radius: 8px; background: #111a2e; padding: 2px; cursor: pointer; }
+    input[type="range"] { flex: 1; accent-color: #6366f1; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab { flex: 1; padding: 9px; border-radius: 9px; border: 1px solid #334155; background: #111a2e;
+        color: #94a3b8; font-weight: 800; font-size: 12.5px; cursor: pointer; text-align: center; }
+    .tab.active { background: #1e293b; color: #fff; border-color: #6366f1; }
+    .link-note { font-size: 10.5px; color: #64748b; margin: -6px 0 10px; display: flex; align-items: center; gap: 6px; }
+    .sect { font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #64748b;
+        border-top: 1px solid #1e293b; padding-top: 10px; margin: 14px 0 10px; }
+    .thumb { width: 64px; height: 36px; border-radius: 6px; border: 1px solid #334155; object-fit: cover; background: #000; }
+    .btn { background: #1d4ed8; color: #fff; border: none; border-radius: 9px; font-weight: 800; font-size: 12.5px;
+        padding: 10px 14px; cursor: pointer; font-family: inherit; }
+    .btn:hover { background: #2563eb; }
+    .btn.ghost { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+    .btn.green { background: #15803d; }
+    .hint { font-size: 10.5px; color: #475569; margin: 2px 0 8px; }
+
+    /* ---- Aperçu ---- */
+    .preview { display: flex; flex-direction: column; min-width: 0; }
+    .preview .bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1e293b; background: #0d1526; }
+    .preview .bar b { font-size: 13px; }
+    .frames { flex: 1; display: grid; grid-template-rows: 1fr 1fr; gap: 10px; padding: 10px; min-height: 0; }
+    .pv { position: relative; background: #000; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden; min-height: 0; }
+    .pv .tag { position: absolute; top: 8px; left: 8px; z-index: 5; font-size: 10px; font-weight: 800; letter-spacing: .5px;
+        background: rgba(15,23,42,.75); padding: 4px 8px; border-radius: 6px; color: #e2e8f0; }
+    .pv .stage { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; }
+    .pv iframe { width: 1920px; height: 1080px; border: none; background: transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="form">
+        <h1>🎨 Éditeur de Looks</h1>
+        <p class="sub">Créez un habillage complet — couleurs, police, coins, photo de fond et <b>géométrie de chaque mode</b> (plein écran, bas centré, bas droite, défilement). Un seul look peut régler <b>différemment</b> la Bible et les Paroles.</p>
+
+        <div class="row">
+            <label>Nom du look</label>
+            <input type="text" id="lk-name" placeholder="Ex : Culte du dimanche">
+            <input type="text" id="lk-icon" placeholder="✨" style="max-width:52px" title="Icône (emoji)">
+        </div>
+        <div class="row">
+            <label>Existant</label>
+            <select id="lk-load"><option value="">— nouveau look —</option></select>
+            <button class="btn ghost" id="lk-delete" title="Supprimer ce look personnalisé">🗑</button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" id="tab-bible">📖 Bible</div>
+            <div class="tab" id="tab-lyrics">🎤 Paroles</div>
+        </div>
+        <div class="link-note"><input type="checkbox" id="lk-link" checked> Lié : les mêmes réglages pour les deux</div>
+
+        <!-- réglages de l'outil affiché -->
+        <div class="sect">Couleurs &amp; texte</div>
+        <div class="row"><label>Fond</label><input type="color" id="st-bg" value="#0f172a"><input type="range" id="st-bg-op" min="0" max="100" value="95" title="Opacité du fond"><span id="st-bg-op-v" style="font-size:11px;color:#94a3b8;min-width:34px">95%</span></div>
+        <div class="row"><label>Accent</label><input type="color" id="st-accent" value="#f59e0b"></div>
+        <div class="row"><label>Texte</label><input type="color" id="st-text" value="#ffffff"></div>
+        <div class="row"><label>Police</label>
+            <select id="st-font">
+                <option value="Merriweather">Merriweather (classique)</option>
+                <option value="Cinzel">Cinzel (majestueux)</option>
+                <option value="Montserrat">Montserrat (moderne)</option>
+                <option value="Playfair Display">Playfair Display (élégant)</option>
+                <option value="Lora">Lora (doux)</option>
+                <option value="EB Garamond">EB Garamond (livre ancien)</option>
+                <option value="Inter">Inter (neutre)</option>
+            </select>
+        </div>
+        <div class="row"><label>Coin du cadre</label><input type="range" id="st-shape" min="0" max="48" value="20"><span id="st-shape-v" style="font-size:11px;color:#94a3b8">20px</span></div>
+
+        <div class="sect">Photo de fond</div>
+        <div class="row">
+            <label>Image</label>
+            <input type="file" id="st-bgimg" accept="image/*" style="font-size:11px">
+            <img class="thumb" id="st-bgimg-thumb" style="display:none">
+            <button class="btn ghost" id="st-bgimg-del" title="Retirer la photo">✕</button>
+        </div>
+        <div class="row"><label>Flou du fond</label><input type="range" id="st-blur" min="0" max="40" value="18"><span style="font-size:11px;color:#94a3b8">18px</span></div>
+        <p class="hint">La photo est enregistrée DANS le look (il reste portable avec le dossier du projet).</p>
+
+        <div class="sect">Géométrie des modes (%)</div>
+        <p class="hint">Laissez vide pour la géométrie par défaut. Les réglages s'appliquent à l'outil affiché (Bible ou Paroles).</p>
+        <div id="geo">
+            <div class="row"><label style="min-width:130px">⛶ Plein écran</label>
+                L <input type="text" id="g-full-width" placeholder="96%">< H <input type="text" id="g-full-height" placeholder="93%">< Haut <input type="text" id="g-full-top" placeholder="4%">
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="full" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
+            <div class="row"><label style="min-width:130px">▣ 80 % écran</label>
+                L <input type="text" id="g-screen80-width" placeholder="80%">< H <input type="text" id="g-screen80-height" placeholder="80%">
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="screen80" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
+            <div class="row"><label style="min-width:130px">▬ Bas centré</label>
+                L <input type="text" id="g-bottom-width" placeholder="80%">< H <input type="text" id="g-bottom-height" placeholder="25%">< Bas <input type="text" id="g-bottom-bottom" placeholder="6%">
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="bottom" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
+            <div class="row"><label style="min-width:130px">▭ Bas droite</label>
+                L <input type="text" id="g-bottom-right-width" placeholder="80%">< H <input type="text" id="g-bottom-right-height" placeholder="25%">< Bas <input type="text" id="g-bottom-right-bottom" placeholder="6%">< Dte <input type="text" id="g-bottom-right-right" placeholder="3%">
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="bottom-right" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
+            <div class="row"><label style="min-width:130px">≡ Défilement</label>
+                H <input type="text" id="g-scrolling-height" placeholder="7%">
+             <span style="font-size:10px;color:#64748b">Entrée:</span> <select data-geoanim="scrolling" style="max-width:110px;font-size:11px;padding:4px 6px" title="Animation d entrance de ce mode"><option value="">défaut</option><option value="none">aucune</option><option value="fade">fondu</option><option value="zoom">zoom</option><option value="slideup">glisser ↑</option><option value="slideleft">glisser ←</option></select></div>
+        </div>
+
+        <div class="row" style="margin-top:16px">
+            <button class="btn green" id="lk-save">💾 Enregistrer le look</button>
+            <button class="btn" id="lk-apply">▶ Appliquer maintenant</button>
+        </div>
+    </div>
+
+    <div class="preview">
+        <div class="bar">
+            <b>Aperçu en direct</b>
+            <span style="font-size:11px;color:#64748b">mode :</span>
+            <select id="pv-mode" style="max-width:200px">
+                <option value="full">Plein écran</option>
+                <option value="screen80">80 % écran</option>
+                <option value="bottom">Bas centré</option>
+                <option value="bottom-right">Bas droite</option>
+                <option value="scrolling">Ruban défilant</option>
+            </select>
+            <span style="font-size:11px;color:#64748b;margin-left:auto">Les cadres utilisent les vraies pages de projection.</span>
+        </div>
+        <div class="frames">
+            <div class="pv"><span class="tag">📖 BIBLE</span><div class="stage" id="stage-bible"><iframe src="bible_control_display_pro.html?obs=true"></iframe></div></div>
+            <div class="pv"><span class="tag">🎤 PAROLES</span><div class="stage" id="stage-lyrics"><iframe src="lyrics_control_display_pro.html?obs=true"></iframe></div></div>
+        </div>
+    </div>
+</div>
+<script src="js/pwa.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const FONTS = ['Merriweather', 'Cinzel', 'Montserrat', 'Playfair Display', 'Lora', 'EB Garamond', 'Inter'];
+    const MODES = ['full', 'screen80', 'bottom', 'bottom-right', 'scrolling'];
+
+    // Brouillons par outil (settings + layout par mode).
+    const draft = {
+        bible: { bgColor: 'rgba(15, 23, 42, 0.95)', accentColor: '#f59e0b', textColor: '#ffffff', fontFamily: 'Merriweather', shapeRadius: 20, bgBlur: 18, layout: {} },
+        lyrics: { bgColor: 'rgba(15, 23, 42, 0.95)', accentColor: '#8b5cf6', textColor: '#ffffff', fontFamily: 'Merriweather', shapeRadius: 20, bgBlur: 18, layout: {} }
+    };
+    let tool = 'bible';
+    let loadedList = [];
+
+    const $ = (id) => document.getElementById(id);
+    const hexToRgba = (hex, op) => {
+        const m = hex.replace('#', '');
+        const r = parseInt(m.substr(0, 2), 16), g = parseInt(m.substr(2, 2), 16), b = parseInt(m.substr(4, 2), 16);
+        return `rgba(${r}, ${g}, ${b}, ${(op / 100).toFixed(2)})`;
+    };
+    const rgbaToHexOp = (rgba) => {
+        const m = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s]+([\d.]+))?\)/.exec(rgba || '');
+        if (!m) return { hex: '#0f172a', op: 95 };
+        const h = '#' + [1, 2, 3].map(i => (+m[i]).toString(16).padStart(2, '0')).join('');
+        return { hex: h, op: m[4] != null ? Math.round(m[4] * 100) : 95 };
+    };
+
+    // ---------- refs des champs ----------
+    const stFields = { bg: $('st-bg'), bgOp: $('st-bg-op'), accent: $('st-accent'), text: $('st-text'), font: $('st-font'), shape: $('st-shape'), blur: $('st-blur') };
+    const geoFields = {};
+    MODES.forEach(mode => geoFields[mode] = {});
+    ['width', 'height', 'top', 'bottom', 'right'].forEach(k => {
+        MODES.forEach(mode => {
+            const el = $('g-' + mode + '-' + k);
+            if (el) geoFields[mode][k] = el;
+        });
+    });
+
+    // ---------- brouillon <-> formulaire ----------
+    function formToDraft() {
+        const d = draft[tool];
+        d.bgColor = hexToRgba(stFields.bg.value, +stFields.bgOp.value);
+        d.accentColor = stFields.accent.value;
+        d.textColor = stFields.text.value;
+        d.fontFamily = stFields.font.value;
+        d.shapeRadius = +stFields.shape.value;
+        d.bgBlur = +stFields.blur.value;
+        const layout = {};
+        MODES.forEach(mode => {
+            const g = {};
+            Object.keys(geoFields[mode]).forEach(k => {
+                const v = geoFields[mode][k].value.trim();
+                if (v) g[k] = /^\d+(\.\d+)?$/.test(v) ? v + '%' : v;
+            });
+            const sel = document.querySelector('[data-geoanim="' + mode + '"]');
+            if (sel && sel.value) g.anim = sel.value;
+            if (Object.keys(g).length) layout[mode] = g;
+        });
+        d.layout = layout;
+        if ($('lk-link').checked) {
+            const other = tool === 'bible' ? 'lyrics' : 'bible';
+            draft[other] = JSON.parse(JSON.stringify(d));
+        }
+        schedulePreview();
+    }
+
+    function draftToForm() {
+        const d = draft[tool];
+        const { hex, op } = rgbaToHexOp(d.bgColor);
+        stFields.bg.value = hex; stFields.bgOp.value = op;
+        stFields.accent.value = d.accentColor || '#f59e0b';
+        stFields.text.value = d.textColor || '#ffffff';
+        stFields.font.value = FONTS.indexOf(d.fontFamily) >= 0 ? d.fontFamily : 'Merriweather';
+        stFields.shape.value = d.shapeRadius != null ? d.shapeRadius : 20;
+        stFields.blur.value = d.bgBlur != null ? d.bgBlur : 18;
+        MODES.forEach(mode => {
+            const g = (d.layout || {})[mode] || {};
+            Object.keys(geoFields[mode]).forEach(k => {
+                geoFields[mode][k].value = (g[k] || '').replace('%', '');
+            });
+            const sel = document.querySelector('[data-geoanim="' + mode + '"]');
+            if (sel) sel.value = g.anim || '';
+        });
+        const th = $('st-bgimg-thumb');
+        if (d.bgImage) { th.src = d.bgImage; th.style.display = ''; } else { th.style.display = 'none'; }
+    }
+
+    // ---------- aperçu en direct (vraies pages OBS) ----------
+    const chanBible = new RemoteChannel('obs_bible_channel');
+    const chanLyrics = new RemoteChannel('obs_lyrics_channel');
+    let pvTimer = null;
+    function schedulePreview() { clearTimeout(pvTimer); pvTimer = setTimeout(sendPreview, 250); }
+    function sendPreview() {
+        const mode = $('pv-mode').value;
+        const common = (d) => ({
+            mode, bgColor: d.bgColor, accentColor: d.accentColor, textColor: d.textColor,
+            fontFamily: d.fontFamily, shapeRadius: d.shapeRadius, bgImage: d.bgImage || null,
+            bgBlur: d.bgBlur, layout: d.layout
+        });
+        chanBible.postMessage({ action: 'show', config: Object.assign({
+            reference: 'Jean 3:16', text: 'Car Dieu a tant aimé le monde qu\'il a donné son Fils unique.', version: 'APERÇU'
+        }, common(draft.bible)) });
+        chanLyrics.postMessage({ action: 'show', config: Object.assign({
+            reference: 'Grâce Infinie — Aperçu', sectionLabel: 'Refrain', text: 'Quand je marche dans la vallée\\nde l\'ombre de la mort,\\ntu es avec moi.'
+        }, common(draft.lyrics)) });
+    }
+
+    function rescale() {
+        document.querySelectorAll('.pv').forEach(pv => {
+            const st = pv.querySelector('.stage');
+            const s = Math.min(pv.clientWidth / 1920, pv.clientHeight / 1080);
+            st.style.transform = 'scale(' + s + ')';
+        });
+    }
+    window.addEventListener('resize', rescale);
+    window.addEventListener('load', () => { rescale(); setTimeout(rescale, 500); setTimeout(sendPreview, 900); });
+
+    // ---------- interactions ----------
+    ['bible', 'lyrics'].forEach(t => {
+        $('tab-' + t).addEventListener('click', () => {
+            tool = t;
+            $('tab-bible').classList.toggle('active', t === 'bible');
+            $('tab-lyrics').classList.toggle('active', t === 'lyrics');
+            draftToForm();
+        });
+    });
+    Object.values(stFields).forEach(el => el.addEventListener('input', formToDraft));
+    Object.values(geoFields).forEach(m => Object.values(m).forEach(el => el.addEventListener('input', formToDraft)));
+    $('lk-link').addEventListener('change', formToDraft);
+    $('pv-mode').addEventListener('change', sendPreview);
+
+    $('st-bgimg').addEventListener('change', (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+            draft[tool].bgImage = r.result;
+            if ($('lk-link').checked) (tool === 'bible' ? draft.lyrics : draft.bible).bgImage = r.result;
+            draftToForm(); schedulePreview();
+        };
+        r.readAsDataURL(f);
+        e.target.value = '';
+    });
+    $('st-bgimg-del').addEventListener('click', () => {
+        draft[tool].bgImage = null;
+        if ($('lk-link').checked) (tool === 'bible' ? draft.lyrics : draft.bible).bgImage = null;
+        draftToForm(); schedulePreview();
+    });
+
+    // ---------- looks existants ----------
+    function refreshLoadSelect(sel) {
+        const s = $('lk-load');
+        s.innerHTML = '<option value="">— nouveau look —</option>' +
+            loadedList.map(l => `<option value="${l.id}">${l.icon || '🎨'} ${l.name}</option>`).join('');
+        if (sel) s.value = sel;
+    }
+    OpenLooks.loadCustom().then(list => { loadedList = list; refreshLoadSelect(); });
+
+    $('lk-load').addEventListener('change', () => {
+        const l = loadedList.find(x => x.id === $('lk-load').value);
+        if (!l) return;
+        $('lk-name').value = l.name; $('lk-icon').value = l.icon || '';
+        draft.bible = Object.assign({ layout: {} }, l.bible);
+        draft.lyrics = Object.assign({ layout: {} }, l.lyrics || l.bible);
+        draftToForm(); schedulePreview();
+    });
+    $('lk-delete').addEventListener('click', () => {
+        const id = $('lk-load').value;
+        if (!id || !confirm('Supprimer ce look personnalisé ?')) return;
+        OpenLooks.deleteCustom(id).then(() => { loadedList = loadedList.filter(x => x.id !== id); refreshLoadSelect(); });
+    });
+
+    function currentLook() {
+        return { id: $('lk-load').value || ('lk_' + Date.now()), name: $('lk-name').value.trim() || 'Look sans nom', icon: $('lk-icon').value.trim() || '🎨', bible: draft.bible, lyrics: draft.lyrics };
+    }
+    $('lk-save').addEventListener('click', () => {
+        const look = currentLook();
+        OpenLooks.saveCustom(look).then(list => {
+            loadedList = list; refreshLoadSelect(look.id);
+            // l'aperçu du Command Center se met à jour à son prochain chargement.
+            alert('Look « ' + look.name + ' » enregistré.\nIl est disponible sur la carte 🎨 Looks de la page d\'accueil.');
+        });
+    });
+    $('lk-apply').addEventListener('click', () => { OpenLooks.apply(currentLook()); schedulePreview(); });
+})();
+</script>
+</body>
+</html>

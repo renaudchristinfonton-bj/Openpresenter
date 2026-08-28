@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media Pro Controller - OBS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
+    <link rel="stylesheet" href="css/tw-media_control_display_pro.css">
     <script src="store.js"></script>
     <script src="js/remote-channel.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Poppins', 'sans-serif'] },
-                colors: { obsAccent: '#14b8a6' } } }
-        }
-    </script>
+    <script src="js/live-mutex.js"></script>
+    <script src="js/obs-links.js"></script>
+    <script src="vendor/js/jszip.min.js"></script>
+    <script src="vendor/js/pdf.min.js"></script>
+    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -25,6 +22,16 @@
 
         body.mode-obs { background-color: transparent !important; margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.4s ease; background: #000; overflow: hidden; }
+
+        /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille réelle
+           de l'écran demandée (--cw/--ch). */
+        body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
+        /* ADAPTER (défaut) : la page rend directement à la taille de l'écran —
+           la mise en page (cartes en %) s'organise dedans, tout est visible,
+           sans bandes noires ni déformation. */
+        body.mode-obs.res-adapt #obs-container { width: var(--cw, 1920px); height: var(--ch, 1080px); }
+        /* Modes d'échelle : le rendu 1920×1080 est réduit/agrandi (ou étiré). */
+        body.mode-obs.res-scale #obs-container { top: 50%; left: 50%; width: 1920px; height: 1080px; transform: translate(-50%, -50%) scale(var(--obs-sx, 1), var(--obs-sy, 1)); }
         #obs-stage, #preview-stage { position: absolute; inset: 0; overflow: hidden; transition: opacity 0.2s ease; background: #000; }
 
         .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -88,6 +95,40 @@
                     </select>
                 </div>
 
+                <details open class="bg-slate-800/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                    <summary class="text-xs text-slate-400 cursor-pointer select-none"> Sortie OBS — lien & résolution</summary>
+                    <div class="mt-2 space-y-1.5" id="obs-links-panel">
+                        <div class="flex items-center justify-between gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <div class="min-w-0">
+                                <p class="text-[9px] text-slate-500">Lien général (Source Navigateur OBS)</p>
+                                <p class="text-[10px] text-teal-300 truncate font-mono" data-link-role="general">...</p>
+                            </div>
+                            <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-copy-role="general">Copier</button>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-slate-500">Résolution de sortie personnalisée (largeur × hauteur)</p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <input type="number" min="64" max="7680" step="1" data-res-role="w" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Largeur de la sortie (pixels)">
+                                <span class="text-slate-500 text-xs">×</span>
+                                <input type="number" min="64" max="4320" step="1" data-res-role="h" class="w-16 bg-slate-900 border border-slate-600 text-white text-[11px] rounded px-1.5 py-1" title="Hauteur de la sortie (pixels)">
+                                <button type="button" class="shrink-0 text-[10px] bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" data-res-role="copy">Copier le lien</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="text-[9px] text-slate-500 shrink-0">Adaptation :</span>
+                                <select data-res-role="fit" class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-white text-[10px] rounded px-1 py-1" title="Comment le rendu s'adapte à cette taille d'écran">
+                                    
+                                    <option value="adapt">Adapter — le contenu s'organise pour remplir l'écran (recommandé)</option>
+                                    <option value="fit">Tout afficher (bandes noires si ratio différent)</option>
+                                    <option value="fill">Remplir (peut rogner les bords)</option>
+                                    <option value="stretch">Étirer (pixels non carrés / panneau LED)</option>
+                                </select>
+                            </div>
+                            <p class="text-[10px] text-teal-300 truncate font-mono mt-1" data-res-role="link">...</p>
+                            <p class="text-[9px] text-slate-500 mt-0.5">Défaut 1920×1080. Dans OBS, réglez la Source Navigateur à la même taille.</p>
+                        </div>
+                    </div>
+                </details>
+
                 <button id="btn-clear-obs" class="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                     Effacer OBS
                 </button>
@@ -138,6 +179,26 @@
     </div>
 
     <script>
+// ============================================================================
+// DIAGNOSTIQUES — toute erreur JavaScript non capturée de cette page est tracée
+// en console avec le marqueur [OpenPresenter/Media] (et le premier toast rouge)
+// pour pouvoir la signaler telle quelle. Objectif : plus jamais de page muette.
+// ============================================================================
+window.addEventListener('error', (e) => {
+    try {
+        const where = e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno})` : '';
+        console.error('[OpenPresenter/Media]', e.message, where);
+        if (!window.__openPresenterFirstErrShown) {
+            window.__openPresenterFirstErrShown = true;
+            const t = document.createElement('div');
+            t.style.cssText = 'position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:.5rem 1rem;border-radius:.5rem;font:bold 12px sans-serif;z-index:99999;max-width:80%;';
+            t.textContent = 'Erreur Médias : ' + e.message + where;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 8000);
+        }
+    } catch (err) { /* silencieux */ }
+});
+
 // ============================================================================
 // Parseur PPTX minimal (texte + images + groupes + héritage de mise en page)
 // ============================================================================
@@ -411,7 +472,7 @@ async function parsePptx(fileBlobOrBuffer) {
 // indisponible, tout le reste (favoris, images, vidéos, PPTX déjà importés, Relancer,
 // Effacer OBS...) continue de fonctionner normalement.
 if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/js/pdf.worker.min.js';
 }
 
 // ============================================================
@@ -429,7 +490,6 @@ if (typeof pdfjsLib !== 'undefined') {
 // permet de piloter l'affichage OBS depuis un navigateur classique, en plein écran,
 // sur le même PC ou sur un autre PC du même réseau — sans rien changer d'autre au
 // fonctionnement de l'application.
-
 
 
 
@@ -522,10 +582,16 @@ async function idbDeleteItem(id) {
 
 // Portabilité : sauvegarde la bibliothèque (avec les fichiers blobs) vers le dossier
 // du projet /data/media/items.json. Appelée après chaque ajout/modification/suppression.
+// NON BLOQUANTE : l'envoi est différé (regroupé) puis s'exécute en arrière-plan ;
+// l'interface et l'ajout de médias restent instantanés même avec une grosse
+// bibliothèque (un envoi direct et répété ici est ce qui gelait la page).
+let _syncItemsTimer = null;
 function syncItemsToServer() {
-    if (window.OpenStore) {
+    if (!window.OpenStore) return;
+    clearTimeout(_syncItemsTimer);
+    _syncItemsTimer = setTimeout(() => {
         try { OpenStore.saveHeavy('media', 'items', items); } catch (e) { /* silencieux */ }
-    }
+    }, 1200);
 }
 
 // ============================================================
@@ -536,12 +602,40 @@ const isObsMode = urlParams.get('obs') === 'true';
 
 if (isObsMode) {
     document.body.classList.add('mode-obs');
+    // Sortie à résolution personnalisée (?res=WxH) : dimensionne et met à l'échelle.
+    applyObsResolution();
     document.getElementById('obs-mode-ui').classList.remove('hidden');
     initObsMode();
 } else {
     document.getElementById('controller-mode-ui').classList.remove('hidden');
-    initControllerMode();
+    // Filet de sécurité : une erreur d'initialisation ne doit JAMAIS laisser la
+    // page muette (c'est le symptôme du bug d'ajout de médias) — elle est tracée
+    // en console ET affichée à l'écran pour être signalée et corrigée.
+    Promise.resolve(initControllerMode()).catch((err) => {
+        console.error('[Médias] Erreur d\'initialisation :', err);
+        try { showToast("Erreur à l'initialisation : " + ((err && err.message) || err), true); } catch (e) { /* silencieux */ }
+    });
 }
+
+// Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+// quand un média passe à l'antenne, la Bible et les Paroles se masquent, et
+// réciproquement. Le Lower Third reste permanent (hors exclusion).
+// Déclaré ici, APRÈS la détection du mode — plus aucune variable utilisée avant
+// sa déclaration (c'est exactement l'erreur qui avait cassé ce module par le
+// passé : isObsMode référencé avant sa déclaration par le gestionnaire mutex).
+const mutex = LiveMutex.claim('media', () => {
+    if (isObsMode) {
+        const c = document.getElementById('obs-container');
+        if (c) c.style.opacity = '0';
+        try {
+            const stage = document.getElementById('obs-stage');
+            if (stage) { stopMediaIn(stage); stage.innerHTML = ''; }
+            videoEls.obs = null;
+        } catch (e) { /* ne jamais casser la page */ }
+    } else {
+        clearOBS();
+    }
+});
 
 function initObsMode() {
     const container = document.getElementById('obs-container');
@@ -826,6 +920,9 @@ async function initControllerMode() {
     document.getElementById('file-input').addEventListener('change', handleFilesAdded);
     document.getElementById('item-search').addEventListener('input', (e) => renderItemsList(e.target.value.trim()));
     document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
+    // Panneau "Sortie OBS" : lien général + résolution personnalisée (&res=WxH).
+    initObsLinksPanel();
+    initResolutionPanel();
     document.getElementById('fit-mode-select').addEventListener('change', () => { if (onAir) resendCurrent(); });
     document.getElementById('btn-new-group').addEventListener('click', () => {
         const name = prompt('Nom du nouveau groupe :');
@@ -1280,6 +1377,9 @@ function pushLive(item, extra) {
     const config = buildMediaConfig(item, extra);
     onAir = { itemId: item.id, config };
     bc.postMessage({ action: 'show', config });
+    // Exclusion mutuelle : un média à l'antenne coupe la Bible et les Paroles
+    // (et réciproquement). Fire-and-forget : ne bloque jamais l'affichage.
+    mutex.show();
 
     const pContainer = document.getElementById('preview-container');
     const pStage = document.getElementById('preview-stage');
@@ -1327,6 +1427,11 @@ function relaunchLast() {
     }
 }
 
+// API minimale pour la file de déroulement (cue_list.html).
+window.OpenPresenterMedia = {
+    listItems: () => items.map(i => ({ id: i.id, name: i.name, type: i.type }))
+};
+
 function showToast(msg, isError) {
     const t = document.createElement('div');
     t.className = `fixed bottom-4 left-1/2 transform -translate-x-1/2 ${isError ? 'bg-red-500 text-white' : 'bg-teal-500 text-slate-900'} px-4 py-2 rounded shadow-xl font-bold z-50 anim-show`;
@@ -1335,5 +1440,6 @@ function showToast(msg, isError) {
     setTimeout(() => t.remove(), 3500);
 }
     </script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>

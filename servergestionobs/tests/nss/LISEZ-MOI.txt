@@ -1,0 +1,3 @@
+# Bibliothèques NSS/NSPR (Linux x64) pour le Chromium headless des tests
+# (sandbox sans dépendances système). Chargées automatiquement par les tests.
+# Remplacez-les par `npx playwright install chromium` + dépendances système sur un poste normal.

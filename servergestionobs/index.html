@@ -189,6 +189,17 @@
         <a class="btn-hero" href="studio_unifie.html" target="_blank">▶ Ouvrir le Studio Unifié</a>
     </div>
 
+    <!-- Looks : habillage global en 1 clic -->
+    <div class="card-box">
+        <h3 class="card-title">🎨 Looks — habillage global en 1 clic</h3>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
+            Applique instantanément un jeu de couleurs et de formes à la <b>Bible</b> et aux <b>Paroles</b>
+            (fond, accent, texte, coins) — sur tous les contrôleurs ouverts, et durablement.
+            Les réglages manuels de chaque outil restent prioritaires si vous les modifiez ensuite.
+        </p>
+        <div id="looks-row" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+
     <!-- Adresses d'accès -->
     <div class="card-box">
         <h3 class="card-title">Adresses d'accès</h3>
@@ -298,6 +309,8 @@
 </div>
 
 <script src="js/qrcode.js"></script>
+    <script src="js/remote-channel.js"></script>
+    <script src="js/looks.js"></script>
 <script>
     // Données injectées par le serveur relais (adresses réseau). Si la page est ouverte
     // directement en double-clic (file://) ou hors serveur, on se replie sur localhost.
@@ -716,5 +729,25 @@
     WIZ.maybeFirstLaunch();
 </script>
     <script src="js/pwa.js"></script>
+<script>
+    // Carte Looks : boutons générés depuis les préréglages du module partagé.
+    (function () {
+        var row = document.getElementById('looks-row');
+        if (!row || !window.OpenLooks) return;
+        OpenLooks.presets.forEach(function (p) {
+            var b = document.createElement('button');
+            b.className = 'btn-action';
+            b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + p.settings.accentColor + ';';
+            b.innerHTML = '<span style="width:14px;height:14px;border-radius:4px;background:' + p.settings.accentColor + ';display:inline-block;"></span>' + p.icon + ' ' + p.name;
+            b.title = 'Appliquer le look « ' + p.name + ' » à la Bible et aux Paroles';
+            b.onclick = function () {
+                OpenLooks.applyPreset(p.id);
+                document.querySelectorAll('#looks-row button').forEach(function (x) { x.style.background = ''; });
+                b.style.background = '#14532d';
+            };
+            row.appendChild(b);
+        });
+    })();
+</script>
 </body>
 </html>

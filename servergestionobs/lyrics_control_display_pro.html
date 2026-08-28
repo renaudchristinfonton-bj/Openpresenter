@@ -13,6 +13,7 @@
     <script src="js/obs-links.js"></script>
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
+    <script src="js/looks.js"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
@@ -1211,6 +1212,17 @@
             initObsLinksPanel();
             // Sorties personnalisées : champs largeur×hauteur + lien &res=WxH + copier.
             initResolutionPanel();
+            // Looks : habillage global appliqué en direct (Command Center).
+            if (window.OpenLooks) {
+                OpenLooks.installLiveListener({
+                    apply: (s2) => {
+                        displaySettings = Object.assign({}, displaySettings, s2);
+                        populateSettingsForm();
+                        saveDisplaySettingsJSON();
+                        refreshOnAirDisplay();
+                    }
+                });
+            }
 
             // Portabilité : si la bibliothèque locale est vide (nouveau PC / navigateur),
             // on restaure les chants depuis le dossier du projet (data/lyrics/songs.json).
@@ -1779,6 +1791,12 @@
         // ============================================================
         // UTILITAIRES
         // ============================================================
+        // API minimale pour la file de déroulement (cue_list.html) : les `let`
+        // du script ne sont pas accessibles depuis une autre fenêtre.
+        window.OpenPresenterLyrics = {
+            listSongs: () => songs.map(s => ({ id: s.id, title: s.title, sections: s.sections.map(x => ({ id: x.id, label: x.label })) }))
+        };
+
         function showToast(msg) {
             const t = document.createElement('div');
             t.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-violet-500 text-slate-900 px-4 py-2 rounded shadow-xl font-bold z-50 anim-show';

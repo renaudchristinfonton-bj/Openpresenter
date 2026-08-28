@@ -755,6 +755,50 @@ try {
         check(p + ' : toutes les classes du DOM sont couvertes (CSS local)', missing.length === 0, missing.slice(0, 6).join(', '));
     }
 
+    // ============ S12. LOOKS — habillage global 1 clic ============
+    console.log('▶ S12. Looks : habillage global appliqué en direct…');
+    const ccPage = await ctxA.newPage();
+    trackErrors(ccPage, 'command-center');
+    await ccPage.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 });
+    await ccPage.waitForTimeout(500);
+    const nLooks = await ccPage.evaluate(() => document.querySelectorAll('#looks-row button').length);
+    check('Command Center : 6 looks proposés', nLooks === 6, 'boutons=' + nLooks);
+    await ccPage.evaluate(() => document.querySelectorAll('#looks-row button')[1].click()); // Festif
+    const bibleLook = await bibleCtrl.waitForFunction(() => displaySettings.accentColor === '#facc15', { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Bible : look reçu en direct (accent #facc15)', bibleLook);
+    const lyricsLook = await lyricsCtrl.waitForFunction(() => displaySettings.accentColor === '#facc15', { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Paroles : look reçu en direct', lyricsLook);
+    const lookPersisted = await bibleCtrl.evaluate(() => JSON.parse(localStorage.getItem('bibleDisplaySettings') || '{}').accentColor);
+    check('Look persisté (survit au rechargement)', lookPersisted === '#facc15', lookPersisted);
+    await ccPage.close().catch(() => {});
+
+    // ============ S13. PLAN DE CULTE (import CSV + notes) ============
+    console.log('▶ S13. File de déroulement : import de plan (CSV) + notes…');
+    const cuePage = await ctxA.newPage();
+    trackErrors(cuePage, 'cue-list');
+    cuePage.on('dialog', (d) => d.accept().catch(() => {})); // « remplacer la file »
+    await cuePage.goto(BASE + '/cue_list.html', { waitUntil: 'load', timeout: 30000 });
+    await cuePage.waitForTimeout(1200); // laisse les iframes des outils charger
+    // Chant disponible pour l'appariement par titre (dans l'iframe Paroles de la file).
+    await cuePage.evaluate(() => {
+        const w = frames.lyrics();
+        w.eval("songs.push({ id: 's_e2e', title: 'Chant E2E', artist: '', sections: [{ id: 'sec1', label: 'Couplet 1', text: 'Ligne un' }] }); renderSongsList();");
+    });
+    const CSV = 'Jean 3:16\nChant E2E\nPrière du pasteur\nOffrande';
+    await cuePage.setInputFiles('#plan-file', [{ name: 'plan.csv', mimeType: 'text/csv', buffer: Buffer.from(CSV, 'utf8') }]);
+    await cuePage.waitForTimeout(800);
+    const plan = await cuePage.evaluate(() => ({
+        n: cues.length,
+        kinds: cues.map(c => c.kind),
+        first: cues[0] || null,
+        labels: Array.from(document.querySelectorAll('.cue .main')).map(e => e.innerText)
+    }));
+    check('Import CSV : 4 étapes créées', plan.n === 4, JSON.stringify(plan.kinds));
+    check('Import : référence biblique reconnue (Jean 3:16)', plan.kinds[0] === 'bible' && plan.first.bookName === 'Jean', JSON.stringify(plan.first));
+    check('Import : chant apparié par titre (Chant E2E)', plan.kinds[1] === 'lyrics', JSON.stringify(plan.kinds));
+    check('Import : étapes non reconnues → notes structurelles', plan.kinds[2] === 'note' && plan.kinds[3] === 'note', JSON.stringify(plan.kinds));
+    await cuePage.close().catch(() => {});
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

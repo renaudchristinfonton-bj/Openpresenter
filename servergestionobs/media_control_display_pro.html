@@ -1427,6 +1427,11 @@ function relaunchLast() {
     }
 }
 
+// API minimale pour la file de déroulement (cue_list.html).
+window.OpenPresenterMedia = {
+    listItems: () => items.map(i => ({ id: i.id, name: i.name, type: i.type }))
+};
+
 function showToast(msg, isError) {
     const t = document.createElement('div');
     t.className = `fixed bottom-4 left-1/2 transform -translate-x-1/2 ${isError ? 'bg-red-500 text-white' : 'bg-teal-500 text-slate-900'} px-4 py-2 rounded shadow-xl font-bold z-50 anim-show`;

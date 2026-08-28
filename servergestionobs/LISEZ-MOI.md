@@ -264,3 +264,22 @@ Depuis cette version, **tout est local** — coupez Internet, tout fonctionne :
   PC/mobile ; un service worker met tout en cache pour un usage hors ligne.
 - **Vitesse** : le serveur compresse (gzip) les pages — ~20-30 Ko au lieu de
   100+ — et le navigateur les garde en cache 1 h.
+
+## Looks — habillage global en 1 clic
+
+Sur la page d'accueil (`/`), la carte **🎨 Looks** applique instantanément un jeu
+de couleurs/formes à la **Bible** et aux **Paroles** (fond, accent, texte, coins)
+: Sobre, Festif, Carême, Noël, Aube, Mission. Le look est appliqué **en direct**
+sur tous les contrôleurs ouverts (même PC ou autre appareil du réseau) et
+**persisté** (il suit le dossier `data/`). Les réglages manuels de chaque outil
+restent utilisables ; un look ne touche ni aux médias ni aux sorties.
+
+## Plan de culte — import CSV / Planning Center
+
+Dans la **File de déroulement** (`cue_list.html`), bouton **⬆️ Importer un plan** :
+- **CSV / texte** : une ligne par étape — « Jean 3:16 » devient un verset biblique,
+  « Grâce Infinie » est appariée au chant du même nom (première section), toute
+  autre ligne devient une **note structurelle** (repère du culte, rien n'est diffusé) ;
+- **JSON Planning Center** (export d'un plan) : les items deviennent des étapes,
+  les chants sont appariés par titre quand ils existent dans vos Paroles.
+Choisissez ensuite « remplacer la file » ou « ajouter à la fin ».

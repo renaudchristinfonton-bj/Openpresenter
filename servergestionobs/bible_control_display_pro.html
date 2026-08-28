@@ -13,6 +13,7 @@
     <script src="js/obs-links.js"></script>
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
+    <script src="js/looks.js"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
@@ -941,6 +942,17 @@
             initDualVersionUI();
             // Annotations de versets : éditeur ✏️ + persistance.
             initAnnotationEditor();
+            // Looks : habillage global appliqué en direct (Command Center).
+            if (window.OpenLooks) {
+                OpenLooks.installLiveListener({
+                    apply: (s) => {
+                        displaySettings = Object.assign({}, displaySettings, s);
+                        populateSettingsForm();
+                        saveDisplaySettings();
+                        refreshOnAirDisplay();
+                    }
+                });
+            }
 
             // Event Listeners UI
             document.getElementById('xml-upload').addEventListener('change', handleFileUpload);

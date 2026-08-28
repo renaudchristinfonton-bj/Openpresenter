@@ -170,6 +170,8 @@
 
     <div class="toolbar">
         <button class="btn-small btn-add" onclick="openAdd()">+ Ajouter un élément</button>
+            <button class="btn-small" id="btn-import-plan" title="Importer un ordre de culte : CSV (une ligne par étape) ou JSON Planning Center">⬆️ Importer un plan</button>
+            <input type="file" id="plan-file" accept=".csv,.json,.txt" style="display:none">
         <span style="flex:1"></span>
         <span style="font-size:11px; color:var(--muted);">Espace / → : avancer</span>
     </div>
@@ -187,6 +189,7 @@
                     <option value="lyrics">🎤 Paroles / section</option>
                     <option value="media">🖼️ Média</option>
                     <option value="lt">🏷️ Lower third (présentateur)</option>
+                    <option value="note">📝 Note / étape (rien à diffuser)</option>
                     <option value="clear">⬛ Écran noir / couper</option>
                 </select>
             </div>
@@ -203,6 +206,11 @@
             <div class="field add-f f-lt"><label>Présentateur (design)</label><select id="t-preset"></select></div>
             <div class="field add-f f-lt"><label>Texte du titre (facultatif, vide = design tel quel)</label><input id="t-text"></div>
 
+            <div class="add-f f-note" style="display:none">
+                <label>Titre de l'étape</label>
+                <input type="text" id="n-title" placeholder="Ex : Prière, Annonce, Offrande…" style="width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;">
+                <p style="font-size:11px;color:var(--muted);margin:6px 0 0;">Une étape structurelle : rien n'est diffusé.</p>
+            </div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeAdd()">Annuler</button>
                 <button class="btn-confirm" onclick="confirmAdd()">Ajouter</button>
@@ -273,6 +281,7 @@
         function fireCue(cue) {
             try {
                 if (cue.kind === 'clear') { clearAll(); return; }
+                if (cue.kind === 'note') return; // étape structurelle : rien à diffuser
                 if (cue.kind === 'bible') {
                     const w = frames.bible();
                     if (typeof w.triggerDisplay === 'function') w.triggerDisplay(cue.bookName, cue.chapterNum, [cue.verseNum], cue.text);
@@ -327,6 +336,7 @@
         // RENDU
         // ============================================================
         function cueLabel(cue) {
+            if (cue.kind === 'note') return '📝 ' + (cue.title || 'Étape');
             if (cue.kind === 'clear') return 'Écran noir / couper tout';
             if (cue.kind === 'bible') return (cue.bookName || '') + ' ' + (cue.chapterNum || '') + ':' + (cue.verseNum || '');
             if (cue.kind === 'lyrics') return cue.songName || cue.songId || 'Chant';
@@ -533,6 +543,9 @@
                 } catch (e) { toast('Média indisponible.', true); return; }
             } else if (k === 'lt') {
                 cue = { kind: 'lt', presetName: document.getElementById('t-preset').value };
+            } else if (k === 'note') {
+                const t = document.getElementById('n-title') ? document.getElementById('n-title').value.trim() : '';
+                cue = { kind: 'note', title: t || 'Étape' };
             } else { // clear
                 cue = { kind: 'clear' };
             }
@@ -555,6 +568,79 @@
 
         document.getElementById('add-kind').addEventListener('change', updateKindUI);
 
+        // ============================================================
+        // IMPORT DE PLAN DE CULTE (CSV / JSON Planning Center)
+        // ============================================================
+        // CSV texte simple : une ligne par étape —
+        //   « Jean 3:16 »              → verset biblique (recherche réelle à la diffusion)
+        //   « Grâce Infinie »          → chant correspondant (si trouvé dans les Paroles)
+        //   sinon                      → note/étape structurelle
+        // JSON Planning Center (export plan) : les items deviennent des étapes,
+        // les chants sont appariés par titre quand ils existent dans les Paroles.
+        function normalizeTitle(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
+
+        function findSongByTitle(title) {
+            try {
+                const w = frames.lyrics();
+                const list = (w.OpenPresenterLyrics ? w.OpenPresenterLyrics.listSongs() : []);
+                const q = normalizeTitle(title);
+                return list.find(s => normalizeTitle(s.title) === q)
+                    || list.find(s => normalizeTitle(s.title).indexOf(q) >= 0)
+                    || null;
+            } catch (e) { return null; }
+        }
+
+        function bibleCueFromRef(ref) {
+            const m = String(ref).trim().match(/^([1-3]?\s?[A-Za-zÀ-ÿ' ]+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+            if (!m) return null;
+            return { kind: 'bible', bookName: m[1].trim(), chapterNum: +m[2], verseNum: +m[3], text: String(ref).trim() + (m[4] ? '' : '') };
+        }
+
+        function cueFromLine(line) {
+            const t = line.trim();
+            if (!t) return null;
+            const b = bibleCueFromRef(t);
+            if (b) return b;
+            const song = findSongByTitle(t);
+            if (song) return { kind: 'lyrics', songId: song.id, songName: song.title, sectionId: song.sections[0] ? song.sections[0].id : '', sectionName: song.sections[0] ? song.sections[0].label : '' };
+            return { kind: 'note', title: t };
+        }
+
+        function cuesFromPlanText(text) {
+            return text.split(/\r?\n/).map(l => l.split(/^["']?|["']?$/).join('').split(/[;\t]/)[0]).map(cueFromLine).filter(Boolean);
+        }
+
+        function cuesFromPlanningCenterJSON(data) {
+            const items = (data && (data.items || (data.plan && data.plan.items))) || [];
+            return items.map(it => {
+                const a = (it && it.attributes) || it || {};
+                const title = a.title || a.name || '';
+                if (!title) return null;
+                if (String(a.item_type || a.type || '').toLowerCase() === 'song' || a.song_title) {
+                    const song = findSongByTitle(a.song_title || title);
+                    if (song) return { kind: 'lyrics', songId: song.id, songName: song.title, sectionId: song.sections[0] ? song.sections[0].id : '', sectionName: song.sections[0] ? song.sections[0].label : '' };
+                }
+                return { kind: 'note', title: title };
+            }).filter(Boolean);
+        }
+
+        async function importPlanFile(file) {
+            let cues2 = [];
+            try {
+                if (/\.json$/i.test(file.name)) {
+                    cues2 = cuesFromPlanningCenterJSON(JSON.parse(await file.text()));
+                } else {
+                    cues2 = cuesFromPlanText(await file.text());
+                }
+            } catch (e) { toast('Fichier illisible : ' + (e.message || e), true); return; }
+            if (!cues2.length) { toast('Aucune étape trouvée dans ce fichier.', true); return; }
+            const replace = confirm(cues2.length + ' étape(s) trouvée(s).\n\nOK = REMPLACER la file actuelle\nAnnuler = AJOUTER à la fin');
+            cues = replace ? cues2 : cues.concat(cues2);
+            currentIndex = replace ? -1 : currentIndex;
+            save(); refreshAll();
+            toast('Plan importé : ' + cues2.length + ' étape(s)' + (replace ? ' (file remplacée)' : ' (ajoutées)') + '.');
+        }
+
         function init() {
             loadLocal();
             // Rapatrie la file depuis le serveur si le stockage local est vide (axe A)
@@ -569,6 +655,12 @@
                     }).catch(() => {});
             }
             refreshAll();
+            const planFile = document.getElementById('plan-file');
+            if (planFile) {
+                planFile.addEventListener('change', (e) => { if (e.target.files[0]) importPlanFile(e.target.files[0]); e.target.value = ''; });
+                const btnImp = document.getElementById('btn-import-plan');
+                if (btnImp) btnImp.addEventListener('click', () => planFile.click());
+            }
         }
         init();
     </script>

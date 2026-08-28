@@ -316,7 +316,9 @@
         { key: 'media',  icon: '🖼️', name: 'Médias',          color: 'var(--media)',  desc: 'Images, vidéos, PDF et PowerPoint, organisés par groupes.', file: 'media_control_display_pro.html', modes: [{ label: 'Plein écran', q: '?obs=true' }] },
         { key: 'lt',     icon: '🏷️', name: 'Lower Third',     color: 'var(--lt)',     desc: 'Titres et bandeaux animés, logo, animations.', file: 'obs_lower_third_ultimate_studio.html', modes: [{ label: 'Titres (OBS)', q: '?obs=1' }] },
         { key: 'cue',    icon: '📋', name: 'File de déroulement', color: '#f43f5e',   desc: 'Composez l\u2019ordre de service et enchaînez en une touche (mobile-friendly).', file: 'cue_list.html', modes: [], controller: 'Contrôleur mobile' },
-        { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' }
+        { key: 'wall',   icon: '🖥️', name: 'Mur de Sorties',  color: '#0ea5e9',       desc: 'Aperçu en direct des 4 sorties OBS réunies sur une page.', file: 'mur_previews.html', modes: [], controller: 'Surveillance' },
+        { key: 'pasteur', icon: '✝️', name: 'Vue Pasteur',     color: '#22c55e',       desc: 'Écran du pasteur : diffusion en direct (3/5), minuteur (1/5), messages de la régie (1/5).', file: 'vue_pasteur.html', modes: [], controller: 'Écran compagnon' },
+        { key: 'pasteurAdmin', icon: '⚙️', name: 'Contrôle Pasteur', color: '#14b8a6',  desc: 'Piloter le minuteur et envoyer des messages à la Vue Pasteur (même réseau).', file: 'vue_pasteur.html?admin=1', modes: [], controller: 'Régie' }
     ];
 
     var base = location.origin;

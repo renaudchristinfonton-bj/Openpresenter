@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vue Pasteur — OpenPresenter</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; padding: 0; height: 100%;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        background: #0b1120; color: #f8fafc; overflow: hidden;
+    }
+    .shell { display: flex; flex-direction: column; height: 100vh; }
+
+    .topbar {
+        height: 44px; flex-shrink: 0;
+        background: #111a2e; border-bottom: 1px solid #1e293b;
+        display: flex; align-items: center; gap: 12px; padding: 0 14px;
+    }
+    .topbar .brand { font-weight: 800; font-size: 14px; color: #fff; }
+    .topbar .sub { font-size: 11px; color: #64748b; }
+    .topbar .spacer { flex: 1; }
+    .topbar a.ctrl-link {
+        font-size: 11px; font-weight: 700; color: #93c5fd; text-decoration: none;
+        background: #1e293b; border: 1px solid #334155; padding: 5px 10px; border-radius: 7px;
+    }
+
+    /* ==== GRILLE : 3/5 · 1/5 · 1/5 ==== */
+    .grid {
+        flex: 1; min-height: 0;
+        display: grid;
+        grid-template-columns: 3fr 1fr 1fr;
+        gap: 10px; padding: 10px;
+    }
+    .panel {
+        background: #111a2e; border: 1px solid #1e293b; border-radius: 10px;
+        display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+    }
+    .panel-title {
+        flex-shrink: 0; padding: 9px 12px; font-size: 11px; font-weight: 800;
+        letter-spacing: .8px; text-transform: uppercase; color: #94a3b8;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    /* ---- Panneau 1 : ce qui passe à l'écran (3/5) ---- */
+    .stage-wrap { position: relative; flex: 1; min-height: 0; background: #000; }
+    .stage-box {
+        position: absolute; top: 50%; left: 50%;
+        width: 1920px; height: 1080px;
+        transform-origin: center center;
+        background: #000; overflow: hidden;
+    }
+    .stage-layer { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; }
+    .stage-layer iframe { width: 1920px; height: 1080px; border: none; display: block; background: transparent; }
+    .stage-hint {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: #334155; font-size: 22px; font-weight: 700; pointer-events: none;
+    }
+    .onair-bar {
+        flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; border-top: 1px solid #1e293b; background: #0d1526;
+        font-size: 13px; font-weight: 700; min-height: 38px;
+    }
+    .onair-dot { width: 10px; height: 10px; border-radius: 50%; background: #475569; flex-shrink: 0; }
+    .onair-bar.live .onair-dot { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+    .onair-bar .lt-badge {
+        margin-left: auto; font-size: 10px; font-weight: 800; letter-spacing: .5px;
+        color: #6366f1; border: 1px solid #4338ca; border-radius: 6px; padding: 2px 7px;
+        display: none; align-items: center; gap: 5px;
+    }
+    .onair-bar .lt-badge.on { display: inline-flex; }
+
+    /* ---- Panneau 2 : minuteur (1/5) ---- */
+    .timer-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; min-height: 0; }
+    .timer-clock { font-size: 20px; font-weight: 600; color: #64748b; font-variant-numeric: tabular-nums; }
+    .timer-label {
+        font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+        color: #94a3b8; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .timer-main {
+        font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1;
+        color: #34d399; text-align: center; transition: color .3s;
+    }
+    .timer-main.warn { color: #fbbf24; }
+    .timer-main.crit { color: #f87171; }
+    .timer-main.overtime { animation: flash 1s steps(2) infinite; }
+    @keyframes flash { 50% { opacity: .25; } }
+    .timer-sub { font-size: 11px; color: #64748b; min-height: 14px; }
+    .timer-external { flex: 1; min-height: 0; border: none; width: 100%; }
+
+    /* ---- Panneau 3 : messages (1/5) ---- */
+    .msg-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .msg-current {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        padding: 14px 12px; text-align: center; font-size: 24px; font-weight: 800; line-height: 1.35;
+        color: #e2e8f0; overflow-wrap: break-word; overflow: auto;
+    }
+    .msg-current .placeholder { color: #334155; font-size: 16px; font-weight: 700; }
+    .msg-panel.info    .msg-current { background: rgba(59, 130, 246, .08); }
+    .msg-panel.important .msg-current { background: rgba(251, 191, 36, .10); color: #fde68a; }
+    .msg-panel.urgent .msg-current {
+        background: rgba(239, 68, 68, .14); color: #fecaca;
+        animation: msgPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes msgPulse { 50% { background: rgba(239, 68, 68, .30); } }
+    .msg-meta { flex-shrink: 0; padding: 6px 12px; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; min-height: 26px; }
+    .msg-history { flex-shrink: 0; max-height: 96px; overflow: auto; border-top: 1px solid #1e293b; padding: 6px 10px; }
+    .msg-history .h-row { font-size: 11px; color: #64748b; padding: 3px 0; border-bottom: 1px dashed #1b2540; }
+    .msg-history .h-row b { color: #94a3b8; }
+
+    /* ---- Tiroir d'administration (?admin=1) : envoi messages + minuteur ---- */
+    #admin-drawer {
+        position: fixed; right: 12px; bottom: 12px; z-index: 50; width: 340px;
+        background: #0d1526; border: 1px solid #334155; border-radius: 12px;
+        box-shadow: 0 18px 50px rgba(0,0,0,.55); padding: 12px; display: none;
+    }
+    #admin-drawer.open { display: block; }
+    #admin-drawer h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .6px; text-transform: uppercase; color: #93c5fd; }
+    #admin-drawer .row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+    #admin-drawer input[type="text"], #admin-drawer select, #admin-drawer textarea {
+        background: #111a2e; border: 1px solid #334155; color: #f8fafc; border-radius: 7px;
+        font-family: inherit; font-size: 12px; padding: 6px 8px;
+    }
+    #admin-drawer textarea { width: 100%; resize: vertical; }
+    #admin-drawer button {
+        background: #1d4ed8; color: #fff; border: none; border-radius: 7px; font-weight: 700;
+        font-size: 12px; padding: 6px 10px; cursor: pointer; font-family: inherit;
+    }
+    #admin-drawer button:hover { background: #2563eb; }
+    #admin-drawer button.ghost { background: #1e293b; color: #cbd5e1; }
+    #admin-drawer button.amber { background: #b45309; }
+    #admin-drawer .preset { background: #1e293b; color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+    <div class="topbar">
+        <div class="brand">✝️ Vue Pasteur</div>
+        <div class="sub">Tout ce qui se passe · minuteur · messages de la régie</div>
+        <div class="spacer"></div>
+        <a class="ctrl-link" href="vue_pasteur.html?admin=1" target="_blank" title="Ouvrir le panneau de contrôle (minuteur + envoi de messages)">⚙️ Contrôle</a>
+    </div>
+
+    <div class="grid">
+        <!-- 3/5 : ce qui passe à l'écran -->
+        <section class="panel">
+            <div class="panel-title">Ce qui passe à l'écran</div>
+            <div class="stage-wrap">
+                <div class="stage-box" id="stage-box">
+                    <div class="stage-layer"><iframe src="bible_control_display_pro.html?obs=true" title="Bible"></iframe></div>
+                    <div class="stage-layer"><iframe src="lyrics_control_display_pro.html?obs=true" title="Paroles"></iframe></div>
+                    <div class="stage-layer"><iframe src="media_control_display_pro.html?obs=true" title="Média"></iframe></div>
+                    <div class="stage-layer"><iframe src="obs_lower_third_ultimate_studio.html?obs=1" title="Titre"></iframe></div>
+                </div>
+                <div class="stage-hint" id="stage-hint">EN ATTENTE…</div>
+            </div>
+            <div class="onair-bar" id="onair-bar">
+                <span class="onair-dot"></span>
+                <span id="onair-label">Aucune diffusion</span>
+                <span class="lt-badge" id="lt-badge" title="Un titre (lower third) est affiché">TITRE À L'ÉCRAN</span>
+            </div>
+        </section>
+
+        <!-- 1/5 : minuteur -->
+        <section class="panel" id="timer-panel">
+            <div class="panel-title">⏱ Minuteur</div>
+            <div class="timer-body" id="timer-body">
+                <div class="timer-clock" id="timer-clock">--:--</div>
+                <div class="timer-label" id="timer-label">PRÊT</div>
+                <div class="timer-main" id="timer-main">--:--</div>
+                <div class="timer-sub" id="timer-sub"></div>
+            </div>
+        </section>
+
+        <!-- 1/5 : messages -->
+        <section class="panel msg-panel" id="msg-panel">
+            <div class="panel-title">✉️ Messages</div>
+            <div class="msg-body">
+                <div class="msg-current" id="msg-current"><span class="placeholder">Aucun message</span></div>
+                <div class="msg-meta" id="msg-meta"></div>
+                <div class="msg-history" id="msg-history"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Panneau de contrôle (s'affiche avec ?admin=1) -->
+<div id="admin-drawer">
+    <h4>⏱ Minuteur</h4>
+    <div class="row">
+        <input type="text" id="t-label" placeholder="Libellé (ex : Prédication)" style="flex:1">
+        <select id="t-mode">
+            <option value="down">Compte à rebours</option>
+            <option value="up">Chronomètre</option>
+        </select>
+    </div>
+    <div class="row" id="t-presets">
+        <button class="preset" data-min="5">5 min</button>
+        <button class="preset" data-min="10">10</button>
+        <button class="preset" data-min="15">15</button>
+        <button class="preset" data-min="20">20</button>
+        <button class="preset" data-min="30">30</button>
+        <button class="preset" data-min="45">45</button>
+        <button class="preset" data-min="60">60</button>
+    </div>
+    <div class="row">
+        <input type="text" id="t-custom" placeholder="mm:ss (ex : 12:30)" style="width:90px">
+        <button id="t-start">▶ Démarrer</button>
+        <button id="t-pause" class="ghost">⏸ Pause</button>
+        <button id="t-reset" class="ghost">⟲ Reset</button>
+    </div>
+    <h4 style="margin-top:10px">✉️ Message au pasteur</h4>
+    <textarea id="m-text" rows="2" placeholder="Votre message…"></textarea>
+    <div class="row" style="margin-top:6px">
+        <select id="m-tone">
+            <option value="info">Info</option>
+            <option value="important">Important</option>
+            <option value="urgent">URGENT</option>
+        </select>
+        <input type="text" id="m-from" placeholder="De (ex : Régie)" style="flex:1">
+        <button id="m-send">Envoyer</button>
+        <button id="m-clear" class="amber">Effacer</button>
+    </div>
+</div>
+
+<script src="js/remote-channel.js"></script>
+<script src="store.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    // ============================================================
+    // VUE PASTEUR — 3/5 : sorties en direct · 1/5 : minuteur · 1/5 : messages
+    // ============================================================
+    // La zone « écran » embarque les pages OBS réelles des 4 outils : chacune
+    // gère déjà sa propre visibilité (exclusion mutuelle incluse), donc la
+    // zone montre automatiquement ce qui est réellement diffusé.
+    // Le minuteur et les messages sont pilotés depuis le panneau de contrôle
+    // (?admin=1) via le canal relais « pasteur_channel » — même PC ou autre
+    // appareil du réseau. L'état est persisté (localStorage + dossier data/)
+    // pour survivre à un rechargement ou un changement d'appareil.
+
+    var params = new URLSearchParams(window.location.search);
+
+    // ---- État partagé ----
+    var state = {
+        timer: { mode: 'down', running: false, durationMs: 10 * 60000, baseMs: 0, startedAt: null, endsAt: null, label: '' },
+        message: null,          // { text, tone, from, ts }
+        history: []             // derniers messages (plus récents en premier)
+    };
+
+    var chan = null;
+    try { chan = new RemoteChannel('pasteur_channel'); } catch (e) { chan = null; }
+
+    function persist() {
+        try {
+            if (window.OpenStore) OpenStore.set('pasteur', 'state', state); // local + dossier data/
+            else localStorage.setItem('pasteur:state', JSON.stringify(state));
+        } catch (e) { /* silencieux */ }
+    }
+
+    function applyState(s) {
+        if (!s) return;
+        try {
+            if (s.timer) state.timer = Object.assign({}, state.timer, s.timer);
+            state.message = s.message || null;
+            state.history = Array.isArray(s.history) ? s.history : [];
+            renderTimer();
+            renderMessage();
+        } catch (e) { /* jamais casser la page */ }
+    }
+
+    if (chan) {
+        chan.onmessage = function (ev) {
+            try { if (ev.data && ev.data.type === 'state') { applyState(ev.data.state); persist(); } }
+            catch (e) { /* jamais casser la page */ }
+        };
+    }
+
+    // ---- Restauration de l'état (rechargement / autre appareil) ----
+    // Différée d'un tick : les éléments du minuteur (els) sont affectés plus bas
+    // dans ce même script — restaurer avant rendrait renderTimer() trop tôt.
+    function restoreState() {
+        return (async function () {
+            var saved = null;
+            try { saved = JSON.parse(localStorage.getItem('pasteur:state') || 'null'); } catch (e) { saved = null; }
+            if (!saved && window.OpenStore) {
+                try { saved = await OpenStore.fetchFromServer('pasteur', 'state'); } catch (e) { saved = null; }
+            }
+            if (saved) applyState(saved);
+        })();
+    }
+    setTimeout(restoreState, 0);
+
+    // ============================================================
+    // ZONE ÉCRAN : mise à l'échelle + libellé « en direct »
+    // ============================================================
+    var onAir = { tool: null, label: 'Aucune diffusion' };
+
+    function rescaleStage() {
+        var wrap = document.querySelector('.stage-wrap');
+        var box = document.getElementById('stage-box');
+        if (!wrap || !box) return;
+        var s = Math.min(wrap.clientWidth / 1920, wrap.clientHeight / 1080);
+        box.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+    }
+    window.addEventListener('resize', rescaleStage);
+    window.addEventListener('load', rescaleStage);
+    setTimeout(rescaleStage, 300); setTimeout(rescaleStage, 1200);
+
+    // Écoute des canaux des outils pour le libellé « en direct » (lecture seule).
+    function watchTool(channelName, tool) {
+        var c = null;
+        try { c = new RemoteChannel(channelName); } catch (e) { return; }
+        c.onmessage = function (ev) {
+            try {
+                var d = ev.data || {};
+                if (d.action === 'show') {
+                    var cfg = d.config || {};
+                    var label = '';
+                    if (tool === 'bible') label = '📖 ' + (cfg.reference || 'Bible') + (cfg.version ? ' · ' + cfg.version : '');
+                    else if (tool === 'lyrics') label = '🎤 ' + (cfg.reference || 'Chant') + (cfg.sectionLabel ? ' — ' + cfg.sectionLabel : '');
+                    else if (tool === 'media') label = '🎬 ' + (cfg.name || 'Média');
+                    onAir.tool = tool; onAir.label = label || 'En direct';
+                    updateOnAirBar();
+                } else if (d.action === 'hide') {
+                    if (onAir.tool === tool) { onAir.tool = null; onAir.label = 'Aucune diffusion'; updateOnAirBar(); }
+                }
+            } catch (e) { /* silencieux */ }
+        };
+    }
+    watchTool('obs_bible_channel', 'bible');
+    watchTool('obs_lyrics_channel', 'lyrics');
+    watchTool('obs_media_channel', 'media');
+
+    var ltOn = false;
+    try {
+        var ltChan = new RemoteChannel('obs_lt_channel');
+        ltChan.onmessage = function (ev) {
+            try {
+                var d = ev.data || {};
+                if (d.action === 'show' || d.action === 'play') ltOn = true;
+                else if (d.action === 'hide' || d.action === 'stop') ltOn = false;
+                updateOnAirBar();
+            } catch (e) { /* silencieux */ }
+        };
+    } catch (e) { /* silencieux */ }
+
+    function updateOnAirBar() {
+        var bar = document.getElementById('onair-bar');
+        var lbl = document.getElementById('onair-label');
+        var badge = document.getElementById('lt-badge');
+        var hint = document.getElementById('stage-hint');
+        lbl.innerText = onAir.label;
+        bar.classList.toggle('live', onAir.tool !== null);
+        badge.classList.toggle('on', ltOn);
+        if (hint) hint.style.display = onAir.tool ? 'none' : 'flex';
+    }
+    updateOnAirBar();
+
+    // ============================================================
+    // MINUTEUR
+    // ============================================================
+    var els = {
+        clock: document.getElementById('timer-clock'),
+        label: document.getElementById('timer-label'),
+        main: document.getElementById('timer-main'),
+        sub: document.getElementById('timer-sub')
+    };
+
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+    function fmt(ms, showSign) {
+        var neg = ms < 0; ms = Math.abs(ms);
+        var t = Math.floor(ms / 1000);
+        var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+        var out = h > 0 ? h + ':' + pad2(m) + ':' + pad2(s) : pad2(m) + ':' + pad2(s);
+        return (neg && showSign ? '-' : '') + out;
+    }
+
+    // Option : utiliser VOTRE page minuteur HTML à la place du minuteur intégré
+    // (ex : vue_pasteur.html?timer=timer-display.html). Elle s'affiche telle
+    // quelle dans la colonne du milieu.
+    var timerUrl = params.get('timer');
+    if (timerUrl) {
+        var body = document.getElementById('timer-body');
+        body.innerHTML = '';
+        var frame = document.createElement('iframe');
+        frame.className = 'timer-external';
+        frame.src = timerUrl;
+        frame.title = 'Minuteur';
+        body.appendChild(frame);
+    }
+
+    function renderTimer() {
+        var t = state.timer || {};
+        if (timerUrl) return; // minuteur externe : rien à afficher ici
+
+        if (t.label) { els.label.innerText = t.label; els.label.title = t.label; }
+        else els.label.innerText = t.mode === 'up' ? 'CHRONOMÈTRE' : 'PRÊT';
+
+        var now = Date.now();
+        var value = 0, cls = '';
+        if (t.mode === 'up') {
+            value = t.running ? (t.baseMs || 0) + (now - (t.startedAt || now)) : (t.baseMs || 0);
+        } else {
+            if (t.running) {
+                value = (t.endsAt || now) - now;
+            } else {
+                value = (t.durationMs || 0) - (t.baseMs || 0);
+            }
+            if (!t.running && !t.startedAt) value = t.durationMs || 0;
+            if (value <= 0 && (t.running || t.startedAt)) cls = 'overtime crit';
+            else if (value <= 60000) cls = 'crit';
+            else if (value <= 300000) cls = 'warn';
+        }
+        els.main.className = 'timer-main ' + cls;
+        els.main.innerText = fmt(value, true);
+
+        var sub = '';
+        if (t.mode === 'down' && t.durationMs) sub = 'prévu : ' + fmt(t.durationMs, false);
+        if (!t.running && t.startedAt) sub += ' · en pause';
+        els.sub.innerText = sub.trim();
+    }
+
+    setInterval(function () {
+        var d = new Date();
+        els.clock.innerText = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+        renderTimer();
+    }, 250);
+
+    // ============================================================
+    // MESSAGES
+    // ============================================================
+    function renderMessage() {
+        var panel = document.getElementById('msg-panel');
+        var cur = document.getElementById('msg-current');
+        var meta = document.getElementById('msg-meta');
+        var hist = document.getElementById('msg-history');
+
+        panel.className = 'panel msg-panel ' + (state.message ? state.message.tone : '');
+        if (state.message) {
+            cur.innerText = state.message.text;
+            var when = new Date(state.message.ts || Date.now());
+            meta.innerText = (state.message.from ? 'De : ' + state.message.from + ' · ' : '') +
+                pad2(when.getHours()) + ':' + pad2(when.getMinutes());
+        } else {
+            cur.innerHTML = '<span class="placeholder">Aucun message</span>';
+            meta.innerText = '';
+        }
+        hist.innerHTML = (state.history || []).slice(0, 6).map(function (m) {
+            var when = new Date(m.ts || Date.now());
+            return '<div class="h-row"><b>' + (m.from || '—') + '</b> · ' +
+                pad2(when.getHours()) + ':' + pad2(when.getMinutes()) + ' — ' + m.text + '</div>';
+        }).join('');
+    }
+
+    // ============================================================
+    // PANNEAU DE CONTRÔLE (?admin=1) : minuteur + envoi de messages
+    // ============================================================
+    function broadcast() { if (chan) { try { chan.postMessage({ type: 'state', state: state }); } catch (e) {} } persist(); }
+
+    if (params.get('admin') === '1') {
+        var drawer = document.getElementById('admin-drawer');
+        drawer.classList.add('open');
+
+        var $ = function (id) { return document.getElementById(id); };
+
+        function setCountdown(ms, label) {
+            state.timer.mode = 'down';
+            state.timer.durationMs = ms;
+            state.timer.baseMs = 0;
+            state.timer.startedAt = null;
+            state.timer.endsAt = null;
+            state.timer.running = false;
+            if (label != null) state.timer.label = label;
+            renderTimer(); broadcast();
+        }
+
+        $('t-presets').addEventListener('click', function (e) {
+            var b = e.target.closest('[data-min]');
+            if (!b) return;
+            setCountdown(parseInt(b.getAttribute('data-min'), 10) * 60000, $('t-label').value.trim() || state.timer.label);
+        });
+
+        $('t-custom').addEventListener('change', function () {
+            var v = this.value.trim().match(/^(\d{1,2}):(\d{1,2})$/) || this.value.trim().match(/^(\d{1,4})$/);
+            if (!v) { alert('Format attendu : mm:ss (ex : 12:30) ou minutes (ex : 90)'); return; }
+            var ms;
+            if (v[2] != null) ms = (parseInt(v[1], 10) * 60 + parseInt(v[2], 10)) * 1000;
+            else ms = parseInt(v[1], 10) * 60000;
+            setCountdown(ms, $('t-label').value.trim() || state.timer.label);
+            this.value = '';
+        });
+
+        $('t-mode').addEventListener('change', function () {
+            state.timer.mode = this.value;
+            state.timer.baseMs = 0; state.timer.startedAt = null; state.timer.endsAt = null;
+            state.timer.running = false;
+            renderTimer(); broadcast();
+        });
+
+        $('t-start').addEventListener('click', function () {
+            var t = state.timer, now = Date.now();
+            if (t.running) return;
+            if (t.mode === 'down') {
+                var remain = t.durationMs - (t.baseMs || 0);
+                t.endsAt = now + Math.max(0, remain);
+            } else {
+                t.startedAt = now;
+            }
+            t.running = true;
+            t.label = $('t-label').value.trim() || t.label;
+            renderTimer(); broadcast();
+        });
+
+        $('t-pause').addEventListener('click', function () {
+            var t = state.timer, now = Date.now();
+            if (!t.running) return;
+            if (t.mode === 'down') t.baseMs = t.durationMs - Math.max(0, (t.endsAt || now) - now);
+            else t.baseMs = (t.baseMs || 0) + (now - (t.startedAt || now));
+            t.running = false;
+            renderTimer(); broadcast();
+        });
+
+        $('t-reset').addEventListener('click', function () {
+            state.timer.baseMs = 0; state.timer.startedAt = null; state.timer.endsAt = null;
+            state.timer.running = false;
+            renderTimer(); broadcast();
+        });
+
+        function pushMessage(msg) {
+            if (state.message) {
+                state.history.unshift(state.message);
+                state.history = state.history.slice(0, 6);
+            }
+            state.message = msg;
+            renderMessage(); broadcast();
+        }
+
+        $('m-send').addEventListener('click', function () {
+            var text = $('m-text').value.trim();
+            if (!text) return;
+            pushMessage({ text: text, tone: $('m-tone').value, from: $('m-from').value.trim() || 'Régie', ts: Date.now() });
+            $('m-text').value = '';
+        });
+
+        $('m-clear').addEventListener('click', function () {
+            if (state.message) { state.history.unshift(state.message); state.history = state.history.slice(0, 6); }
+            state.message = null;
+            renderMessage(); broadcast();
+        });
+    }
+})();
+</script>
+
+</body>
+</html>

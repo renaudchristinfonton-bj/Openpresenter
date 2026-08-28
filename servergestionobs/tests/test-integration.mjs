@@ -589,6 +589,63 @@ try {
         renderBooksList(currentBooks());
     });
 
+    // ============ S9. VUE PASTEUR (3/5 écran · 1/5 minuteur · 1/5 messages) ============
+    console.log('▶ S9. Vue Pasteur : écran + minuteur + messages…');
+    const pastor = await ctxB.newPage();
+    trackErrors(pastor, 'pasteur');
+    await pastor.goto(BASE + '/vue_pasteur.html', { waitUntil: 'load', timeout: 30000 });
+    await pastor.waitForTimeout(800);
+    const pastorFrames = await pastor.evaluate(() => document.querySelectorAll('#stage-box iframe').length);
+    check('Vue Pasteur : 4 sorties embarquées (Bible/Paroles/Médias/Titre)', pastorFrames === 4, 'iframes=' + pastorFrames);
+    check('Vue Pasteur : libellé initial sans diffusion', (await pastor.evaluate(() => document.getElementById('onair-label').innerText)) === 'Aucune diffusion');
+
+    const admin = await ctxA.newPage();
+    trackErrors(admin, 'pasteur-admin');
+    await admin.goto(BASE + '/vue_pasteur.html?admin=1', { waitUntil: 'load', timeout: 30000 });
+    await admin.waitForTimeout(500);
+
+    // Envoi d'un message → affiché chez le pasteur (via le relais, comme 2 appareils).
+    await admin.evaluate(() => {
+        document.getElementById('m-text').value = 'Encore 5 minutes, on termine';
+        document.getElementById('m-from').value = 'Régie';
+        document.getElementById('m-tone').value = 'important';
+        document.getElementById('m-send').click();
+    });
+    const msgOk = await pastor.waitForFunction(() => {
+        const el = document.getElementById('msg-current');
+        return el && el.innerText.includes('Encore 5 minutes');
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Message de la régie affiché chez le pasteur', msgOk);
+    const msgMeta = await pastor.evaluate(() => document.getElementById('msg-meta').innerText);
+    check('Message : expéditeur « Régie » visible', msgMeta.includes('Régie'), msgMeta);
+
+    // Minuteur : preset 10 min + démarrage → décompte visible qui décroît.
+    await admin.evaluate(() => {
+        document.getElementById('t-label').value = 'Prédication';
+        document.querySelector('[data-min="10"]').click();
+        document.getElementById('t-start').click();
+    });
+    const t1 = await pastor.waitForFunction(() => /^(10:00|09:5\d)$/.test(document.getElementById('timer-main').innerText), { timeout: 8000 }).then(() => pastor.evaluate(() => document.getElementById('timer-main').innerText)).catch(() => null);
+    check('Minuteur : compte à rebours démarré (10:00 → 09:5x)', !!t1, t1 || '');
+    await pastor.waitForTimeout(1600);
+    const t2 = await pastor.evaluate(() => document.getElementById('timer-main').innerText);
+    check('Minuteur : le décompte décroît', !!(t1 && t2 !== t1), (t1 || '?') + ' → ' + t2);
+    const tLabel = await pastor.evaluate(() => document.getElementById('timer-label').innerText);
+    check('Minuteur : libellé Prédication affiché', tLabel.toUpperCase() === 'PRÉDICATION', tLabel);
+
+    // Persistance : rechargement de la vue pasteur → message et minuteur restaurés.
+    await pastor.reload({ waitUntil: 'load' });
+    await pastor.waitForTimeout(900);
+    const restored = await pastor.evaluate(() => ({
+        msg: document.getElementById('msg-current').innerText,
+        timer: document.getElementById('timer-main').innerText
+    }));
+    check('Rechargement : message restauré', restored.msg.includes('Encore 5 minutes'), restored.msg.slice(0, 30));
+    check('Rechargement : minuteur restauré (libellé + décompte actifs)', /^\d{2}:\d{2}$/.test(restored.timer) && restored.timer !== '--:--', restored.timer);
+
+    await pastor.close().catch(() => {});
+    await admin.close().catch(() => {});
+
 } finally {
     await browser.close().catch(() => {});
     server.kill('SIGTERM');

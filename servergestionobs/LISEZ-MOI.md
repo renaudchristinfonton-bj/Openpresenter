@@ -229,3 +229,25 @@ Sur la page d'accueil (`/`) : **⬇️ Sauvegarder tout** télécharge UN fichie
 contenant tout (favoris, réglages, présets, file, groupes, 2 versions, annotations,
 résolution, bibliothèques IndexedDB avec les médias, données du dossier `data/`).
 **⬆️ Restaurer** remet tout en place (sur n'importe quel PC).
+
+## Vue Pasteur (écran compagnon)
+
+`vue_pasteur.html` — l'écran à installer face au pasteur (tablette, PC, TV) :
+- **3/5 de l'écran** : tout ce qui se passe réellement à l'antenne (les sorties
+  Bible / Paroles / Médias / Titres y sont embarquées en direct, avec un libellé
+  « en direct » et un badge quand un titre est affiché) ;
+- **1/5 : minuteur** — horloge + compte à rebours ou chronomètre, libellé
+  (« Prédication »…), couleurs d'alerte (orange à 5 min, rouge à 1 min, clignotant
+  en dépassement) ;
+- **1/5 : messages** — la régie envoie des messages (info / important / URGENT),
+  le dernier s'affiche en grand, les précédents restent en historique.
+
+**Côté régie** : ouvrez `vue_pasteur.html?admin=1` (bouton « ⚙️ Contrôle » en haut
+de la vue, ou carte du Command Center) — préréglages 5→60 min, durée libre mm:ss,
+Démarrer/Pause/Reset, rédaction et envoi des messages. Tout transite par le relais
+local : ça marche depuis n'importe quel appareil du réseau, et l'état survit aux
+rechargements (localStorage + dossier `data/`).
+
+Vous avez déjà votre propre page de minuteur ? Ouvrez la vue avec
+`vue_pasteur.html?timer=timer-display.html` : elle s'affiche à la place du
+minuteur intégré, pilotée par vos boutons habituels.

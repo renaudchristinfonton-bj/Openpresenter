@@ -1,0 +1,16 @@
+{
+  "name": "OpenPresenter — Régie live",
+  "short_name": "OpenPresenter",
+  "description": "Régie live locale : Bible, paroles, médias, titres, minuteur et écrans compagnons — pilotable depuis n'importe quel navigateur du réseau.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "lang": "fr",
+  "icons": [
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

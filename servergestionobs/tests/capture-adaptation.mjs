@@ -32,7 +32,7 @@ const browser = await playwrightChromium.launch({
 
 // NB : un SEUL contexte réutilisé (ce Chromium --single-process plante quand
 // on ferme un browserContext) ; le viewport est réglé par page.
-const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, serviceWorkers: 'block' });
 await ctx.route('**/*', async (route) => {
     const u = route.request().url();
     if (u.startsWith(BASE)) return route.continue();

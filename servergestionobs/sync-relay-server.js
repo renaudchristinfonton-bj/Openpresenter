@@ -29,6 +29,7 @@
  */
 
 const http = require('http');
+const zlib = require('zlib'); // gzip des fichiers texte (ouverture quasi instantanée)
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -41,6 +42,7 @@ const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 
 const MIME_TYPES = {
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript; charset=utf-8',
     '.css': 'text/css; charset=utf-8',
@@ -60,7 +62,13 @@ const MIME_TYPES = {
 // ============================================================
 // 1) SERVEUR HTTP STATIQUE (sert les fichiers .html du dossier)
 // ============================================================
-function sendFile(res, filePath) {
+// Extensions compressibles (texte) : les pages HTML (100+ Ko) descendent à
+// ~20-30 Ko sur le réseau local —ouverture quasi instantanée, y compris depuis
+// un autre PC du réseau en WiFi. Les binaires (images, vidéos, polices) sont
+// déjà compressés : on ne les gzippe pas (CPU gaspillé pour rien).
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg', '.txt', '.webmanifest']);
+
+function sendFile(res, filePath, req) {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     fs.readFile(filePath, (err, data) => {
@@ -69,7 +77,24 @@ function sendFile(res, filePath) {
             res.end('404 - Fichier introuvable : ' + filePath);
             return;
         }
-        res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
+        const headers = { 'Content-Type': contentType };
+        // Cache navigateur : les fichiers statiques du projet ne changent pas
+        // pendant une session (les données vivent dans /data/). 1 h de cache
+        // évite de re-télécharger les 4 pages à chaque ouverture d'onglet.
+        headers['Cache-Control'] = 'public, max-age=3600';
+        const accept = (req && req.headers && req.headers['accept-encoding']) || '';
+        if (COMPRESSIBLE.has(ext) && /gzip/.test(accept) && data.length > 1024) {
+            try {
+                const gz = zlib.gzipSync(data, { level: 6 });
+                headers['Content-Encoding'] = 'gzip';
+                headers['Content-Length'] = gz.length;
+                res.writeHead(200, headers);
+                res.end(gz);
+                return;
+            } catch (e) { /* repli : envoi non compressé */ }
+        }
+        headers['Content-Length'] = data.length;
+        res.writeHead(200, headers);
         res.end(data);
     });
 }
@@ -229,7 +254,7 @@ const server = http.createServer((req, res) => {
         res.end('403 - Interdit');
         return;
     }
-    sendFile(res, filePath);
+    sendFile(res, filePath, req);
 });
 
 // ============================================================

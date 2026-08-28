@@ -96,7 +96,7 @@ const browser = await playwrightChromium.launch({
 // Remplace les CDN bloqués : stub Tailwind (évite "tailwind is not defined"),
 // réponse vide pour les autres. En usage réel, les vrais CDN se chargent.
 async function newContext() {
-    const ctx = await browser.newContext();
+    const ctx = await browser.newContext({ serviceWorkers: 'block' }); // le Chromium sandbox (--single-process) plante avec les SW
     await ctx.route('**/*', async (route) => {
         const url = route.request().url();
         if (url.startsWith(BASE)) return route.continue();
@@ -685,6 +685,43 @@ try {
     await pastor.close().catch(() => {});
     await timerCtl.close().catch(() => {});
     await ctl.close().catch(() => {});
+
+    // ============ S10. ÉCRAN SCÈNE (stage display) ============
+    console.log('▶ S10. Écran Scène : courante + suivante + minuteur…');
+    const stage = await ctxB.newPage();
+    trackErrors(stage, 'stage');
+    await stage.goto(BASE + '/stage_display.html', { waitUntil: 'load', timeout: 30000 });
+    await stage.waitForTimeout(700);
+    check('Écran Scène : horloge active', /^\d{2}:\d{2}:\d{2}$/.test(await stage.evaluate(() => document.getElementById('clock').innerText)));
+
+    // Section courante + SUIVANTE (le chant S2 a sec1/sec2).
+    await lyricsCtrl.evaluate((sid) => triggerDisplay(sid, ['sec1']), songs[0].id);
+    const stageCurrent = await stage.waitForFunction(() => {
+        const t = document.getElementById('song-text');
+        const n = document.getElementById('n-text');
+        return t && /Première ligne/.test(t.innerText) && n && /Refrain du chant/.test(n.innerText) ? true : false;
+    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    check('Écran Scène : section courante affichée + section SUIVANTE', stageCurrent);
+
+    // Minuteur démarré par la régie → compte à rebours visible sur l\'écran scène.
+    const ctl2 = await ctxA.newPage();
+    trackErrors(ctl2, 'stage-timer');
+    await ctl2.goto(BASE + '/timer-control-updated.html', { waitUntil: 'load', timeout: 30000 });
+    await ctl2.waitForTimeout(700);
+    await ctl2.evaluate(() => {
+        document.getElementById('inp-title').value = 'Louange';
+        document.getElementById('inp-m').value = 10;
+        addToQueue();
+        document.getElementById('btn-start').click();
+    });
+    const stageTimer = await stage.waitForFunction(() => {
+        const v = document.getElementById('t-value');
+        return v && /^\d{2}:\d{2}$/.test(v.innerText) ? v.innerText : false;
+    }, { timeout: 8000 }).then((r) => r.jsonValue()).catch(() => null);
+    check('Écran Scène : minuteur visible (décompte)', !!stageTimer, String(stageTimer));
+    await ctl2.evaluate(() => resetAll());
+    await stage.close().catch(() => {});
+    await ctl2.close().catch(() => {});
 
 } finally {
     await browser.close().catch(() => {});

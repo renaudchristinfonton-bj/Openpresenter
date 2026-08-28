@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Écran Scène — OpenPresenter</title>
+<link rel="manifest" href="manifest.webmanifest">
+<script src="js/remote-channel.js"></script>
+<script src="store.js"></script>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #000; color: #fff; overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+
+    .screen { display: flex; flex-direction: column; height: 100vh; padding: 2vh 3vw; gap: 1.5vh; }
+
+    /* Bandeau haut : horloge + minuteur */
+    .top { display: flex; align-items: center; gap: 3vw; flex-shrink: 0; }
+    .clock { font-size: clamp(28px, 5.5vh, 64px); font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+    .timer { margin-left: auto; text-align: right; }
+    .timer .t-title { font-size: clamp(12px, 2.2vh, 24px); color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; }
+    .timer .t-value { font-size: clamp(30px, 6.5vh, 80px); font-weight: 800; font-variant-numeric: tabular-nums; color: #34d399; }
+    .timer.warn .t-value { color: #fbbf24; }
+    .timer.crit .t-value { color: #f87171; }
+
+    /* Message de la régie (bandeau) */
+    .msg { display: none; flex-shrink: 0; border-radius: 12px; padding: 1.6vh 2vw; font-weight: 800;
+        font-size: clamp(16px, 3.4vh, 40px); text-align: center; }
+    .msg.info { display: block; background: rgba(59,130,246,.25); color: #dbeafe; }
+    .msg.important { display: block; background: rgba(251,191,36,.3); color: #fde68a; }
+    .msg.urgent { display: block; background: rgba(239,68,68,.45); color: #fee2e2; animation: pulse 1.1s infinite; }
+    @keyframes pulse { 50% { background: rgba(239,68,68,.75); } }
+
+    /* Zone principale : section courante */
+    .main { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+    .song-ref { font-size: clamp(14px, 3vh, 36px); color: #fbbf24; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
+    .song-sec { font-size: clamp(12px, 2.4vh, 28px); color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-top: .4vh; }
+    .song-text { margin-top: 2vh; font-size: clamp(26px, 8.5vh, 110px); font-weight: 800; line-height: 1.25; white-space: pre-line; }
+    .idle { color: #1e293b; font-size: clamp(20px, 5vh, 60px); font-weight: 800; text-align: center; }
+
+    /* Section suivante */
+    .next { flex-shrink: 0; border-top: 2px solid #1e293b; padding-top: 1.2vh; display: none; }
+    .next .n-label { font-size: clamp(11px, 2vh, 22px); color: #475569; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .next .n-text { font-size: clamp(15px, 3.6vh, 44px); color: #94a3b8; font-weight: 700; line-height: 1.3; white-space: pre-line; margin-top: .4vh; }
+</style>
+</head>
+<body>
+<div class="screen">
+    <div class="top">
+        <div class="clock" id="clock">--:--</div>
+        <div class="timer" id="timer">
+            <div class="t-title" id="t-title"></div>
+            <div class="t-value" id="t-value"></div>
+        </div>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="main" id="main"><div class="idle" id="idle">PRÊT</div>
+        <div id="current" style="display:none">
+            <div class="song-ref" id="song-ref"></div>
+            <div class="song-sec" id="song-sec"></div>
+            <div class="song-text" id="song-text"></div>
+        </div>
+    </div>
+    <div class="next" id="next">
+        <div class="n-label">⟶ Ensuite : <span id="n-label"></span></div>
+        <div class="n-text" id="n-text"></div>
+    </div>
+</div>
+<script src="js/pwa.js"></script>
+<script>
+(function () {
+    'use strict';
+    // ============================================================
+    // ÉCRAN SCÈNE (confidence monitor) — face aux musiciens/chanteurs
+    // ============================================================
+    // Affiche : horloge, minuteur en cours (timer_channel), message de la régie
+    // (pasteur_channel), section de chant COURANTE en très grand, et la section
+    // SUIVANTE en plus discret (config.next envoyé par le contrôleur Paroles).
+    // Tout arrive par le relais : cet écran peut tourner sur n'importe quel
+    // appareil du réseau (tablette en coulisses, etc.).
+
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+    // Horloge
+    setInterval(function () {
+        var d = new Date();
+        document.getElementById('clock').innerText = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }, 500);
+
+    // ---- Paroles : section courante + suivante ----
+    var lyrics = null;
+    try {
+        var lc = new RemoteChannel('obs_lyrics_channel');
+        lc.onmessage = function (ev) {
+            try {
+                var d = ev.data || {};
+                if (d.action === 'show' && d.config) {
+                    lyrics = d.config;
+                    renderLyrics();
+                } else if (d.action === 'hide') {
+                    lyrics = null;
+                    renderLyrics();
+                }
+            } catch (e) { /* silencieux */ }
+        };
+    } catch (e) { /* silencieux */ }
+
+    function renderLyrics() {
+        var idle = document.getElementById('idle');
+        var cur = document.getElementById('current');
+        var next = document.getElementById('next');
+        if (!lyrics) {
+            idle.style.display = ''; cur.style.display = 'none'; next.style.display = 'none';
+            return;
+        }
+        idle.style.display = 'none'; cur.style.display = '';
+        document.getElementById('song-ref').innerText = lyrics.reference || '';
+        document.getElementById('song-sec').innerText = lyrics.sectionLabel || '';
+        document.getElementById('song-text').innerText = lyrics.text || '';
+        if (lyrics.next && lyrics.next.text) {
+            next.style.display = '';
+            document.getElementById('n-label').innerText = lyrics.next.label || '';
+            document.getElementById('n-text').innerText = lyrics.next.text;
+        } else {
+            next.style.display = 'none';
+        }
+    }
+
+    // ---- Minuteur (timer_channel) ----
+    var timer = { endTime: null, paused: false, remaining: 0, running: false };
+    try {
+        var tc = new RemoteChannel('timer_channel');
+        tc.onmessage = function (ev) {
+            try {
+                var m = ev.data || {};
+                if (m.type === 'START') { timer = { endTime: m.endTime, paused: false, running: true, title: m.title }; }
+                else if (m.type === 'PAUSE') { timer.paused = true; timer.remaining = m.remaining; }
+                else if (m.type === 'RESUME') { timer.endTime = m.endTime; timer.paused = false; }
+                else if (m.type === 'ADJUST') { timer.endTime = m.endTime; }
+                else if (m.type === 'FINISH') { timer.running = false; timer.finished = true; }
+                else if (m.type === 'RESET') { timer = { endTime: null, paused: false, running: false }; }
+                renderTimer();
+            } catch (e) { /* silencieux */ }
+        };
+        // Rattrapage si cet écran rejoint en cours de route.
+        setTimeout(function () { try { tc.postMessage({ type: 'SYNC_REQ' }); } catch (e) {} }, 400);
+    } catch (e) { /* silencieux */ }
+
+    function fmt(sec) {
+        var neg = sec < 0; sec = Math.abs(sec);
+        var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return (neg ? '-' : '') + (h > 0 ? h + ':' + pad2(m) : pad2(m)) + ':' + pad2(s);
+    }
+
+    function renderTimer() {
+        var box = document.getElementById('timer');
+        var titleEl = document.getElementById('t-title');
+        var valEl = document.getElementById('t-value');
+        if (!timer.running && !timer.finished) { box.style.display = 'none'; return; }
+        box.style.display = '';
+        titleEl.innerText = timer.title || 'Minuteur';
+        if (timer.paused) { valEl.innerText = fmt(timer.remaining); box.className = 'timer warn'; }
+        else if (timer.finished) { valEl.innerText = '00:00'; box.className = 'timer crit'; }
+    }
+    setInterval(function () {
+        if (timer.running && !timer.paused && timer.endTime) {
+            var sec = Math.round((timer.endTime - Date.now()) / 1000);
+            var valEl = document.getElementById('t-value');
+            valEl.innerText = fmt(sec);
+            document.getElementById('timer').className = 'timer ' + (sec <= 0 ? 'crit' : sec <= 60 ? 'crit' : sec <= 300 ? 'warn' : '');
+        }
+    }, 500);
+
+    // ---- Message de la régie (pasteur_channel) ----
+    try {
+        var pc = new RemoteChannel('pasteur_channel');
+        pc.onmessage = function (ev) {
+            try {
+                if (ev.data && ev.data.type === 'state' && ev.data.state && ev.data.state.message) {
+                    var m = ev.data.state.message;
+                    var el = document.getElementById('msg');
+                    el.className = 'msg ' + (m.tone || 'info');
+                    el.innerText = m.text;
+                } else if (ev.data && ev.data.type === 'state') {
+                    document.getElementById('msg').className = 'msg';
+                }
+            } catch (e) { /* silencieux */ }
+        };
+    } catch (e) { /* silencieux */ }
+})();
+</script>
+</body>
+</html>

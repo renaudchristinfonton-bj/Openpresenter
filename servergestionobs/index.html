@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OpenPresenter — Command Center</title>
+    <link rel="manifest" href="manifest.webmanifest">
 <style>
     :root {
         --bg: #0b1120; --panel: #111a2e; --panel2: #172033; --border: #1e293b;
@@ -320,7 +321,8 @@
         { key: 'pasteur', icon: '✝️', name: 'Vue Pasteur',     color: '#22c55e',       desc: 'Écran du pasteur : diffusion en direct (3/5), minuteur (1/5), messages de la régie (1/5).', file: 'vue_pasteur.html', modes: [], controller: 'Écran compagnon' },
         { key: 'pasteurCtl', icon: '⚙️', name: 'Régie Pasteur', color: '#14b8a6',       desc: 'Piloter la file de décomptes et envoyer des messages au pasteur (même réseau).', file: 'pasteur_control.html', modes: [], controller: 'Régie' },
         { key: 'timerCtl', icon: '⏱️', name: 'Minuteur — Contrôle', color: '#f59e0b',   desc: 'File de décomptes (titres + durées), pause/reprise, ajustement ±1 min, raccourcis clavier.', file: 'timer-control-updated.html', modes: [], controller: 'Régie' },
-        { key: 'timerDisp', icon: '⏳', name: 'Minuteur — Écran', color: '#f43f5e',     desc: 'Écran géant du minuteur (Source Navigateur OBS ou vidéoprojecteur face à la scène).', file: 'timer-display-updated.html', modes: [{ label: 'Plein écran', q: '' }], controller: 'Écran / OBS' }
+        { key: 'timerDisp', icon: '⏳', name: 'Minuteur — Écran', color: '#f43f5e',     desc: 'Écran géant du minuteur (Source Navigateur OBS ou vidéoprojecteur face à la scène).', file: 'timer-display-updated.html', modes: [{ label: 'Plein écran', q: '' }], controller: 'Écran / OBS' },
+        { key: 'stage', icon: '🎼', name: 'Écran Scène', color: '#a78bfa',             desc: 'Face aux musiciens : section courante en grand, section suivante, horloge, minuteur et messages.', file: 'stage_display.html', modes: [], controller: 'Écran compagnon' }
     ];
 
     var base = location.origin;
@@ -713,5 +715,6 @@
     WIZ.bind();
     WIZ.maybeFirstLaunch();
 </script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>

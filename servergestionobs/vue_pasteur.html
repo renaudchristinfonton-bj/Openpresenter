@@ -27,11 +27,13 @@
         background: #1e293b; border: 1px solid #334155; padding: 5px 10px; border-radius: 7px;
     }
 
-    /* ==== GRILLE : 3/5 · 1/5 · 1/5 ==== */
+    /* ==== GRILLE : prévisualisation · minuteur · messages ====
+       Sur 1920×1080 : ~44% / 20% / 36%  → les messages occupent une large
+       colonne pour être parfaitement lisibles depuis la chaire. */
     .grid {
         flex: 1; min-height: 0;
         display: grid;
-        grid-template-columns: 3fr 1fr 1fr;
+        grid-template-columns: 2.2fr 1fr 1.8fr;
         gap: 10px; padding: 10px;
     }
     .panel {
@@ -99,10 +101,18 @@
     .msg-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .msg-current {
         flex: 1; display: flex; align-items: center; justify-content: center;
-        padding: 14px 12px; text-align: center; font-size: 24px; font-weight: 800; line-height: 1.35;
-        color: #e2e8f0; overflow-wrap: break-word; overflow: auto;
+        padding: 8px 14px; text-align: center; font-weight: 800;
+        color: #e2e8f0; overflow: hidden; position: relative; min-height: 0;
     }
-    .msg-current .placeholder { color: #334155; font-size: 16px; font-weight: 700; }
+    .msg-inner {
+        width: 100%;
+        /* font-size ajusté automatiquement en JS par fitMsgText() */
+        font-size: 24px; line-height: 1.12;
+        font-weight: 800; text-align: center;
+        overflow-wrap: break-word; word-break: normal;
+        white-space: pre-wrap; hyphens: auto;
+    }
+    .msg-current .placeholder { color: #334155; font-size: 18px !important; font-weight: 700; }
     .msg-panel.info    .msg-current { background: rgba(59, 130, 246, .08); }
     .msg-panel.important .msg-current { background: rgba(251, 191, 36, .10); color: #fde68a; }
     .msg-panel.urgent .msg-current {
@@ -110,10 +120,11 @@
         animation: msgPulse 1.1s ease-in-out infinite;
     }
     @keyframes msgPulse { 50% { background: rgba(239, 68, 68, .30); } }
-    .msg-meta { flex-shrink: 0; padding: 6px 12px; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; min-height: 26px; }
+    .msg-meta { flex-shrink: 0; padding: 5px 12px; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; min-height: 22px; line-height: 1.2; }
     .msg-history { flex-shrink: 0; max-height: 96px; overflow: auto; border-top: 1px solid #1e293b; padding: 6px 10px; }
-    .msg-history .h-row { font-size: 11px; color: #64748b; padding: 3px 0; border-bottom: 1px dashed #1b2540; }
-    .msg-history .h-row b { color: #94a3b8; }
+    /* Quand un message est actif, on masque l'historique pour lui laisser tout l'espace */
+    .msg-panel.has-msg .msg-history { display: none; }
+    .msg-panel.has-msg .msg-meta { opacity: .7; font-size: 10px; padding: 3px 12px; min-height: 18px; }
 
     /* ---- Tiroir d'administration (?admin=1) : envoi messages + minuteur ---- */
     #admin-drawer {
@@ -184,7 +195,7 @@
         <section class="panel msg-panel" id="msg-panel">
             <div class="panel-title">✉️ Messages</div>
             <div class="msg-body">
-                <div class="msg-current" id="msg-current"><span class="placeholder">Aucun message</span></div>
+                <div class="msg-current" id="msg-current"><div class="msg-inner" id="msg-inner"><span class="placeholder">Aucun message</span></div></div>
                 <div class="msg-meta" id="msg-meta"></div>
                 <div class="msg-history" id="msg-history"></div>
             </div>
@@ -433,17 +444,20 @@
     function renderMessage() {
         var panel = document.getElementById('msg-panel');
         var cur = document.getElementById('msg-current');
+        var inner = document.getElementById('msg-inner');
         var meta = document.getElementById('msg-meta');
         var hist = document.getElementById('msg-history');
 
         panel.className = 'panel msg-panel ' + (state.message ? state.message.tone : '');
         if (state.message) {
-            cur.innerText = state.message.text;
+            panel.classList.add('has-msg');
+            inner.innerText = state.message.text;
             var when = new Date(state.message.ts || Date.now());
             meta.innerText = (state.message.from ? 'De : ' + state.message.from + ' · ' : '') +
                 pad2(when.getHours()) + ':' + pad2(when.getMinutes());
         } else {
-            cur.innerHTML = '<span class="placeholder">Aucun message</span>';
+            panel.classList.remove('has-msg');
+            inner.innerHTML = '<span class="placeholder">Aucun message</span>';
             meta.innerText = '';
         }
         hist.innerHTML = (state.history || []).slice(0, 6).map(function (m) {
@@ -451,7 +465,62 @@
             return '<div class="h-row"><b>' + (m.from || '—') + '</b> · ' +
                 pad2(when.getHours()) + ':' + pad2(when.getMinutes()) + ' — ' + m.text + '</div>';
         }).join('');
+        // Adapter la taille du texte au conteneur (après rafraîchissement du layout)
+        setTimeout(fitMsgText, 0);
     }
+
+    // Ajuste la taille de police du message courant pour remplir au maximum
+    // l'espace disponible (largeur ET hauteur), sans déborder.
+    function fitMsgText() {
+        var cur = document.getElementById('msg-current');
+        var inner = document.getElementById('msg-inner');
+        if (!cur || !inner) return;
+        var ph = inner.querySelector('.placeholder');
+        if (ph) { inner.style.fontSize = ''; inner.style.whiteSpace = ''; return; }
+        var text = (inner.textContent || '').trim();
+        if (!text) { inner.style.fontSize = ''; return; }
+
+        var availW = cur.clientWidth - 8;   // padding 8 14 8 14 → ~8px marge utile
+        var availH = cur.clientHeight - 8;
+        if (availW < 20 || availH < 20) return;
+
+        inner.style.display = 'inline-block';
+        inner.style.width = 'auto';
+        inner.style.whiteSpace = 'nowrap';
+
+        // Recherche taille max en LIGNE UNIQUE
+        var lo = 12, hi = 600, bestOne = 0;
+        for (var i = 0; i < 20; i++) {
+            var mid = (lo + hi) / 2;
+            inner.style.fontSize = mid + 'px';
+            if (inner.offsetWidth <= availW && inner.offsetHeight <= availH) {
+                bestOne = mid; lo = mid;
+            } else { hi = mid; }
+        }
+
+        // Si le texte rentre en une seule ligne à une taille confortable, on garde.
+        if (bestOne >= 56) {
+            inner.style.fontSize = Math.floor(bestOne) + 'px';
+            return;
+        }
+
+        // Sinon, MULTI-LIGNE : on force la largeur et on cherche la taille max
+        // qui rentre en hauteur.
+        inner.style.display = 'block';
+        inner.style.width = '100%';
+        inner.style.whiteSpace = 'pre-wrap';
+        lo = 12; hi = Math.min(500, availH);
+        var best = 12;
+        for (var j = 0; j < 20; j++) {
+            var m = (lo + hi) / 2;
+            inner.style.fontSize = m + 'px';
+            if (inner.scrollHeight <= availH) { best = m; lo = m; }
+            else { hi = m; }
+        }
+        inner.style.fontSize = Math.max(14, Math.floor(best - 1)) + 'px';
+    }
+    window.addEventListener('resize', fitMsgText);
+    window.addEventListener('load', function () { setTimeout(fitMsgText, 50); setTimeout(fitMsgText, 400); });
 
     // ============================================================
     // PANNEAU DE CONTRÔLE (?admin=1) : minuteur + envoi de messages

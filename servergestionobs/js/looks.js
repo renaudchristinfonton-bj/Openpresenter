@@ -85,6 +85,9 @@
     function saveCustomList(list) {
         try { localStorage.setItem('looksCustom', JSON.stringify(list)); } catch (e) { /* silencieux */ }
         if (window.OpenStore) { try { window.OpenStore.set('looks', 'list', list); } catch (e) { /* silencieux */ } }
+        // Notifie toutes les pages ouvertes qu'un look a été enregistré/supprimé
+        // (permet au Command Center de rafraîchir sa carte sans reload).
+        try { chan().postMessage({ type: 'saved' }); } catch (e) { /* silencieux */ }
     }
 
     function saveCustom(look) {

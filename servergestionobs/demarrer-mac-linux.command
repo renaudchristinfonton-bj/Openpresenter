@@ -82,5 +82,5 @@ echo ""
 echo "[4/4] Démarrage du serveur relais..."
 echo "(Laissez cette fenêtre ouverte tant que vous diffusez)"
 echo ""
-node sync-relay-server.js
+OPEN=1 node sync-relay-server.js
 read -p "Appuyez sur Entrée pour fermer..."

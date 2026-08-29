@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide de démarrage — OpenPresenter</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; line-height: 1.6;
+        font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+    h1 { font-size: 26px; color: #fff; }
+    h1 .wave { font-size: 30px; }
+    .lead { color: #94a3b8; font-size: 14.5px; margin-bottom: 28px; }
+    h2 { font-size: 18px; color: #fff; margin-top: 38px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+    h2 .n { display: inline-block; background: #1d4ed8; color: #fff; border-radius: 8px; width: 26px; height: 26px;
+        text-align: center; line-height: 26px; font-size: 14px; margin-right: 8px; }
+    .card { background: #111a2e; border: 1px solid #1e293b; border-radius: 12px; padding: 16px 18px; margin: 14px 0; }
+    .card b { color: #fff; }
+    .step { display: flex; gap: 12px; margin: 10px 0; }
+    .step .k { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #14532d; color: #4ade80;
+        font-weight: 800; text-align: center; line-height: 26px; font-size: 13px; }
+    .step .v { font-size: 14px; }
+    code { background: #1e293b; border-radius: 6px; padding: 2px 7px; font-size: 13px; color: #93c5fd; }
+    .tip { border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, .07); }
+    .tip b { color: #fbbf24; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e293b; }
+    th { color: #94a3b8; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; }
+    a { color: #93c5fd; }
+    .back { display: inline-block; margin-bottom: 18px; background: #1e293b; border: 1px solid #334155;
+        color: #e2e8f0; padding: 8px 14px; border-radius: 9px; text-decoration: none; font-weight: 700; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <a class="back" href="index.html">← Retour à l'accueil</a>
+    <h1><span class="wave">🎛️</span> Guide de démarrage OpenPresenter</h1>
+    <p class="lead">De l'installation au culte de dimanche — en 10 minutes. Tout se passe sur votre réseau local :
+    aucune connexion Internet n'est nécessaire après le premier lancement, et vos données restent dans le dossier du projet.</p>
+
+    <h2><span class="n">1</span>Installation (une seule fois)</h2>
+    <div class="card">
+        <div class="step"><div class="k">1</div><div class="v">Installez <b>Node.js</b> (version LTS) depuis <code>nodejs.org</code> — c'est le petit moteur qui fait tourner le serveur.</div></div>
+        <div class="step"><div class="k">2</div><div class="v">Double-cliquez sur <b>demarrer-windows.bat</b> (ou <b>demarrer-mac-linux.command</b>). Le navigateur s'ouvre tout seul sur la page d'accueil.</div></div>
+        <div class="step"><div class="k">3</div><div class="v">Si Windows demande d'autoriser Node.js sur le réseau privé : <b>acceptez</b> (c'est ce qui permet aux autres appareils de se connecter).</div></div>
+    </div>
+    <div class="card tip"><b>Astuce :</b> pour découvrir OpenPresenter sans rien saisir, cliquez
+        <b>« 🧪 Installer le contenu de démo »</b> sur la page d'accueil (2 chants avec accords, un look, une trame du temps, un plan de culte).</div>
+
+    <h2><span class="n">2</span>Branchez OBS (5 minutes)</h2>
+    <div class="card">
+        <div class="step"><div class="k">1</div><div class="v">Dans OBS : <b>Sources → + → Navigateur</b>. Copiez-y le lien « Lien général » de l'outil (bouton <b>Copier</b> dans chaque outil).</div></div>
+        <div class="step"><div class="k">2</div><div class="v">Réglez la Source Navigateur en <b>1920 × 1080</b> (ou la taille exacte choisie dans le panneau « Résolution de sortie »).</div></div>
+        <div class="step"><div class="k">3</div><div class="v">Encore plus simple : bouton <b>« 🎬 Installer les scènes OBS »</b> de la page d'accueil (crée tout automatiquement si obs-websocket est activé).</div></div>
+    </div>
+
+    <h2><span class="n">3</span>Checklist du dimanche matin</h2>
+    <div class="card">
+        <div class="step"><div class="k">✓</div><div class="v">Lancer <b>demarrer-windows.bat</b> → le navigateur s'ouvre. Laissez la fenêtre noire ouverte.</div></div>
+        <div class="step"><div class="k">✓</div><div class="v">Régie : ouvrir le <b>Studio Unifié</b> (tout-en-un) — champ « 🔍 Tout chercher » pour trouver un chant/verset/média et <b>Entrée</b> pour diffuser.</div></div>
+        <div class="step"><div class="k">✓</div><div class="v">Ouvrir la <b>Régie Pasteur</b> sur un 2ᵉ écran : file de décomptes (ordonnables à la souris) + envoi de messages.</div></div>
+        <div class="step"><div class="k">✓</div><div class="v">Écran du pasteur : <b>vue_pasteur.html</b> sur sa tablette/TV (3/5 diffusion · 1/5 minuteur · 1/5 messages). Écran des musiciens : <b>stage_display.html</b>.</div></div>
+        <div class="step"><div class="k">✓</div><div class="v">Habillage : carte <b>🎨 Looks</b> de l'accueil — un clic change Bible + Paroles.</div></div>
+        <div class="step"><div class="k">✓</div><div class="v">Fin de culte : bouton « ⬇️ Sauvegarder tout » de l'accueil → un seul fichier avec tout.</div></div>
+    </div>
+
+    <h2><span class="n">4</span>Où trouver quoi</h2>
+    <table>
+        <tr><th>Écran</th><th>Usage</th></tr>
+        <tr><td><b>Studio Unifié</b></td><td>La régie tout-en-un : Bible, Paroles, Médias, Titres + recherche universelle.</td></tr>
+        <tr><td><b>File de déroulement</b></td><td>Le plan du culte dans l'ordre — importable (CSV / Planning Center), avance d'une touche.</td></tr>
+        <tr><td><b>Régie Pasteur / Vue Pasteur</b></td><td>Minuteur + messages ↔ écran du pasteur.</td></tr>
+        <tr><td><b>Écran Scène</b></td><td>Paroles courante + suivante, horloge, minuteur — face aux musiciens.</td></tr>
+        <tr><td><b>Mur de Sorties</b></td><td>Voir les 4 sorties OBS en même temps.</td></tr>
+        <tr><td><b>Studio de Looks</b></td><td>Créer vos habillages (couleurs, photos, cadres dessinés à la souris, logo).</td></tr>
+        <tr><td><b>Minuteur — Contrôle / Écran</b></td><td>La trame du temps (file réordonnable ▲▼/glisser, ▶ démarrer depuis un élément).</td></tr>
+    </table>
+
+    <h2><span class="n">5</span>Problèmes fréquents</h2>
+    <div class="card">
+        <b>Le badge dit « Local uniquement »</b> — la page a été ouverte en double-clic. Ouvrez-la via <code>http://localhost:8787/…</code> (le serveur doit tourner).<br><br>
+        <b>Un autre PC ne se connecte pas</b> — utilisez l'adresse « Depuis le réseau » affichée au démarrage ; vérifiez que les deux appareils sont sur le même WiFi et que le pare-feu autorise Node.js (réseau privé).<br><br>
+        <b>Le port 8787 est pris</b> — un serveur tourne déjà (utilisez-le) ou lancez avec un autre port : <code>set PORT=9000</code> puis le .bat.<br><br>
+        <b>Une page reste vide</b> — appuyez sur F5 ; si un bandeau rouge « Erreur… » apparaît, notez le message : il dit exactement quoi signaler.
+    </div>
+
+    <p style="margin-top:34px;color:#475569;font-size:12.5px">OpenPresenter — 100 % local, sans abonnement. Tout ce qui est dans le dossier du projet (médias, chants, réglages, looks) voyage avec lui : copiez le dossier, et la régie suit.</p>
+</div>
+<script src="js/pwa.js"></script>
+</body>
+</html>

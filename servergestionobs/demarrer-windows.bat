@@ -83,6 +83,7 @@ REM ---------------------------------------------------------
 echo [4/4] Demarrage du serveur relais...
 echo ^(Laissez cette fenetre ouverte tant que vous diffusez^)
 echo.
+set OPEN=1
 node sync-relay-server.js
 if errorlevel 1 (
     echo.

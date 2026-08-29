@@ -826,10 +826,17 @@
         state = 'idle';
         endTime = null;
         currentTitle = '';
+        remainingOnPause = 0;
+        queue = [];
         liveClock.textContent = '00:00:00';
         liveClock.className = 'live-clock';
         liveTitle.textContent = '—';
+        renderQueue();
         channel.postMessage({ type: 'RESET' });
+        try {
+            if (window.OpenStore) OpenStore.set('timer', 'state', null);
+            else localStorage.removeItem('timer:state');
+        } catch (e) { /* silencieux */ }
         persistState();
         updateStatus('idle');
         updateLiveUI();

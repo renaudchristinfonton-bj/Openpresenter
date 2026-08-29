@@ -36,7 +36,16 @@ const os = require('os');
 const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT, 10) || 8787;
-const ROOT_DIR = __dirname;
+// SEA (Single Executable Application) : si on tourne depuis un binaire Node
+// compilé (node --experimental-sea-config), les fichiers sont à côté de l'exe
+// et non à côté de ce script (qui est alors embarqué dans le binaire).
+let ROOT_DIR = __dirname;
+try {
+    const sea = require('node:sea');
+    if (sea.isSea && sea.isSea()) {
+        ROOT_DIR = path.dirname(process.execPath);
+    }
+} catch (e) { /* node:sea indisponible sur Node ancien — rien à faire */ }
 // Dossier de stockage des données utilisateur (favoris, chants, présets...) pour que
 // vos réglages "vous suivent" d'un PC à l'autre sur le réseau.
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -148,12 +157,26 @@ const server = http.createServer((req, res) => {
     }
 
     // Routes de stockage des données (axe "vos données vous suivent") :
-    //   GET /data/<namespace>/<cle>.json   -> lit le fichier dans le dossier data/
-    //   PUT /data/<namespace>/<cle>.json   -> écrit ce fichier sur disque
-    const dataMatch = urlPath.match(/^\/data\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\.json$/);
+    //   GET /data/<namespace>[/<sous-dossier>]/<cle>.json   -> lit le fichier
+    //   PUT/POST /data/.../<cle>.json                      -> écrit
+    //   DELETE /data/.../<cle>.json                        -> supprime
+    // La clé peut contenir des sous-dossiers (ex: media/item/<id>.json) ;
+    // on interdit formellement '..' pour éviter toute remontée hors de DATA_DIR.
+    const dataMatch = urlPath.match(/^\/data\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*)\.json$/);
     if (dataMatch) {
-        const ns = dataMatch[1], key = dataMatch[2];
-        const storePath = path.join(DATA_DIR, ns, key + '.json');
+        const fullKey = dataMatch[1];
+        if (/(^|[/\\])\.\.([/\\]|$)/.test(fullKey)) {
+            res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('400 - Chemin invalide');
+            return;
+        }
+        const storePath = path.join(DATA_DIR, fullKey + '.json');
+        // Sécurité anti-traversal sur le chemin résolu
+        const resolvedStore = path.resolve(storePath);
+        const resolvedRoot = path.resolve(DATA_DIR);
+        if (!resolvedStore.startsWith(resolvedRoot + path.sep) && resolvedStore !== resolvedRoot) {
+            res.writeHead(400); res.end('400 - Chemin invalide'); return;
+        }
         if (req.method === 'GET') {
             fs.readFile(storePath, (err, data) => {
                 if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 - Aucune donnée'); return; }
@@ -164,8 +187,6 @@ const server = http.createServer((req, res) => {
         }
         if (req.method === 'PUT' || req.method === 'POST') {
             let body = '';
-            // Limite large : les médias (images/vidéos) sont encodés en base64 et peuvent
-            // être volumineux. 1 Go pour rester portable sans bloquer.
             req.on('data', c => { body += c; if (body.length > 1024 * 1024 * 1024) req.destroy(); });
             req.on('end', () => {
                 try {
@@ -180,7 +201,58 @@ const server = http.createServer((req, res) => {
             });
             return;
         }
+        if (req.method === 'DELETE') {
+            try { fs.unlinkSync(storePath); } catch (e) { /* fichier absent : sans erreur */ }
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end('{"ok":true}');
+            return;
+        }
         res.writeHead(405); res.end('405'); return;
+    }
+
+    // API remote : reçoit des commandes (couper, relancer, broadcast) envoyées
+    // par un contrôleur (télécommande, Stream Deck, …).
+    if (urlPath === '/api/remote' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 65536) req.destroy(); });
+        req.on('end', () => {
+            try {
+                const payload = JSON.parse(body || '{}');
+                const cmd = payload.cmd;
+                const ALLOWED = new Set(['obs_bible_channel', 'obs_lyrics_channel', 'obs_media_channel',
+                                        'obs_lt_channel', 'timer_channel', 'pasteur_channel', 'api_remote_channel']);
+                if (cmd === 'cut') {
+                    // Ordre « cacher tout » : masque Bible, Paroles, Médias.
+                    broadcast('obs_bible_channel', null, JSON.stringify({ action: 'hide' }));
+                    broadcast('obs_lyrics_channel', null, JSON.stringify({ action: 'hide' }));
+                    broadcast('obs_media_channel', null, JSON.stringify({ action: 'hide' }));
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end('{"ok":true,"cmd":"cut"}');
+                    return;
+                }
+                if (cmd === 'relaunch') {
+                    // Redemande l'affichage courant (après reconnexion OBS).
+                    broadcast('api_remote_channel', null, JSON.stringify({ cmd: 'relaunch' }));
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end('{"ok":true,"cmd":"relaunch"}');
+                    return;
+                }
+                // Broadcast générique : { channel, data }
+                const ch = payload.channel;
+                if (ch && ALLOWED.has(ch) && payload.data !== undefined) {
+                    broadcast(ch, null, JSON.stringify(payload.data));
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end('{"ok":true}');
+                    return;
+                }
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end('{"ok":false,"error":"bad_request"}');
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end('{"ok":false,"error":"invalid_json"}');
+            }
+        });
+        return;
     }
 
 
@@ -555,6 +627,19 @@ server.listen(PORT, () => {
     console.log('  Laissez cette fenêtre ouverte tant que vous diffusez.');
     console.log('========================================================');
     console.log('');
+
+    // Ouverture automatique du navigateur quand OPEN=1 (lanceurs .bat/.command).
+    if (process.env.OPEN === '1') {
+        const url = `http://localhost:${PORT}/`;
+        const opener = process.platform === 'darwin' ? 'open'
+                     : process.platform === 'win32'  ? 'cmd'
+                     : 'xdg-open';
+        const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+        setTimeout(() => {
+            try { require('child_process').spawn(opener, args, { detached: true, stdio: 'ignore' }).unref(); }
+            catch (e) { /* silencieux */ }
+        }, 900);
+    }
 
     // Affichage périodique des serveurs OpenPresenter découverts sur le réseau
     setInterval(() => {

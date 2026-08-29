@@ -293,6 +293,19 @@
                     stateBadge.textContent = 'TERMINÉ';
                     break;
 
+                case 'QUEUE_UPDATE':
+                    // Mise à jour de la file (reçue pendant REsync, réorganisation, …)
+                    if (queuePreview) {
+                        queuePreview.innerHTML = '';
+                        (msg.queue || []).forEach((item, i) => {
+                            const chip = document.createElement('div');
+                            chip.className = 'queue-chip' + (i === 0 ? ' next' : '');
+                            chip.textContent = (item.title ? item.title + ' · ' : '') + formatTime(item.duration);
+                            queuePreview.appendChild(chip);
+                        });
+                    }
+                    break;
+
                 case 'RESET':
                     clearInterval(intervalId);
                     isPaused = false;

@@ -176,6 +176,7 @@
         </div>
         <span class="status"><span class="dot"></span>Serveur actif</span>
         <button id="btn-assistant" class="status" style="margin-left:0; cursor:pointer; border:1px solid #14532d;" title="Rouvrir l'assistant de configuration">🧭 Assistant</button>
+        <a href="guide.html" target="_blank" class="status" style="margin-left:0; text-decoration:none; border:1px solid #1e40af;" title="Guide d'utilisation">❓ Guide</a>
     </div>
 
     <!-- Hero : accès immédiat au Studio Unifié -->
@@ -187,6 +188,17 @@
         </div>
         <span class="spacer"></span>
         <a class="btn-hero" href="studio_unifie.html" target="_blank">▶ Ouvrir le Studio Unifié</a>
+    </div>
+
+    <!-- Carte démo : 1er clic, installe le contenu d'exemple -->
+    <div class="card-box">
+        <h3 class="card-title">🧪 Démarrage rapide</h3>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
+            Cliquez ci-dessous pour installer un exemple de chant et commencer à tester
+            tout de suite (idempotent : ne fait rien si du contenu existe déjà).
+        </p>
+        <button id="btn-demo" class="btn-action" style="cursor:pointer;">🧪 Charger la démo</button>
+        <span id="demo-log" style="margin-left:10px; font-size:12px; color:var(--muted);"></span>
     </div>
 
     <!-- Looks : habillage global en 1 clic -->
@@ -314,7 +326,9 @@
 
 <script src="js/qrcode.js"></script>
     <script src="js/remote-channel.js"></script>
+    <script src="store.js"></script>
     <script src="js/looks.js"></script>
+    <script src="js/demo-content.js"></script>
 <script>
     // Données injectées par le serveur relais (adresses réseau). Si la page est ouverte
     // directement en double-clic (file://) ou hors serveur, on se replie sur localhost.
@@ -775,6 +789,55 @@
                 row2.appendChild(del);
             });
         });
+
+        // Rafraîchissement en direct des looks personnalisés : dès qu'un look
+        // est enregistré/supprimé dans looks_editor.html, la carte se met à jour
+        // sans recharger la page.
+        function renderCustomLooks(list) {
+            var row2 = document.getElementById('looks-custom-row');
+            if (!row2) return;
+            row2.innerHTML = '';
+            (list || []).forEach(function (l) {
+                var b = document.createElement('button');
+                b.className = 'btn-action';
+                b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + ((l.bible && l.bible.accentColor) || '#334155') + ';';
+                b.innerHTML = (l.icon || '🎨') + ' ' + l.name;
+                b.onclick = function () { OpenLooks.apply(l); };
+                var del = document.createElement('button');
+                del.className = 'btn-action';
+                del.style.cssText = 'padding:4px 8px;color:#fca5a5;';
+                del.innerText = '✕';
+                del.onclick = function () {
+                    if (!confirm('Supprimer le look « ' + l.name + ' » ?')) return;
+                    OpenLooks.deleteCustom(l.id).then(function () {
+                        OpenLooks.loadCustom().then(renderCustomLooks);
+                    });
+                };
+                row2.appendChild(b);
+                row2.appendChild(del);
+            });
+        }
+        try {
+            var lchan = new RemoteChannel('looks_channel');
+            lchan.onmessage = function (ev) {
+                if (ev.data && ev.data.type === 'saved') {
+                    OpenLooks.loadCustom().then(renderCustomLooks);
+                }
+            };
+        } catch (e) { /* silencieux */ }
+
+        // Bouton Démo : installe le contenu d'exemple (idempotent).
+        var btnDemo = document.getElementById('btn-demo');
+        if (btnDemo && window.OpenDemo) {
+            btnDemo.addEventListener('click', function () {
+                btnDemo.disabled = true;
+                OpenDemo.install().then(function () {
+                    var log = document.getElementById('demo-log');
+                    if (log) log.innerText = '✓ Démo installée.';
+                    btnDemo.disabled = false;
+                }).catch(function () { btnDemo.disabled = false; });
+            });
+        }
     })();
 </script>
 </body>

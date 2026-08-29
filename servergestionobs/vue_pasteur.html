@@ -101,16 +101,16 @@
     .msg-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .msg-current {
         flex: 1; display: flex; align-items: center; justify-content: center;
-        padding: 8px 14px; text-align: center; font-weight: 800;
         color: #e2e8f0; overflow: hidden; position: relative; min-height: 0;
+        padding: 32px 72px;
+        box-sizing: border-box;
     }
     .msg-inner {
-        width: 100%;
-        /* font-size ajusté automatiquement en JS par fitMsgText() */
-        font-size: 24px; line-height: 1.12;
+        max-width: 100%; max-height: 100%;
+        font-size: 24px; line-height: 1.18;
         font-weight: 800; text-align: center;
-        overflow-wrap: break-word; word-break: normal;
-        white-space: pre-wrap; hyphens: auto;
+        overflow-wrap: normal; word-break: normal; hyphens: none;
+        white-space: pre-wrap;
     }
     .msg-current .placeholder { color: #334155; font-size: 18px !important; font-weight: 700; }
     .msg-panel.info    .msg-current { background: rgba(59, 130, 246, .08); }
@@ -469,8 +469,9 @@
         setTimeout(fitMsgText, 0);
     }
 
-    // Ajuste la taille de police du message courant pour remplir au maximum
-    // l'espace disponible (largeur ET hauteur), sans déborder.
+    // Ajuste la taille de police pour remplir la zone sans déborder ni
+    // couper de mot (on mesure VRAIMENT le rendu DOM final, donc pas de
+    // problème de police de remplacement entre canvas et DOM).
     function fitMsgText() {
         var cur = document.getElementById('msg-current');
         var inner = document.getElementById('msg-inner');
@@ -480,44 +481,92 @@
         var text = (inner.textContent || '').trim();
         if (!text) { inner.style.fontSize = ''; return; }
 
-        var availW = cur.clientWidth - 8;   // padding 8 14 8 14 → ~8px marge utile
-        var availH = cur.clientHeight - 8;
-        if (availW < 20 || availH < 20) return;
-
-        inner.style.display = 'inline-block';
-        inner.style.width = 'auto';
-        inner.style.whiteSpace = 'nowrap';
-
-        // Recherche taille max en LIGNE UNIQUE
-        var lo = 12, hi = 600, bestOne = 0;
-        for (var i = 0; i < 20; i++) {
-            var mid = (lo + hi) / 2;
-            inner.style.fontSize = mid + 'px';
-            if (inner.offsetWidth <= availW && inner.offsetHeight <= availH) {
-                bestOne = mid; lo = mid;
-            } else { hi = mid; }
+        // Sonde de mesure dans le conteneur (même police que le texte final).
+        // Placée en absolute pour ne pas être affectée par le flex du parent.
+        var probe = document.getElementById('msg-probe');
+        if (!probe) {
+            probe = document.createElement('span');
+            probe.id = 'msg-probe';
+            probe.style.cssText = 'position:absolute;left:0;top:0;white-space:nowrap;visibility:hidden;font-weight:800;line-height:1.18;font-family:inherit;pointer-events:none;';
+            cur.appendChild(probe);
         }
 
-        // Si le texte rentre en une seule ligne à une taille confortable, on garde.
-        if (bestOne >= 56) {
-            inner.style.fontSize = Math.floor(bestOne) + 'px';
+        // Zone disponible dans le conteneur (après padding de .msg-current)
+        var ccs = getComputedStyle(cur);
+        var padL = parseFloat(ccs.paddingLeft) || 0;
+        var padR = parseFloat(ccs.paddingRight) || 0;
+        var padT = parseFloat(ccs.paddingTop) || 0;
+        var padB = parseFloat(ccs.paddingBottom) || 0;
+        var availW = cur.clientWidth - padL - padR;
+        var availH = cur.clientHeight - padT - padB;
+        if (availW < 30 || availH < 30) return;
+
+        function measureLine(str, fs) {
+            probe.style.fontSize = fs + 'px';
+            probe.textContent = str;
+            return probe.offsetWidth;
+        }
+
+        var lineH = 1.18;
+
+        // 1) Taille max en 1 LIGNE
+        var lo = 12, hi = 400, bestOne = 0;
+        for (var i = 0; i < 22; i++) {
+            var mid = (lo + hi) / 2;
+            var w = measureLine(text, mid);
+            var h = mid * lineH;
+            if (w <= availW && h <= availH) { bestOne = mid; lo = mid; }
+            else { hi = mid; }
+        }
+        if (bestOne >= 100) {
+            inner.style.whiteSpace = 'nowrap';
+            var fsOne = Math.floor(bestOne);
+            inner.style.fontSize = fsOne + 'px';
+            while (fsOne > 14 && (inner.offsetWidth > availW + 1 || inner.offsetHeight > availH + 1)) {
+                fsOne -= 2; inner.style.fontSize = fsOne + 'px';
+            }
             return;
         }
 
-        // Sinon, MULTI-LIGNE : on force la largeur et on cherche la taille max
-        // qui rentre en hauteur.
-        inner.style.display = 'block';
-        inner.style.width = '100%';
-        inner.style.whiteSpace = 'pre-wrap';
-        lo = 12; hi = Math.min(500, availH);
+        // 2) MULTI-LIGNES
+        var words = text.split(/\s+/).filter(Boolean);
+        var longestWord = words.reduce(function (a, b) { return b.length > a.length ? b : a; }, '');
+        lo = 12; hi = 400; var maxByWord = 12;
+        for (var k = 0; k < 22; k++) {
+            var mw = (lo + hi) / 2;
+            if (measureLine(longestWord, mw) <= availW) { maxByWord = mw; lo = mw; }
+            else { hi = mw; }
+        }
+
+        function estHeight(fs) {
+            var spaceW = measureLine('\u00A0', fs);
+            var lines = 1, lineW = 0;
+            for (var i = 0; i < words.length; i++) {
+                var ww = measureLine(words[i], fs);
+                if (lineW === 0) lineW = ww;
+                else if (lineW + spaceW + ww <= availW) lineW += spaceW + ww;
+                else { lines++; lineW = ww; }
+            }
+            return lines * fs * lineH;
+        }
+
+        lo = 12; hi = Math.min(maxByWord, availH);
         var best = 12;
-        for (var j = 0; j < 20; j++) {
+        for (var j = 0; j < 22; j++) {
             var m = (lo + hi) / 2;
-            inner.style.fontSize = m + 'px';
-            if (inner.scrollHeight <= availH) { best = m; lo = m; }
+            if (estHeight(m) <= availH) { best = m; lo = m; }
             else { hi = m; }
         }
-        inner.style.fontSize = Math.max(14, Math.floor(best - 1)) + 'px';
+        // Post-pass
+        inner.style.whiteSpace = 'pre-wrap';
+        var fs = Math.max(14, best);
+        inner.style.fontSize = fs + 'px';
+        var safety = 40;
+        while (safety-- > 0 && fs > 14 &&
+               (inner.offsetHeight > availH + 1 || inner.offsetWidth > availW + 1)) {
+            fs -= 2;
+            inner.style.fontSize = fs + 'px';
+        }
     }
     window.addEventListener('resize', fitMsgText);
     window.addEventListener('load', function () { setTimeout(fitMsgText, 50); setTimeout(fitMsgText, 400); });

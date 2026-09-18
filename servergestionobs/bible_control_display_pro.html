@@ -14,7 +14,7 @@
     <script src="js/remote-channel.js"></script>
     <script src="js/live-mutex.js"></script>
     <script src="js/looks.js"></script>
-    
+    <script src="js/remote-commands.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; overflow: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -42,6 +42,10 @@
         body.res-adapt .obs-bottom { bottom: 5.56%; left: 10%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
         body.res-adapt .obs-bottom-right { bottom: 5.56%; right: 3.13%; width: 80%; height: 25%; padding: calc(var(--ch) * 20 / 1080) calc(var(--cw) * 48 / 1920); }
         body.res-adapt .obs-screen80 { top: 10%; left: 10%; width: 80%; height: 80%; padding: calc(var(--ch) * 64 / 1080); }
+        body.res-adapt .obs-custom {
+            left: 20%; right: 20%; bottom: 8%;
+            padding: calc(var(--ch) * 24 / 1080) calc(var(--cw) * 44 / 1920);
+        }
         body.res-adapt .obs-scrolling { bottom: 0; left: 0; width: 100%; height: 7.41%; }
         /* Écran PLUS LARGE que 16:9 (bandeau, écran étiré) : la mise en page
            s'élargit pour occuper agréablement la surface — moins d'espace mort
@@ -64,6 +68,44 @@
         .obs-bottom-right { position: absolute; bottom: 60px; right: 60px; width: 1536px; height: 270px; padding: 20px 48px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-right: 8px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 16px); box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; text-align: right; box-sizing: border-box; overflow: hidden; }
 
         .obs-screen80 { position: absolute; top: 108px; left: 192px; width: 1536px; height: 864px; padding: 64px; background: var(--bg-color, rgba(15, 23, 42, 0.92)); border-top: 6px solid var(--accent-color, #f59e0b); border-bottom: 6px solid var(--accent-color, #f59e0b); border-radius: var(--shape-radius, 20px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; overflow: hidden; }
+
+        /* Mode CUSTOM : position/taille pilotés par variables CSS (--custom-left/
+           right/top/bottom/width/height). Défaut = bas centré 60% × 25%. */
+        .obs-custom {
+            position: absolute;
+            left: var(--custom-left, 20%);
+            right: var(--custom-right, 20%);
+            bottom: var(--custom-bottom, 8%);
+            top: var(--custom-top, auto);
+            width: var(--custom-width, auto);
+            height: var(--custom-height, auto);
+            padding: 24px 44px;
+            background: var(--bg-color, rgba(15, 23, 42, 0.92));
+            border-left: 8px solid var(--accent-color, #f59e0b);
+            border-radius: var(--shape-radius, 16px);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center;
+            text-align: var(--custom-align, center);
+            box-sizing: border-box; overflow: hidden;
+        }
+        .obs-custom.ref-top .verse-ref { order: -1; margin-bottom: 12px; }
+        .obs-custom.ref-bottom .verse-ref { margin-top: 12px; }
+        .hide-ref .verse-ref, .hide-ref .version-badge { display: none !important; }
+
+        /* Fond totalement transparent : aucune bordure, ombre ni flou. */
+        .obs-transparent { background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; }
+        .obs-transparent::before, .obs-transparent::after { display: none !important; }
+        /* Image cover NETTE (overlay ProPresenter) */
+        .has-bg-cover { background: transparent !important; }
+        .has-bg-cover::before { content:''; position:absolute; inset:0; background-image:var(--bg-image); background-size:cover; background-position:center; z-index:0; border-radius: inherit; }
+        .has-bg-cover::after { content:''; position:absolute; inset:0; background:var(--bg-color, rgba(15,23,42,0.4)); z-index:1; border-radius: inherit; }
+        /* Navigation par clic sur la carte */
+        .obs-split-hint { cursor: pointer; position: relative; }
+        .parts-hint-left,.parts-hint-right { position:absolute; top:0; bottom:0; width:16%; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.25); font-size:48px; font-weight:800; pointer-events:none; opacity:0; transition:opacity .2s; z-index:5; }
+        .parts-hint-left { left:0; }
+        .parts-hint-right { right:0; }
+        .has-parts:hover .parts-hint-left, .has-parts:hover .parts-hint-right { opacity:1; }
 
         .obs-scrolling { position: absolute; bottom: 0; left: 0; width: 1920px; height: 80px; background: var(--bg-color, rgba(15, 23, 42, 0.95)); border-top: 3px solid var(--accent-color, #f59e0b); display: flex; align-items: center; overflow: hidden; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); box-sizing: border-box; }
 
@@ -129,6 +171,8 @@
         <div id="obs-container">
             <div id="obs-card-element">
                 <div id="obs-content-area"></div>
+                <div class="parts-hint-left" id="parts-hint-l">‹</div>
+                <div class="parts-hint-right" id="parts-hint-r">›</div>
             </div>
         </div>
     </div>
@@ -167,6 +211,7 @@
                         <option value="screen80">80% Écran (Centré)</option>
                         <option value="bottom">Bas Centré</option>
                         <option value="bottom-right">Bas Droite</option>
+                        <option value="custom">Custom (libre)</option>
                         <option value="scrolling">Ruban Défilant</option>
                     </select>
                 </div>
@@ -383,6 +428,18 @@
                     <input type="checkbox" id="set-line-mode" class="w-5 h-5 accent-amber-500">
                     <label for="set-line-mode" class="text-sm text-slate-300" title="Versets longs : affichage ligne par ligne. Sur les sorties « bas centré » et « bas droite » uniquement, un verset trop long est en plus découpé en plusieurs affichages successifs (boutons ← →). Les autres sorties ne sont pas affectées.">Afficher ligne par ligne (versets longs)</label>
                 </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="set-hide-ref" class="w-5 h-5 accent-amber-500">
+                    <label for="set-hide-ref" class="text-sm text-slate-300" title="Masque la référence biblique et le badge de version sur le rendu. Utile pour un affichage plus discret.">Cacher la référence</label>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="set-transparent" class="w-5 h-5 accent-amber-500">
+                    <label for="set-transparent" class="text-sm text-slate-300" title="Supprime tout fond, toute bordure, toute ombre et tout flou : le texte s'affiche directement sur l'image/scène OBS sous-jacente.">Fond totalement transparent (pas de décor)</label>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="set-bg-cover" class="w-5 h-5 accent-amber-500">
+                    <label for="set-bg-cover" class="text-sm text-slate-300" title="Affiche l'image de fond NETTE (non floutée), en couverture du cadre avec la couleur de fond en superposition — style overlay ProPresenter.">Image de fond nette (overlay) plutôt que floutée</label>
+                </div>
             </div>
 
             <div class="mt-5 pt-5 border-t border-slate-700/50">
@@ -399,6 +456,48 @@
                     <label class="text-xs text-slate-400">Intensité du flou</label>
                     <input type="range" id="set-bg-blur" min="0" max="40" value="18" class="w-full accent-amber-500">
                 </div>
+            </div>
+
+            <div id="custom-section" class="hidden mt-5 pt-5 border-t border-slate-700/50 space-y-3">
+                <h3 class="text-base font-bold text-amber-400">Mode Custom — positionnement libre</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Position</label>
+                        <select id="set-custom-pos" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                            <option value="bottom">Bas centré</option>
+                            <option value="top">Haut</option>
+                            <option value="center">Centré</option>
+                            <option value="left">Gauche</option>
+                            <option value="right">Droite</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Alignement du texte</label>
+                        <select id="set-custom-align" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full">
+                            <option value="center">Centré</option>
+                            <option value="left">Gauche</option>
+                            <option value="right">Droite</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Position de la référence
+                            <select id="set-custom-refpos" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2 w-full mt-1">
+                                <option value="">Côté opposé (par défaut)</option>
+                                <option value="ref-top">Au-dessus du verset</option>
+                                <option value="ref-bottom">En dessous du verset</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Largeur du bandeau : <span id="set-custom-w-val" class="text-amber-400 font-bold">60%</span></label>
+                    <input type="range" id="set-custom-w" min="30" max="95" value="60" class="w-full accent-amber-500">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Marge par rapport au bord : <span id="set-custom-m-val" class="text-amber-400 font-bold">8%</span></label>
+                    <input type="range" id="set-custom-m" min="2" max="40" value="8" class="w-full accent-amber-500">
+                </div>
+                <p class="text-[11px] text-slate-500">Le mode Custom s'ajoute aux 5 modes historiques — il ne les modifie pas. Vous pouvez combiner cette position avec tous les autres réglages (couleur, police, forme, fond transparent).</p>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
@@ -467,7 +566,15 @@
             shapeRadius: 20,
             bgImage: null,
             bgBlur: 18,
-            lineMode: false
+            lineMode: false,
+            transparent: false,
+            hideRef: false,
+            bgCover: false,
+            customPos: 'bottom',
+            customAlign: 'center',
+            customWidth: 60,
+            customMargin: 8,
+            customRefPos: ''
         };
         let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
 
@@ -500,8 +607,25 @@
             document.getElementById('set-font-family').value = displaySettings.fontFamily;
             document.getElementById('set-shape').value = String(displaySettings.shapeRadius);
             document.getElementById('set-line-mode').checked = !!displaySettings.lineMode;
+            document.getElementById('set-hide-ref').checked = !!displaySettings.hideRef;
+            document.getElementById('set-transparent').checked = !!displaySettings.transparent;
+            document.getElementById('set-bg-cover').checked = !!displaySettings.bgCover;
             document.getElementById('set-bg-blur').value = displaySettings.bgBlur;
             document.getElementById('bg-image-status').innerText = displaySettings.bgImage ? 'Image chargée' : 'Aucune image';
+            document.getElementById('set-custom-pos').value = displaySettings.customPos || 'bottom';
+            document.getElementById('set-custom-align').value = displaySettings.customAlign || 'center';
+            document.getElementById('set-custom-w').value = displaySettings.customWidth || 60;
+            document.getElementById('set-custom-m').value = displaySettings.customMargin || 8;
+            document.getElementById('set-custom-w-val').innerText = (displaySettings.customWidth || 60) + '%';
+            document.getElementById('set-custom-m-val').innerText = (displaySettings.customMargin || 8) + '%';
+            document.getElementById('set-custom-refpos').value = displaySettings.customRefPos || '';
+            toggleCustomSection();
+        }
+
+        function toggleCustomSection() {
+            const mode = document.getElementById('obs-mode-select').value;
+            const sec = document.getElementById('custom-section');
+            if (sec) sec.classList.toggle('hidden', mode !== 'custom');
         }
 
         function updateSettingsFromForm() {
@@ -514,7 +638,17 @@
             displaySettings.fontFamily = document.getElementById('set-font-family').value;
             displaySettings.shapeRadius = Number(document.getElementById('set-shape').value);
             displaySettings.lineMode = document.getElementById('set-line-mode').checked;
+            displaySettings.hideRef = document.getElementById('set-hide-ref').checked;
+            displaySettings.transparent = document.getElementById('set-transparent').checked;
+            displaySettings.bgCover = document.getElementById('set-bg-cover').checked;
             displaySettings.bgBlur = Number(document.getElementById('set-bg-blur').value);
+            displaySettings.customPos = document.getElementById('set-custom-pos').value;
+            displaySettings.customAlign = document.getElementById('set-custom-align').value;
+            displaySettings.customWidth = Number(document.getElementById('set-custom-w').value);
+            displaySettings.customMargin = Number(document.getElementById('set-custom-m').value);
+            displaySettings.customRefPos = document.getElementById('set-custom-refpos').value;
+            document.getElementById('set-custom-w-val').innerText = displaySettings.customWidth + '%';
+            document.getElementById('set-custom-m-val').innerText = displaySettings.customMargin + '%';
         }
 
         function handleBgImageUpload(e) {
@@ -560,12 +694,20 @@
                 if (e.target.id === 'settings-modal') closeSettingsPanel();
             });
 
-            ['set-bg-color', 'set-bg-opacity', 'set-accent-color', 'set-text-color', 'set-font-family', 'set-shape', 'set-line-mode', 'set-bg-blur'].forEach(id => {
+            ['set-bg-color', 'set-bg-opacity', 'set-accent-color', 'set-text-color', 'set-font-family', 'set-shape', 'set-line-mode', 'set-hide-ref', 'set-transparent', 'set-bg-cover', 'set-bg-blur', 'set-custom-pos', 'set-custom-align', 'set-custom-refpos'].forEach(id => {
                 const el = document.getElementById(id);
                 const evt = (el.type === 'color' || el.type === 'range' || el.tagName === 'SELECT') ? 'input' : 'change';
                 el.addEventListener('input', updateSettingsFromForm);
                 el.addEventListener('change', updateSettingsFromForm);
             });
+            ['set-custom-w','set-custom-m'].forEach(id => {
+                const el = document.getElementById(id);
+                el.addEventListener('input', () => {
+                    updateSettingsFromForm();
+                    if (onAir && document.getElementById('obs-mode-select').value === 'custom') refreshOnAirDisplay();
+                });
+            });
+            document.getElementById('obs-mode-select').addEventListener('change', toggleCustomSection);
 
             document.getElementById('set-bg-image').addEventListener('change', handleBgImageUpload);
             document.getElementById('btn-remove-bg-image').addEventListener('click', removeBgImage);
@@ -844,8 +986,32 @@
                     <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
                     <div class="h-8"></div>
                 `;
+            } else if (config.mode === 'custom') {
+                modeClass = 'obs-custom anim-show';
+                if (config.customRefPos) modeClass += ' ' + config.customRefPos;
+                if (config.transparent) modeClass += ' obs-transparent';
+                if (config.bgCover) modeClass += ' has-bg-cover';
+                if (config.hideRef) modeClass += ' hide-ref';
+                function pct(v, d){ return (v != null && !isNaN(v)) ? v + '%' : d; }
+                if (config.customLeft  != null) card.style.setProperty('--custom-left',  pct(config.customLeft,  null)); else card.style.removeProperty('--custom-left');
+                if (config.customRight != null) card.style.setProperty('--custom-right', pct(config.customRight, null)); else card.style.removeProperty('--custom-right');
+                card.style.setProperty('--custom-bottom', config.customBottom!= null ? pct(config.customBottom,null) : '8%');
+                card.style.setProperty('--custom-top',    config.customTop  === 'auto' ? 'auto' : pct(config.customTop,'auto'));
+                card.style.setProperty('--custom-width',  config.customWidth ? pct(config.customWidth,null) : 'auto');
+                card.style.setProperty('--custom-height','auto');
+                card.style.setProperty('--custom-align', config.customAlign || 'center');
+                html = `
+                    <div class="flex items-center ${config.customAlign === 'right' ? 'justify-end' : (config.customAlign === 'left' ? 'justify-start' : 'justify-between')} gap-4 mb-2">
+                        ${config.customAlign !== 'right' ? '<div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ' + config.reference + '</div>' : ''}
+                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">' + config.version + '</span>
+                        ${config.customAlign === 'right' ? '<div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ' + config.reference + '</div>' : ''}
+                    </div>
+                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
+                `;
             } else { // full
                 modeClass = 'obs-full anim-show';
+                if (config.transparent) modeClass += ' obs-transparent';
+                if (config.bgCover) modeClass += ' has-bg-cover';
                 html = `
                     <div class="verse-ref mb-6" style="font-size: calc(var(--adapt-h, 1080px) * 50 / 1080);">
                         <span class="opacity-30" style="font-size: calc(var(--adapt-h, 1080px) * 40 / 1080); margin-right: 16px;">✝</span>
@@ -855,6 +1021,13 @@
                     <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
                     <div class="h-8"></div>
                 `;
+            }
+
+            // Appliquer les décorations aux autres modes aussi
+            if (config.mode !== 'custom') {
+                if (config.transparent) modeClass += ' obs-transparent';
+                if (config.bgCover) modeClass += ' has-bg-cover';
+                if (config.hideRef) modeClass += ' hide-ref';
             }
 
             if (config.bgImage) modeClass += ' has-bg-image';
@@ -896,6 +1069,7 @@
                 'screen80':      { min: 22, max: 95  },
                 'bottom':        { min: 14, max: 64  },
                 'bottom-right':  { min: 14, max: 64  },
+                'custom':        { min: 14, max: 72  },
             };
             const cfg = limits[mode];
             if (!cfg) return;
@@ -1970,11 +2144,27 @@
                 }
             }
 
+            const mode = document.getElementById('obs-mode-select').value;
+
+            // Mode custom : calcul des marges en % à partir des curseurs, selon la position choisie.
+            const w = (displaySettings.customWidth || 60);
+            const m = (displaySettings.customMargin || 8);
+            const side = (100 - w) / 2;
+            const cpos = displaySettings.customPos || 'bottom';
+            let cLeft=side, cRight=side, cTop='auto', cBottom=m, cWidth=null;
+            switch (cpos) {
+                case 'top':    cLeft=side; cRight=side; cTop=m;    cBottom='auto'; break;
+                case 'center': cLeft=side; cRight=side; cTop=side; cBottom=side;  break;
+                case 'left':   cLeft=m;    cRight=null; cTop='auto'; cBottom=m; cWidth=w; break;
+                case 'right':  cLeft=null; cRight=m;   cTop='auto'; cBottom=m; cWidth=w; break;
+                default:       cLeft=side; cRight=side; cTop='auto'; cBottom=m;
+            }
+
             const config = {
                 reference: refLabel,
                 text: combinedText,
                 version: usedFallback ? (version ? version.name : 'Favori') : (version ? version.name : ''),
-                mode: document.getElementById('obs-mode-select').value,
+                mode: mode,
                 bgColor: displaySettings.bgColor,
                 accentColor: displaySettings.accentColor,
                 textColor: displaySettings.textColor,
@@ -1982,7 +2172,18 @@
                 shapeRadius: displaySettings.shapeRadius,
                 bgImage: displaySettings.bgImage,
                 bgBlur: displaySettings.bgBlur,
-                lineMode: displaySettings.lineMode
+                lineMode: displaySettings.lineMode,
+                transparent: !!displaySettings.transparent,
+                hideRef: !!displaySettings.hideRef,
+                bgCover: !!displaySettings.bgCover,
+                customPos: cpos,
+                customAlign: displaySettings.customAlign,
+                customRefPos: displaySettings.customRefPos,
+                customLeft: cLeft,
+                customRight: cRight,
+                customTop: cTop,
+                customBottom: cBottom,
+                customWidth: cWidth
             };
             if (dual) config.dual = dual;
             if (annotatedHtml) config.textHtml = annotatedHtml;

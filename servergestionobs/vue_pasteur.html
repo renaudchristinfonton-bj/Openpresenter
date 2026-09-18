@@ -165,7 +165,7 @@ body.no-timer.has-msg .alert-timer-wrap{display:none!important}
 <script src="js/remote-channel.js"></script>
 <script src="store.js"></script>
 <script>
-(function(){
+(async function(){
 'use strict';
 
 /* ---- État ---- */
@@ -344,7 +344,7 @@ if(chan){
         try{if(ev.data&&ev.data.type==='state'){applyState(ev.data.state);persist()}}catch(e){}
     };
 }
-(function restore(){
+(async function restore(){
     var saved=null;
     try{saved=JSON.parse(localStorage.getItem('pasteur:state')||'null')}catch(e){saved=null}
     if(!saved && window.OpenStore){try{saved=await OpenStore.fetchFromServer('pasteur','state')}catch(e){saved=null}}

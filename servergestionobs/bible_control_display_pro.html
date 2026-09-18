@@ -89,6 +89,12 @@
             text-align: var(--custom-align, center);
             box-sizing: border-box; overflow: hidden;
         }
+        /* La bordure d'accent change de côté selon l'ancrage : bord droit
+           si la carte est ancrée à droite, bord gauche par défaut (bas/centré/
+           haut/gauche). Bordure du haut en position top pour rester visible. */
+        .obs-custom.anchor-right { border-left: none; border-right: 8px solid var(--accent-color, #f59e0b); }
+        .obs-custom.anchor-top   { border-left: none; border-top: 8px solid var(--accent-color, #f59e0b); }
+        .obs-custom.anchor-center { border-left: none; border-top: 6px solid var(--accent-color, #f59e0b); border-bottom: 6px solid var(--accent-color, #f59e0b); }
         .obs-custom.ref-top .verse-ref { order: -1; margin-bottom: 12px; }
         .obs-custom.ref-bottom .verse-ref { margin-top: 12px; }
         .hide-ref .verse-ref, .hide-ref .version-badge { display: none !important; }
@@ -143,6 +149,35 @@
         .has-bg-image { background: transparent !important; }
         .has-bg-image::before { content: ''; position: absolute; inset: -24px; background-image: var(--bg-image); background-size: cover; background-position: center; filter: blur(var(--bg-blur, 18px)); transform: scale(1.08); z-index: 0; }
         .has-bg-image::after { content: ''; position: absolute; inset: 0; background: var(--bg-color, rgba(15, 23, 42, 0.85)); z-index: 1; }
+
+        /* ÉDITEUR VISUEL façon Photoshop/lower third — UNE poignée par bloc,
+           positionnée au centre de la carte, à saisir pour la déplacer
+           directement dans le panneau de preview (à l'échelle 16:9). */
+        #preview-wrapper { position: relative; }
+        #preview-wrapper .custom-drag-hint {
+            position: absolute; inset: 0; z-index: 20;
+            pointer-events: none;
+            display: none;
+        }
+        body.custom-edit #preview-wrapper .custom-drag-hint { display: block; pointer-events: auto; }
+        #preview-wrapper .custom-drag-handle {
+            position: absolute;
+            width: 22px; height: 22px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: rgba(245, 158, 11, 0.95);
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.25), 0 4px 10px rgba(0,0,0,.5);
+            cursor: grab;
+            z-index: 25;
+            transition: transform 0.08s ease;
+        }
+        #preview-wrapper .custom-drag-handle:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); }
+        body.custom-edit #preview-card { outline: 2px dashed rgba(245,158,11,0.55); outline-offset: 4px; cursor: grab; }
+        body.custom-edit #preview-card:active { cursor: grabbing; }
+        /* Quand on édite, la preview doit réagir à la souris (par défaut pointer-events:none) */
+        body.custom-edit #preview-container { pointer-events: auto; }
+
         #obs-content-area, #preview-content { position: relative; z-index: 2; width: 100%; height: 100%; }
 
         .anim-show { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -323,6 +358,9 @@
                             <div id="preview-card" class="hidden">
                                 <div id="preview-content"></div>
                             </div>
+                        </div>
+                        <div class="custom-drag-hint" id="custom-drag-hint">
+                            <div class="custom-drag-handle" id="custom-drag-handle" title="Saisissez ce point pour déplacer le bloc (mode Custom — éditeur visuel)"></div>
                         </div>
                     </div>
                     <div class="mt-2 space-y-1.5" id="obs-links-panel">
@@ -682,9 +720,146 @@
 
         // Réapplique en direct le rendu actuellement à l'écran quand les réglages changent
         function refreshOnAirDisplay() {
+            positionCustomDragHandle();
             if (onAir) {
                 triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
             }
+        }
+
+        // ============================================================
+        // ÉDITEUR VISUEL façon Photoshop / lower third — UNE poignée
+        // au centre du bloc : en mode Custom, on peut saisir ce point
+        // (ou le bloc directement dans la preview) et le faire glisser
+        // à la souris, exactement comme .lt-drag-handle dans le lower
+        // third. Les valeurs % sont synchronisées dans les curseurs
+        // de la section Custom et appliquées en direct.
+        // ============================================================
+        function positionCustomDragHandle() {
+            const handle = document.getElementById('custom-drag-handle');
+            const wrapper = document.getElementById('preview-wrapper');
+            if (!handle || !wrapper) return;
+            const isCustom = document.getElementById('obs-mode-select').value === 'custom';
+            document.body.classList.toggle('custom-edit', isCustom);
+            if (!isCustom) return;
+
+            // Calculer la position du CENTRE de la carte en % du wrapper
+            // en partant des variables CSS appliquées à la preview-card.
+            const w = wrapper.clientWidth, h = wrapper.clientHeight;
+            const pos = displaySettings.customPos || 'bottom';
+            const cw = displaySettings.customWidth || 60;
+            const cm = displaySettings.customMargin || 8;
+            const side = (100 - cw) / 2;
+            let cx = 50, cy = 100 - cm - 10; // défaut bas : ~10% de la bande au-dessus du bord
+            switch (pos) {
+                case 'top':    cx = 50; cy = cm + 10; break;
+                case 'center': cx = 50; cy = 50; break;
+                case 'left':   cx = cm + cw/2; cy = 100 - cm - 10; break;
+                case 'right':  cx = 100 - cm - cw/2; cy = 100 - cm - 10; break;
+                default:       cx = 50; cy = 100 - cm - 10;
+            }
+            handle.style.left = (cx * w / 100) + 'px';
+            handle.style.top  = (cy * h / 100) + 'px';
+        }
+
+        function initCustomDragHandle() {
+            const handle = document.getElementById('custom-drag-handle');
+            const wrapper = document.getElementById('preview-wrapper');
+            if (!handle || !wrapper) return;
+
+            let dragging = false;
+            let startX = 0, startY = 0;
+            let startPos = null;
+
+            function getPoint(e) { return e.touches && e.touches[0] ? e.touches[0] : e; }
+
+            function onStart(e) {
+                if (document.getElementById('obs-mode-select').value !== 'custom') return;
+                dragging = true;
+                const p = getPoint(e);
+                startX = p.clientX; startY = p.clientY;
+                startPos = {
+                    pos: displaySettings.customPos,
+                    w: displaySettings.customWidth || 60,
+                    m: displaySettings.customMargin || 8
+                };
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            }
+            function onMove(e) {
+                if (!dragging) return;
+                const p = getPoint(e);
+                const rect = wrapper.getBoundingClientRect();
+                const px = ((p.clientX - rect.left) / rect.width) * 100;
+                const py = ((p.clientY - rect.top) / rect.height) * 100;
+                const clampedX = Math.max(2, Math.min(98, px));
+                const clampedY = Math.max(2, Math.min(98, py));
+
+                // Déduire la position logique (anchor) et la marge/largeur :
+                // - centre horizontal proche de 50% → center/bottom/top ; proche du bord → left/right
+                // - vertical : < 25% → top, > 75% → bottom, sinon center
+                const side = startPos.w / 2;
+                let newPos = 'bottom';
+                let newM = startPos.m;
+                let newW = startPos.w;
+                if (clampedY < 33) newPos = 'top';
+                else if (clampedY > 67) newPos = 'bottom';
+                else newPos = 'center';
+
+                if (newPos !== 'center') newM = Math.round(Math.max(2, Math.min(40, newPos === 'top' ? clampedY : 100 - clampedY - 12)));
+                // Sur les côtés : si on est près des bords gauche/droite en étant en bas/haut, basculer left/right
+                if (newPos !== 'center' && clampedX < 35) { newPos = 'left'; newM = Math.round(Math.max(2, Math.min(40, clampedX))); }
+                else if (newPos !== 'center' && clampedX > 65) { newPos = 'right'; newM = Math.round(Math.max(2, Math.min(40, 100 - clampedX))); }
+
+                displaySettings.customPos = newPos;
+                displaySettings.customMargin = newM;
+                displaySettings.customWidth = newW;
+
+                // Mettre à jour les champs du formulaire
+                const posSel = document.getElementById('set-custom-pos');
+                const marg = document.getElementById('set-custom-m');
+                const margV = document.getElementById('set-custom-m-val');
+                if (posSel) posSel.value = newPos;
+                if (marg) marg.value = newM;
+                if (margV) margV.innerText = newM + '%';
+
+                positionCustomDragHandle();
+                if (onAir) triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums);
+                e.preventDefault();
+            }
+            function onEnd() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.userSelect = '';
+                saveDisplaySettings();
+            }
+
+            handle.addEventListener('mousedown', onStart);
+            handle.addEventListener('touchstart', onStart, { passive: false });
+            // On autorise aussi le drag en cliquant n'importe où sur la carte
+            // (plus pratique que de viser le point précis).
+            wrapper.addEventListener('mousedown', (e) => {
+                if (document.getElementById('obs-mode-select').value !== 'custom') return;
+                if (e.target === handle) return;
+                // Seulement sur la carte ou le fond checker, pas sur les liens
+                onStart(e);
+            });
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('mouseup', onEnd);
+            window.addEventListener('touchend', onEnd);
+            window.addEventListener('resize', positionCustomDragHandle);
+
+            // Quand le mode change, afficher/cacher la poignée
+            document.getElementById('obs-mode-select').addEventListener('change', () => {
+                positionCustomDragHandle();
+                // Remplit automatiquement le preview avec le verset d'exemple quand on bascule en Custom
+                if (document.getElementById('obs-mode-select').value === 'custom' && !onAir) {
+                    triggerDisplay('Jean', 3, [16], null);
+                }
+            });
+            toggleCustomSection();
+            // Initialise après un petit délai le temps que le DOM soit dimensionné
+            setTimeout(positionCustomDragHandle, 200);
         }
 
         function initSettingsPanel() {
@@ -815,6 +990,24 @@
             const card = document.getElementById('obs-card-element');
             const contentArea = document.getElementById('obs-content-area');
 
+            // Navigation par clic sur la carte OBS : clic dans la partie GAUCHE =
+            // partie précédente, clic dans la partie DROITE = partie suivante.
+            // Fonctionne dès que le verset courant est découpé en plusieurs
+            // parties (verset long, option "ligne par ligne" activée) — pour
+            // TOUS les modes cadrés qui supportent parts, pas seulement bottom.
+            card.addEventListener('click', (e) => {
+                // On ne reçoit ce message que côté OBS ; on a besoin de
+                // l'état actuel (parts/partIndex) qui n'est pas conservé
+                // ici. On demande donc au contrôleur d'avancer via le canal.
+                // Mais comme OBS ne peut pas renvoyer facilement, on
+                // redéclenche la navigation locale depuis le contrôleur
+                // en postant un message — c'est le contrôleur qui connaît
+                // onAir.parts.
+                try {
+                    bc.postMessage({ action: 'clickPart', side: (e.clientX < window.innerWidth / 2) ? 'prev' : 'next' });
+                } catch (err) { /* silencieux */ }
+            });
+
             bc.onmessage = (event) => {
                 const data = event.data;
                 if (data.action === 'hide') {
@@ -824,6 +1017,8 @@
                 if (data.action === 'show') {
                     const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
                     renderDisplay(cfg, container, card, contentArea);
+                    // Indication visuelle "cliquable" quand il y a plusieurs parties
+                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1 && (cfg.mode === 'bottom' || cfg.mode === 'bottom-right' || cfg.mode === 'custom')));
                 }
             };
         }
@@ -989,6 +1184,10 @@
             } else if (config.mode === 'custom') {
                 modeClass = 'obs-custom anim-show';
                 if (config.customRefPos) modeClass += ' ' + config.customRefPos;
+                // Classe d'ancrage (bordure d'accent du bon côté)
+                if (config.customPos === 'right') modeClass += ' anchor-right';
+                else if (config.customPos === 'top') modeClass += ' anchor-top';
+                else if (config.customPos === 'center') modeClass += ' anchor-center';
                 if (config.transparent) modeClass += ' obs-transparent';
                 if (config.bgCover) modeClass += ' has-bg-cover';
                 if (config.hideRef) modeClass += ' hide-ref';
@@ -1143,6 +1342,8 @@
             initDualVersionUI();
             // Annotations de versets : éditeur ✏️ + persistance.
             initAnnotationEditor();
+            // Éditeur visuel du mode Custom (drag handle à la lower third).
+            initCustomDragHandle();
             // Looks : habillage global appliqué en direct (Command Center / éditeur).
             if (window.OpenLooks) {
                 OpenLooks.installLiveListener('bible', {

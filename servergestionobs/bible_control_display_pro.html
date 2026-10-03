@@ -178,6 +178,150 @@
         /* Quand on édite, la preview doit réagir à la souris (par défaut pointer-events:none) */
         body.custom-edit #preview-container { pointer-events: auto; }
 
+        /* =============================================================
+           ÉDITEUR DE MODÈLES WYSIWYG façon FreeShow — interface complète
+           ============================================================= */
+        #tpl-editor {
+            position: fixed; inset: 0; z-index: 100; background: rgba(5, 8, 15, 0.92);
+            backdrop-filter: blur(12px); display: none; flex-direction: column;
+            color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif;
+        }
+        #tpl-editor.open { display: flex; }
+        #tpl-editor header {
+            display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+            background: linear-gradient(to bottom, #111827, #0b1220);
+            border-bottom: 1px solid #1e293b; flex-shrink: 0;
+        }
+        #tpl-editor header h2 { font-size: 15px; font-weight: 800; letter-spacing: .3px; }
+        #tpl-editor header h2 .accent { color: #fbbf24; }
+        #tpl-editor header .mode-tabs { display: flex; gap: 4px; margin-left: 12px; }
+        .tpl-mode-tab {
+            font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 6px;
+            border: 1px solid #1e293b; background: #0f172a; color: #94a3b8; cursor: pointer;
+            transition: all .15s ease; letter-spacing: .3px; text-transform: uppercase;
+        }
+        .tpl-mode-tab:hover { border-color: #fbbf24; color: #fde68a; }
+        .tpl-mode-tab.active { background: #fbbf24; color: #0b1220; border-color: #fbbf24; box-shadow: 0 4px 12px rgba(251,191,36,.25); }
+        #tpl-editor header .spacer { flex: 1; }
+        #tpl-editor header button {
+            font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 7px;
+            cursor: pointer; border: 1px solid #334155; transition: all .15s;
+        }
+        .tpl-btn-ghost { background: #1e293b; color: #cbd5e1; }
+        .tpl-btn-ghost:hover { background: #334155; }
+        .tpl-btn-danger { background: #7f1d1d; color: #fecaca; border-color: #991b1b; }
+        .tpl-btn-danger:hover { background: #991b1b; }
+        .tpl-btn-primary { background: #fbbf24; color: #0b1220; border-color: #fbbf24; }
+        .tpl-btn-primary:hover { background: #fcd34d; }
+
+        /* Layout 3 colonnes : outils à gauche, canevas au centre, propriétés à droite */
+        .tpl-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+        .tpl-tools {
+            width: 260px; flex-shrink: 0; background: #0f172a; border-right: 1px solid #1e293b;
+            padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+        }
+        .tpl-canvas-wrap {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            background: #05070d; overflow: hidden; position: relative;
+            background-image:
+                linear-gradient(45deg,#0a0f1a 25%,transparent 25%),linear-gradient(-45deg,#0a0f1a 25%,transparent 25%),
+                linear-gradient(45deg,transparent 75%,#0a0f1a 75%),linear-gradient(-45deg,transparent 75%,#0a0f1a 75%);
+            background-size:16px 16px;
+            background-position:0 0,0 8px,8px -8px,-8px 0px;
+        }
+        .tpl-canvas {
+            position: relative; width: min(90%, calc((100vh - 160px) * 16 / 9));
+            aspect-ratio: 16/9; background: #0f172a; border-radius: 6px;
+            box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px #1e293b;
+            overflow: hidden;
+        }
+        .tpl-canvas .tpl-bg {
+            position: absolute; inset: 0; background-size: cover; background-position: center;
+            z-index: 0;
+        }
+        .tpl-canvas .tpl-bg-overlay {
+            position: absolute; inset: 0; z-index: 1;
+            background: var(--tpl-card-bg, rgba(15,23,42,.9));
+        }
+        /* Les blocs éditables (référence, verset) sont positionnés ABSOLUMENT
+           dans le canevas — exactement comme dans FreeShow. Coordonnées en %. */
+        .tpl-block {
+            position: absolute; z-index: 5; box-sizing: border-box;
+            cursor: move; user-select: none;
+            padding: 4px 10px; min-width: 20px; min-height: 16px;
+            border: 2px dashed transparent; border-radius: 4px;
+            transition: border-color .15s;
+            display: flex; align-items: center;
+        }
+        .tpl-block.selected { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.18); }
+        .tpl-block:hover { border-color: rgba(251,191,36,.5); }
+        .tpl-block.ref  { color: #fbbf24; font-family: 'Cinzel', serif; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; font-size: 28px; }
+        .tpl-block.text { color: #fff; font-family: 'Merriweather', serif; font-weight: 600; font-size: 52px; line-height: 1.3; text-shadow: 0 2px 6px rgba(0,0,0,.6); flex-direction: column; align-items: stretch; }
+        .tpl-block.text .tpl-line { display: block; }
+        .tpl-handle {
+            position: absolute; width: 12px; height: 12px; background: #fbbf24;
+            border: 2px solid #0b1220; border-radius: 50%; z-index: 10;
+        }
+        .tpl-handle.nw { top:-6px; left:-6px; cursor: nwse-resize; }
+        .tpl-handle.ne { top:-6px; right:-6px; cursor: nesw-resize; }
+        .tpl-handle.sw { bottom:-6px; left:-6px; cursor: nesw-resize; }
+        .tpl-handle.se { bottom:-6px; right:-6px; cursor: nwse-resize; }
+        .tpl-canvas .tpl-card {
+            position: absolute; z-index: 3; pointer-events: none;
+        }
+
+        .tpl-props {
+            width: 280px; flex-shrink: 0; background: #0f172a; border-left: 1px solid #1e293b;
+            padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+        }
+        .tpl-section { background: #111c2e; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; }
+        .tpl-section h4 { font-size: 10px; font-weight: 800; color: #fbbf24; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+        .tpl-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; color: #cbd5e1; }
+        .tpl-row label { min-width: 58px; color: #94a3b8; }
+        .tpl-row input[type=range] { flex: 1; accent-color: #fbbf24; }
+        .tpl-row input[type=number] { width: 56px; background: #0b1220; border: 1px solid #334155; color: #f1f5f9; font-size: 11px; padding: 3px 5px; border-radius: 4px; }
+        .tpl-row input[type=color] { width: 30px; height: 24px; border: none; background: transparent; cursor: pointer; padding: 0; }
+        .tpl-row .tpl-val { min-width: 40px; text-align: right; color: #fbbf24; font-family: monospace; font-size: 11px; }
+        .tpl-row select, .tpl-btn {
+            background: #0b1220; border: 1px solid #334155; color: #f1f5f9;
+            font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor: pointer;
+        }
+        .tpl-row select.flex1 { flex: 1; }
+        .tpl-toolbar { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 4px; }
+        .tpl-tb-btn {
+            width: 28px; height: 28px; background: #0b1220; border: 1px solid #334155;
+            color: #cbd5e1; font-size: 12px; font-weight: 700; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tpl-tb-btn.active { background: #fbbf24; color: #0b1220; border-color: #fbbf24; }
+        .tpl-tb-btn:hover { border-color: #fbbf24; }
+        .tpl-tb-btn.b { font-weight: 800; }
+        .tpl-tb-btn.i { font-style: italic; }
+        .tpl-tb-btn.u { text-decoration: underline; }
+        .tpl-file { font-size: 11px; }
+        .tpl-file-label { display:inline-block; cursor:pointer; background:#0b1220; border:1px solid #334155; color:#cbd5e1; padding:6px 10px; border-radius:5px; font-size:11px; }
+        .tpl-file-label:hover { border-color:#fbbf24; color:#fde68a; }
+        .tpl-block-picker { display: flex; flex-direction: column; gap: 4px; }
+        .tpl-block-picker button {
+            background: #0b1220; border: 1px solid #1e293b; color: #94a3b8;
+            padding: 7px 10px; border-radius: 5px; font-size: 11px; text-align: left;
+            cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px;
+        }
+        .tpl-block-picker button.active { background: #fbbf2420; border-color: #fbbf24; color: #fbbf24; }
+        .tpl-block-picker button .dot { width:8px; height:8px; border-radius:50%; background: #475569; }
+        .tpl-block-picker button.active .dot { background:#fbbf24; }
+
+        /* Raccourcis clavier aide-mémoire discret */
+        .tpl-shortcut-hint {
+            position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+            font-size: 10px; color: #475569; font-family: monospace; z-index: 20;
+            pointer-events: none; letter-spacing: .5px;
+        }
+        .tpl-shortcut-hint kbd {
+            background: #1e293b; border: 1px solid #334155; padding: 1px 5px; border-radius: 3px;
+            color: #94a3b8; margin: 0 2px;
+        }
+
         #obs-content-area, #preview-content { position: relative; z-index: 2; width: 100%; height: 100%; }
 
         .anim-show { animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -251,9 +395,9 @@
                     </select>
                 </div>
 
-                <button id="btn-open-settings" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    Personnaliser
+                <button id="btn-open-settings" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-amber-500/25">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+                    ✨ Modèles (éditeur visuel)
                 </button>
 
                 <div id="verse-parts-nav" class="hidden items-center gap-1 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1" title="Verset long découpé : naviguez entre les parties (uniquement en modes Bas centré / Bas droite)">
@@ -545,6 +689,173 @@
         </div>
     </div>
 
+    <!-- =============================================================
+         ÉDITEUR DE MODÈLES WYSIWYG façon FreeShow
+         ============================================================= -->
+    <div id="tpl-editor">
+        <header>
+            <h2>✨ Éditeur de <span class="accent">modèles</span> — Glissez · Redimensionnez · Mettez en forme</h2>
+            <div class="mode-tabs" id="tpl-mode-tabs"></div>
+            <span class="spacer"></span>
+            <button class="tpl-btn-ghost" id="tpl-btn-undo" title="Ctrl+Z">↶ Annuler</button>
+            <button class="tpl-btn-ghost" id="tpl-btn-reset-mode" title="Rétablir les valeurs par défaut pour CE mode">↺ Réinitialiser ce mode</button>
+            <button class="tpl-btn-primary" id="tpl-btn-apply">✓ Enregistrer & Fermer</button>
+            <button class="tpl-btn-ghost" id="tpl-btn-cancel">Annuler</button>
+        </header>
+
+        <div class="tpl-body">
+            <!-- Colonne gauche : blocs + fond + style global -->
+            <aside class="tpl-tools">
+                <div class="tpl-section">
+                    <h4>Blocs à afficher</h4>
+                    <div class="tpl-block-picker" id="tpl-block-picker">
+                        <button data-block="ref" class="active"><span class="dot"></span>📖 Référence</button>
+                        <button data-block="text" class="active"><span class="dot"></span>✝ Texte du verset</button>
+                        <button data-block="badge"><span class="dot"></span>🏷 Badge de version</button>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2 leading-snug">Cliquez sur un bloc de la liste (ou directement sur le canevas) pour le sélectionner. Cliquez-glissez pour le déplacer ; tirez un coin pour le redimensionner.</p>
+                </div>
+
+                <div class="tpl-section">
+                    <h4>Image de fond</h4>
+                    <div class="tpl-row tpl-file">
+                        <label class="tpl-file-label">
+                            📷 Importer une image
+                            <input type="file" id="tpl-bg-file" accept="image/*" class="hidden">
+                        </label>
+                        <button class="tpl-btn" id="tpl-bg-clear" title="Retirer l'image">✕</button>
+                    </div>
+                    <div class="tpl-row">
+                        <label>Opacité fond</label>
+                        <input type="range" id="tpl-bg-opacity" min="0" max="100" value="92">
+                        <span class="tpl-val" id="tpl-bg-opacity-v">92%</span>
+                    </div>
+                    <div class="tpl-row">
+                        <label>Couleur</label>
+                        <input type="color" id="tpl-bg-color" value="#0f172a">
+                        <span style="flex:1"></span>
+                        <label class="text-[10px] text-slate-500"><input type="checkbox" id="tpl-bg-cover"> Nette</label>
+                    </div>
+                </div>
+
+                <div class="tpl-section">
+                    <h4>Style global</h4>
+                    <div class="tpl-row">
+                        <label>Accent</label>
+                        <input type="color" id="tpl-accent-color" value="#f59e0b">
+                    </div>
+                    <div class="tpl-row">
+                        <label>Texte</label>
+                        <input type="color" id="tpl-text-color" value="#ffffff">
+                    </div>
+                    <div class="tpl-row">
+                        <label>Coins</label>
+                        <select id="tpl-radius" class="flex1">
+                            <option value="0">Net</option><option value="12">Petits</option>
+                            <option value="20">Arrondis</option><option value="36">Doux</option>
+                        </select>
+                    </div>
+                    <div class="tpl-row">
+                        <label><input type="checkbox" id="tpl-transparent" style="accent-color:#fbbf24"> Aucun décor (transparent)</label>
+                    </div>
+                </div>
+
+                <div class="tpl-section">
+                    <h4>Raccourcis clavier</h4>
+                    <div class="text-[10px] text-slate-400 leading-relaxed space-y-1">
+                        <div><kbd>↑↓←→</kbd> déplacer le bloc (1%)</div>
+                        <div><kbd>Shift</kbd>+flèches = 5%</div>
+                        <div><kbd>Suppr</kbd> cacher le bloc</div>
+                        <div><kbd>Tab</kbd> bloc suivant</div>
+                        <div><kbd>Échap</kbd> fermer</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Canevas central 16:9 -->
+            <main class="tpl-canvas-wrap">
+                <div class="tpl-canvas" id="tpl-canvas">
+                    <div class="tpl-bg" id="tpl-bg"></div>
+                    <div class="tpl-bg-overlay" id="tpl-bg-overlay"></div>
+                    <!-- Les blocs sont créés par JS -->
+                    <div class="tpl-block ref" data-block="ref" id="tpl-block-ref">Jean 3:16 <span class="version-badge" style="background:#fbbf24;color:#0b1220;font-family:Inter;font-weight:800;font-size:14px;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle">LSG</span></div>
+                    <div class="tpl-block text" data-block="text" id="tpl-block-text">
+                        <span class="tpl-line">« Car Dieu a tant aimé le monde qu'il a donné</span>
+                        <span class="tpl-line">son Fils unique… »</span>
+                    </div>
+                    <div class="tpl-shortcut-hint">Mode : <span id="tpl-current-mode-label" style="color:#fbbf24;font-weight:700">—</span> · Cliquez sur un bloc puis faites-le glisser</div>
+                </div>
+            </main>
+
+            <!-- Colonne droite : propriétés du bloc sélectionné -->
+            <aside class="tpl-props">
+                <div class="tpl-section" id="tpl-no-block">
+                    <h4>Aucun bloc sélectionné</h4>
+                    <p class="text-[11px] text-slate-500 leading-snug">Cliquez sur un bloc dans le canevas pour modifier sa position, sa taille, sa police et son alignement.</p>
+                </div>
+                <div id="tpl-block-props" style="display:none;flex-direction:column;gap:14px">
+                    <div class="tpl-section">
+                        <h4>Mise en forme du texte</h4>
+                        <div class="tpl-toolbar">
+                            <button class="tpl-tb-btn b" data-cmd="bold" title="Gras (Ctrl+B)">B</button>
+                            <button class="tpl-tb-btn i" data-cmd="italic" title="Italique (Ctrl+I)">I</button>
+                            <button class="tpl-tb-btn u" data-cmd="underline" title="Souligné (Ctrl+U)">U</button>
+                            <button class="tpl-tb-btn" data-align="left" title="Gauche">⬅</button>
+                            <button class="tpl-tb-btn" data-align="center" title="Centrer">↔</button>
+                            <button class="tpl-tb-btn" data-align="right" title="Droite">➡</button>
+                            <button class="tpl-tb-btn" data-align="justify" title="Justifier">☰</button>
+                            <button class="tpl-tb-btn" data-cmd="strikeThrough" title="Barré">S</button>
+                        </div>
+                        <div class="tpl-row">
+                            <label>Couleur</label>
+                            <input type="color" id="tpl-block-color" value="#ffffff">
+                        </div>
+                        <div class="tpl-row">
+                            <label>Police</label>
+                            <select id="tpl-block-font" class="flex1">
+                                <option value="Merriweather">Merriweather</option><option value="Cinzel">Cinzel</option>
+                                <option value="Playfair Display">Playfair Display</option><option value="Lora">Lora</option>
+                                <option value="EB Garamond">EB Garamond</option><option value="Montserrat">Montserrat</option>
+                                <option value="Inter">Inter</option>
+                            </select>
+                        </div>
+                        <div class="tpl-row">
+                            <label>Taille</label>
+                            <input type="range" id="tpl-block-size" min="12" max="140" value="52">
+                            <span class="tpl-val" id="tpl-block-size-v">52</span>
+                        </div>
+                        <div class="tpl-row">
+                            <label>Poids</label>
+                            <select id="tpl-block-weight" class="flex1">
+                                <option value="400">Normal</option><option value="600">Semi-gras</option>
+                                <option value="700">Gras</option><option value="800">Extra-gras</option>
+                            </select>
+                        </div>
+                        <div class="tpl-row">
+                            <label>Espace lettres</label>
+                            <input type="range" id="tpl-block-spacing" min="-2" max="20" value="0">
+                            <span class="tpl-val" id="tpl-block-spacing-v">0</span>
+                        </div>
+                        <div class="tpl-row">
+                            <label>Ombre</label>
+                            <input type="range" id="tpl-block-shadow" min="0" max="20" value="4">
+                            <span class="tpl-val" id="tpl-block-shadow-v">4</span>
+                        </div>
+                    </div>
+
+                    <div class="tpl-section">
+                        <h4>Position & Taille (%)</h4>
+                        <div class="tpl-row"><label>X</label><input type="number" id="tpl-block-x" min="0" max="100" step="0.5"><span>%</span></div>
+                        <div class="tpl-row"><label>Y</label><input type="number" id="tpl-block-y" min="0" max="100" step="0.5"><span>%</span></div>
+                        <div class="tpl-row"><label>Largeur</label><input type="number" id="tpl-block-w" min="5" max="100" step="0.5"><span>%</span></div>
+                        <div class="tpl-row"><label>Hauteur</label><input type="number" id="tpl-block-h" min="3" max="100" step="0.5"><span>%</span></div>
+                        <p class="text-[10px] text-slate-500 mt-2">Astuce : maintenir <kbd style="background:#1e293b;border:1px solid #334155;padding:0 4px;border-radius:3px">Shift</kbd> pendant le redimensionnement préserve les proportions.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // DONNÉES DE BASE & ÉCHANTILLON
@@ -596,6 +907,46 @@
         // ============================================================
         // RÉGLAGES DE PERSONNALISATION DU RENDU (persistés en localStorage)
         // ============================================================
+        // Layouts PAR MODE : un dictionnaire où chaque clé (full/screen80/bottom/bottom-right)
+        // contient la position/size en % de chaque bloc et les styles. Quand null, le rendu
+        // utilise le CSS historique (comportement par défaut 1:1 identique à avant).
+        function defaultTemplateFor(mode) {
+            switch(mode) {
+                case 'full': return {
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.95)', accentColor:'#f59e0b', textColor:'#ffffff',
+                    shapeRadius:24, bgOpacity:95, transparent:false, bgCover:false,
+                    blocks: {
+                        ref: {visible:true, x:50, y:12, w:80, h:8, fontSize:36, font:'Cinzel', weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:0},
+                        text:{visible:true, x:50, y:52, w:80, h:55, fontSize:64, font:'Merriweather', weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:4}
+                    }
+                };
+                case 'screen80': return {
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
+                    shapeRadius:20, bgOpacity:92, transparent:false, bgCover:false,
+                    blocks: {
+                        ref: {visible:true, x:50, y:14, w:80, h:8, fontSize:34, font:'Cinzel', weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:0},
+                        text:{visible:true, x:50, y:55, w:80, h:60, fontSize:54, font:'Merriweather', weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:4}
+                    }
+                };
+                case 'bottom': return {
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
+                    shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+                    blocks: {
+                        ref: {visible:true, x:8, y:30, w:35, h:40, fontSize:28, font:'Cinzel', weight:800, color:'#f59e0b', align:'left', letterSpacing:1, shadow:0},
+                        text:{visible:true, x:50, y:70, w:88, h:55, fontSize:42, font:'Merriweather', weight:600, color:'#ffffff', align:'left', letterSpacing:0, shadow:4}
+                    }
+                };
+                case 'bottom-right': return {
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
+                    shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+                    blocks: {
+                        ref: {visible:true, x:92, y:30, w:35, h:40, fontSize:28, font:'Cinzel', weight:800, color:'#f59e0b', align:'right', letterSpacing:1, shadow:0},
+                        text:{visible:true, x:50, y:70, w:88, h:55, fontSize:42, font:'Merriweather', weight:600, color:'#ffffff', align:'right', letterSpacing:0, shadow:4}
+                    }
+                };
+            }
+            return null;
+        }
         const DEFAULT_DISPLAY_SETTINGS = {
             bgColor: 'rgba(15, 23, 42, 0.92)',
             accentColor: '#f59e0b',
@@ -612,7 +963,9 @@
             customAlign: 'center',
             customWidth: 60,
             customMargin: 8,
-            customRefPos: ''
+            customRefPos: '',
+            // Templates éditables PAR MODE : null = rendu historique (comme avant).
+            templates: { full:null, screen80:null, bottom:null, 'bottom-right':null }
         };
         let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
 
@@ -863,7 +1216,11 @@
         }
 
         function initSettingsPanel() {
-            document.getElementById('btn-open-settings').addEventListener('click', openSettingsPanel);
+            // Ancienne modale "réglages" : on garde les handlers internes mais on
+            // désactive son ouverture par le bouton principal (qui ouvre désormais
+            // l'éditeur visuel WYSIWYG). Accessible via raccourci Alt+S pour dépannage.
+            // document.getElementById('btn-open-settings').addEventListener('click', openSettingsPanel);
+            document.addEventListener('keydown',(e)=>{ if(e.altKey && (e.key==='s'||e.key==='S')) openSettingsPanel(); });
             document.getElementById('btn-close-settings').addEventListener('click', closeSettingsPanel);
             document.getElementById('settings-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'settings-modal') closeSettingsPanel();
@@ -1018,7 +1375,14 @@
                     const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
                     renderDisplay(cfg, container, card, contentArea);
                     // Indication visuelle "cliquable" quand il y a plusieurs parties
-                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1 && (cfg.mode === 'bottom' || cfg.mode === 'bottom-right' || cfg.mode === 'custom')));
+                    // Indication visuelle "cliquable" quand il y a plusieurs parties.
+                    // IMPORTANT : ne l'activer QUE sur bottom/bottom-right : les
+                    // autres modes (plein écran, 80%, ruban, custom) DOIVENT afficher
+                    // le verset ENTIER quoi qu'il arrive — sinon l'affichage plein
+                    // écran devenait bizarre (tronqué à la première partie) alors que
+                    // l'option "ligne par ligne" ne doit que mettre en forme, pas
+                    // découper, sur ces modes-là.
+                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1 && (cfg.mode === 'bottom' || cfg.mode === 'bottom-right')));
                 }
             };
         }
@@ -1235,14 +1599,99 @@
             applyLookLayout(card, config.mode, config.layout);
             contentArea.innerHTML = html;
 
-            // Ajustement automatique de la taille du texte pour ne jamais déborder du cadre
-            autoFitDisplay(config.mode, card, contentArea);
+            // --- APPLICATION D'UN TEMPLATE UTILISATEUR (éditeur visuel) ---
+            // Si un template a été sauvegardé pour ce mode, on surcharge les positions/sizes
+            // des blocs en CSS custom + inline. Le rendu garde la même structure HTML
+            // mais chaque bloc (.verse-ref / .verse-text / .version-badge) est positionné
+            // absolument selon les % enregistrés dans le template.
+            const tpl = displaySettings.templates && displaySettings.templates[config.mode];
+            if (tpl && config.mode !== 'custom' && config.mode !== 'scrolling') {
+                applyTemplate(card, contentArea, tpl, config.mode);
+            } else {
+                // Ajustement automatique de la taille du texte pour ne jamais déborder
+                autoFitDisplay(config.mode, card, contentArea);
+            }
 
             // On mémorise ce rendu pour pouvoir le réajuster automatiquement si les polices
             // web (Cinzel, Merriweather, etc.) finissent de charger APRÈS ce calcul — sinon
             // le texte peut changer de taille réelle une fois la police définitive appliquée
             // et déborder du cadre sans que rien ne le rattrape.
             lastRenderCtx = { mode: config.mode, card, contentArea };
+        }
+
+        // Applique un template enregistré depuis l'éditeur visuel WYSIWYG : positions
+        // absolues, typographie, couleur, alignement, opacité du fond, image, overlay.
+        function applyTemplate(card, contentArea, tpl, mode) {
+            const refEl = contentArea.querySelector('.verse-ref');
+            const badgeEl = contentArea.querySelector('.version-badge');
+            const textWrap = contentArea.querySelector('.flex-1.w-full, [class*="flex-1"], .verse-text')
+                && contentArea.querySelector('.flex-1.w-full.flex.flex-col, .flex-1.w-full.flex.flex-col.justify-center, .flex-1.w-full.flex.flex-col.justify-center.items-center, .flex-1.w-full.flex.flex-col.justify-center.min-h-0');
+            const textEls = contentArea.querySelectorAll('.verse-text');
+
+            // Fond : ajuster opacité via la couleur courante (la carte lit --bg-color)
+            if (tpl.bgColor) card.style.setProperty('--bg-color', tpl.bgColor);
+            if (tpl.accentColor) card.style.setProperty('--accent-color', tpl.accentColor);
+            if (tpl.textColor) card.style.setProperty('--text-color', tpl.textColor);
+            if (tpl.shapeRadius != null) card.style.setProperty('--shape-radius', tpl.shapeRadius + 'px');
+            card.style.setProperty('--bg-image', tpl.bgImage ? `url('${tpl.bgImage}')` : '');
+            card.classList.toggle('obs-transparent', !!tpl.transparent);
+            card.classList.toggle('has-bg-cover', !!tpl.bgCover);
+            if (tpl.bgImage) card.classList.add('has-bg-image'); else card.classList.remove('has-bg-image');
+
+            // On passe contentArea en positionnement absolu total
+            card.style.position = 'relative';
+            const reset = (el) => { if(!el)return; el.style.position='absolute'; el.style.margin='0'; el.style.left='50%'; el.style.top='50%'; el.style.transform='translate(-50%,-50%)'; el.style.display=''; };
+
+            // Bloc référence (+ badge intégré si besoin)
+            const refBlock = tpl.blocks && tpl.blocks.ref;
+            if (refBlock && refBlock.visible && refEl) {
+                reset(refEl);
+                if (badgeEl) badgeEl.style.marginLeft='12px';
+                positionBlock(refEl, refBlock);
+                applyBlockStyle(refEl, refBlock);
+                refEl.style.fontSize = `calc(var(--adapt-h, 1080px) * ${refBlock.fontSize}/1080)`;
+                refEl.style.justifyContent = refBlock.align;
+                refEl.style.textAlign = refBlock.align;
+                refEl.style.alignItems = refBlock.align;
+            } else if (refEl) { refEl.style.display='none'; }
+
+            // Bloc verset : cibler le conteneur flex-1
+            const textBlock = tpl.blocks && tpl.blocks.text;
+            if (textBlock && textBlock.visible && textWrap) {
+                reset(textWrap);
+                positionBlock(textWrap, textBlock);
+                // Taille de police : appliquer sur chaque .verse-text et auto-downscale si nécessaire
+                textEls.forEach(el => {
+                    applyBlockStyle(el, textBlock);
+                    el.style.fontSize = `calc(var(--adapt-h, 1080px) * ${textBlock.fontSize}/1080)`;
+                    el.style.fontFamily = `'${textBlock.font||'Merriweather'}', serif`;
+                });
+                // Sécurité : si ça dépasse, scale global
+                setTimeout(()=>{
+                    const w=textWrap.clientWidth, h=textWrap.clientHeight;
+                    if(w<=0||h<=0)return;
+                    const needed=textWrap.scrollHeight;
+                    if(needed>h*1.02){
+                        textWrap.style.transform=`translate(-50%,-50%) scale(${Math.max(0.3,h/needed)})`;
+                    }
+                }, 30);
+            }
+        }
+        function positionBlock(el, b){
+            el.style.left = b.x + '%';
+            el.style.top  = b.y + '%';
+            el.style.width = b.w + '%';
+            el.style.height = (b.h ? b.h + '%' : 'auto');
+        }
+        function applyBlockStyle(el, b){
+            el.style.fontFamily = `'${b.font||'Merriweather'}', serif`;
+            el.style.fontWeight = b.weight || 400;
+            el.style.color = b.color || '#fff';
+            el.style.textAlign = b.align || 'center';
+            el.style.letterSpacing = (b.letterSpacing||0) + 'px';
+            el.style.textShadow = b.shadow>0 ? `0 ${b.shadow/2}px ${b.shadow}px rgba(0,0,0,${.3+b.shadow/30})` : 'none';
+            el.style.textDecoration = b.underline ? 'underline' : (b.strike?'line-through':'none');
+            el.style.fontStyle = b.italic ? 'italic' : 'normal';
         }
 
         // Réduit progressivement la taille du texte tant qu'il dépasse l'espace disponible.
@@ -1342,8 +1791,14 @@
             initDualVersionUI();
             // Annotations de versets : éditeur ✏️ + persistance.
             initAnnotationEditor();
-            // Éditeur visuel du mode Custom (drag handle à la lower third).
+            // Éditeur visuel du mode Custom (drag handle à la lower third) — gardé
+            // pour une édition rapide depuis la preview, même si l'éditeur WYSIWYG
+            // (ci-dessous) offre toutes les fonctionnalités.
             initCustomDragHandle();
+            // ÉDITEUR DE MODÈLES WYSIWYG façon FreeShow (remplace l'ancienne modale).
+            initTemplateEditor();
+            // Raccourcis clavier GLOBAUX de navigation versets (flèches / entrée / espace).
+            initKeyboardShortcuts();
             // Looks : habillage global appliqué en direct (Command Center / éditeur).
             if (window.OpenLooks) {
                 OpenLooks.installLiveListener('bible', {
@@ -2622,6 +3077,448 @@
             }
             closeVerseEditor();
             showToast(wasAnnotated ? 'Annotation enregistrée.' : 'Annotation effacée.');
+        }
+
+        // ============================================================
+        // ÉDITEUR DE MODÈLES WYSIWYG façon FreeShow
+        // ============================================================
+        function initTemplateEditor() {
+            const editor = document.getElementById('tpl-editor');
+            const canvas = document.getElementById('tpl-canvas');
+            const bgEl = document.getElementById('tpl-bg');
+            const bgOverlay = document.getElementById('tpl-bg-overlay');
+            const modeTabsEl = document.getElementById('tpl-mode-tabs');
+            const blockRef = document.getElementById('tpl-block-ref');
+            const blockText = document.getElementById('tpl-block-text');
+            const blockBadge = null; // intégré dans la référence pour l'instant
+            const blocksById = { ref: blockRef, text: blockText };
+
+            const MODES = [
+                { id: 'full', label: 'Plein écran' },
+                { id: 'screen80', label: '80% écran' },
+                { id: 'bottom', label: 'Bas centré' },
+                { id: 'bottom-right', label: 'Bas droite' },
+            ];
+
+            let currentEditMode = 'full';
+            let selected = null;  // 'ref' | 'text'
+            let state = null;     // copie profonde du template en cours d'édition
+            let history = [];
+            let historyIdx = -1;
+
+            // --- Charger un template depuis displaySettings (ou valeurs par défaut) ---
+            function loadTemplate(mode) {
+                const saved = (displaySettings.templates && displaySettings.templates[mode]) || null;
+                const tmpl = saved ? JSON.parse(JSON.stringify(saved)) : defaultTemplateFor(mode);
+                state = { mode, ...tmpl };
+            }
+
+            function pushHistory() {
+                history = history.slice(0, historyIdx+1);
+                history.push(JSON.parse(JSON.stringify(state)));
+                historyIdx = history.length - 1;
+                if (history.length > 50) { history.shift(); historyIdx--; }
+            }
+            function undo() {
+                if (historyIdx<=0) return;
+                historyIdx--;
+                state = JSON.parse(JSON.stringify(history[historyIdx]));
+                applyState();
+            }
+
+            // --- Appliquer state sur le canevas ---
+            function scaleFactor(){ const r=canvas.getBoundingClientRect(); return r.width/1920; }
+            function pctToPx(pct, ofSize){ return (pct/100) * ofSize; }
+            function applyState() {
+                // Fond
+                if (state.bgImage) {
+                    bgEl.style.backgroundImage = `url('${state.bgImage}')`;
+                    bgEl.style.display = 'block';
+                } else { bgEl.style.backgroundImage=''; bgEl.style.display='none'; }
+                const rgba = state.bgColor || 'rgba(15,23,42,0.92)';
+                // Ajuster l'opacité
+                let finalBg = rgba;
+                try {
+                    const m = rgba.match(/rgba\(([^)]+)\)/);
+                    if (m) {
+                        const parts = m[1].split(',').map(s=>s.trim());
+                        const a = (state.bgOpacity!=null ? state.bgOpacity/100 : parseFloat(parts[3]));
+                        finalBg = `rgba(${parts[0]},${parts[1]},${parts[2]},${a})`;
+                    }
+                } catch(e){}
+                bgOverlay.style.background = state.transparent ? 'transparent' : finalBg;
+                bgOverlay.style.display = state.transparent ? 'none' : 'block';
+                canvas.style.boxShadow = state.transparent ? '0 0 0 1px rgba(251,191,36,.3)' : '';
+                canvas.style.borderRadius = (state.shapeRadius||0)/3 + 'px';
+
+                // Blocs
+                ['ref','text'].forEach(key => {
+                    const el = blocksById[key];
+                    const b = state.blocks[key];
+                    if (!b || !b.visible) { el.style.display='none'; return; }
+                    el.style.display = 'flex';
+                    el.style.left = b.x + '%';
+                    el.style.top = b.y + '%';
+                    el.style.width = b.w + '%';
+                    // Si hauteur fournie, l'utiliser ; sinon auto
+                    if (b.h) el.style.height = b.h + '%'; else el.style.height = 'auto';
+                    el.style.transform = 'translate(-50%, -50%)';
+                    el.style.fontSize = b.fontSize * scaleFactor() + 'px';
+                    el.style.fontFamily = "'" + b.font + "', serif";
+                    el.style.fontWeight = b.weight;
+                    el.style.color = b.color;
+                    el.style.textAlign = b.align;
+                    el.style.letterSpacing = b.letterSpacing + 'px';
+                    el.style.textShadow = b.shadow>0 ? `0 ${b.shadow/2}px ${b.shadow}px rgba(0,0,0,${.3+b.shadow/30})` : 'none';
+                    el.style.textDecoration = b.underline ? 'underline' : (b.strike?'line-through':'none');
+                    el.style.fontStyle = b.italic ? 'italic' : 'normal';
+                    el.classList.toggle('selected', selected===key);
+                });
+
+                // Curseurs des props
+                updatePropsPanel();
+            }
+
+            function updatePropsPanel() {
+                const noBlock = document.getElementById('tpl-no-block');
+                const props = document.getElementById('tpl-block-props');
+                if (!selected) { noBlock.style.display='block'; props.style.display='none'; return; }
+                noBlock.style.display='none'; props.style.display='flex';
+                const b = state.blocks[selected];
+                const el = blocksById[selected];
+                document.getElementById('tpl-block-color').value = rgbToHex(b.color) || '#ffffff';
+                document.getElementById('tpl-block-font').value = b.font || 'Merriweather';
+                document.getElementById('tpl-block-size').value = b.fontSize;
+                document.getElementById('tpl-block-size-v').innerText = b.fontSize;
+                document.getElementById('tpl-block-weight').value = b.weight;
+                document.getElementById('tpl-block-spacing').value = b.letterSpacing;
+                document.getElementById('tpl-block-spacing-v').innerText = b.letterSpacing;
+                document.getElementById('tpl-block-shadow').value = b.shadow;
+                document.getElementById('tpl-block-shadow-v').innerText = b.shadow;
+                document.getElementById('tpl-block-x').value = Math.round(b.x*10)/10;
+                document.getElementById('tpl-block-y').value = Math.round(b.y*10)/10;
+                document.getElementById('tpl-block-w').value = Math.round(b.w*10)/10;
+                document.getElementById('tpl-block-h').value = b.h ? Math.round(b.h*10)/10 : '';
+                // Boutons d'alignement actifs
+                document.querySelectorAll('[data-align]').forEach(btn => btn.classList.toggle('active', btn.dataset.align===b.align));
+                document.querySelector('[data-cmd=bold]').classList.toggle('active', b.bold || b.weight>=700);
+                document.querySelector('[data-cmd=italic]').classList.toggle('active', !!b.italic);
+                document.querySelector('[data-cmd=underline]').classList.toggle('active', !!b.underline);
+                document.querySelector('[data-cmd=strikeThrough]').classList.toggle('active', !!b.strike);
+
+                // Global
+                document.getElementById('tpl-bg-color').value = rgbToHex(state.bgColor) || '#0f172a';
+                document.getElementById('tpl-bg-opacity').value = state.bgOpacity != null ? state.bgOpacity : 92;
+                document.getElementById('tpl-bg-opacity-v').innerText = (state.bgOpacity!=null?state.bgOpacity:92)+'%';
+                document.getElementById('tpl-accent-color').value = state.accentColor || '#f59e0b';
+                document.getElementById('tpl-text-color').value = state.textColor || '#ffffff';
+                document.getElementById('tpl-radius').value = state.shapeRadius || 0;
+                document.getElementById('tpl-transparent').checked = !!state.transparent;
+                document.getElementById('tpl-bg-cover').checked = !!state.bgCover;
+                document.getElementById('tpl-current-mode-label').innerText = (MODES.find(m=>m.id===currentEditMode)||{}).label || currentEditMode;
+
+                // Block picker
+                document.querySelectorAll('#tpl-block-picker button').forEach(btn => {
+                    const k = btn.dataset.block;
+                    const vis = !!(state.blocks[k] && state.blocks[k].visible);
+                    btn.classList.toggle('active', vis && selected===k);
+                    const dot = btn.querySelector('.dot'); if(dot) dot.style.background = vis ? '#fbbf24' : '#475569';
+                });
+            }
+
+            function rgbToHex(col) {
+                if (!col) return '#0f172a';
+                if (col.startsWith('#')) return col;
+                const m = col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (!m) return '#0f172a';
+                return '#' + [m[1],m[2],m[3]].map(n=>{const h=parseInt(n).toString(16);return h.length===1?'0'+h:h}).join('');
+            }
+
+            // --- Navigation entre modes en haut ---
+            function renderModeTabs() {
+                modeTabsEl.innerHTML = '';
+                MODES.forEach(m => {
+                    const b = document.createElement('button');
+                    b.className = 'tpl-mode-tab' + (m.id===currentEditMode?' active':'');
+                    b.innerText = m.label;
+                    b.onclick = () => { pushHistory(); currentEditMode = m.id; loadTemplate(m.id); renderModeTabs(); applyState(); };
+                    modeTabsEl.appendChild(b);
+                });
+            }
+
+            // --- Sélection / Drag / Resize ---
+            let dragging=null, resizing=null, startData=null;
+            function selectBlock(key){ selected=key; applyState(); }
+
+            function startDrag(e, key) {
+                if (e.target.classList.contains('tpl-handle')) return;
+                e.preventDefault();
+                selectBlock(key);
+                dragging = key;
+                const p = pointer(e);
+                const rect = canvas.getBoundingClientRect();
+                startData = { x:p.clientX-rect.left, y:p.clientY-rect.top, bx:state.blocks[key].x, by:state.blocks[key].y };
+                pushHistory();
+            }
+            function startResize(e, key, dir) {
+                e.stopPropagation(); e.preventDefault();
+                selectBlock(key);
+                resizing = dir;
+                const p = pointer(e);
+                const rect = canvas.getBoundingClientRect();
+                startData = { x:p.clientX-rect.left, y:p.clientY-rect.top,
+                    bx:state.blocks[key].x, by:state.blocks[key].y, bw:state.blocks[key].w, bh:state.blocks[key].h, shift:e.shiftKey };
+                pushHistory();
+            }
+            function pointer(e){ return e.touches && e.touches[0] ? e.touches[0] : e; }
+            function onMove(e) {
+                const p = pointer(e);
+                const rect = canvas.getBoundingClientRect();
+                const x = ((p.clientX-rect.left)/rect.width)*100;
+                const y = ((p.clientY-rect.top)/rect.height)*100;
+                if (dragging) {
+                    const b = state.blocks[dragging];
+                    const dx = x - startData.x/(rect.width)*100;
+                    const dy = y - startData.y/(rect.height)*100;
+                    b.x = Math.max(b.w/2, Math.min(100-b.w/2, startData.bx + dx));
+                    b.y = Math.max(b.h?b.h/2:5, Math.min(100-(b.h?b.h/2:5), startData.by + dy));
+                    applyState();
+                } else if (resizing) {
+                    const b = state.blocks[selected];
+                    const dx = x - startData.x/(rect.width)*100;
+                    const dy = y - startData.y/(rect.height)*100;
+                    if (resizing.includes('e')) b.w = Math.max(10, Math.min(98, startData.bw + dx*2));
+                    if (resizing.includes('s')) b.h = Math.max(5, Math.min(95, startData.bh + dy*2));
+                    applyState();
+                }
+            }
+            function onUp(){ dragging=null; resizing=null; }
+
+            // Ajout des poignées et évènements
+            Object.keys(blocksById).forEach(key => {
+                const el = blocksById[key];
+                ['nw','ne','sw','se'].forEach(dir => {
+                    const h = document.createElement('div');
+                    h.className = 'tpl-handle ' + dir;
+                    h.addEventListener('mousedown',(e)=>startResize(e,key,dir));
+                    h.addEventListener('touchstart',(e)=>startResize(e,key,dir),{passive:false});
+                    el.appendChild(h);
+                });
+                el.addEventListener('mousedown',(e)=>startDrag(e,key));
+                el.addEventListener('touchstart',(e)=>startDrag(e,key),{passive:false});
+            });
+            canvas.addEventListener('mousedown',(e)=>{ if(e.target===canvas||e.target===bgOverlay||e.target===bgEl){selected=null;applyState();} });
+            window.addEventListener('mousemove',onMove);
+            window.addEventListener('touchmove',onMove,{passive:false});
+            window.addEventListener('mouseup',onUp);
+            window.addEventListener('touchend',onUp);
+
+            // Barre d'outils mise en forme
+            document.querySelectorAll('[data-cmd]').forEach(btn => {
+                btn.onclick = () => {
+                    if (!selected) return;
+                    const b = state.blocks[selected];
+                    const cmd = btn.dataset.cmd;
+                    if (cmd==='bold') b.bold=!b.bold;
+                    else if (cmd==='italic') b.italic=!b.italic;
+                    else if (cmd==='underline') b.underline=!b.underline;
+                    else if (cmd==='strikeThrough') b.strike=!b.strike;
+                    pushHistory(); applyState();
+                };
+            });
+            document.querySelectorAll('[data-align]').forEach(btn => {
+                btn.onclick = () => { if(!selected)return; state.blocks[selected].align=btn.dataset.align; pushHistory(); applyState(); };
+            });
+            function bindProp(id, setter, live) {
+                const el = document.getElementById(id); if(!el)return;
+                const evt = (el.type==='color'||el.type==='range'||el.tagName==='SELECT')?'input':'change';
+                el.addEventListener(evt, () => {
+                    let v = el.type==='checkbox'?el.checked:(el.type==='number'?parseFloat(el.value):el.value);
+                    setter(v); if(live!==false)applyState();
+                });
+            }
+            bindProp('tpl-block-color', v => { if(!selected)return; state.blocks[selected].color=v; });
+            bindProp('tpl-block-font', v => { if(!selected)return; state.blocks[selected].font=v; });
+            bindProp('tpl-block-size', v => { if(!selected)return; state.blocks[selected].fontSize=+v; document.getElementById('tpl-block-size-v').innerText=v; });
+            bindProp('tpl-block-weight', v => { if(!selected)return; state.blocks[selected].weight=v; });
+            bindProp('tpl-block-spacing', v => { if(!selected)return; state.blocks[selected].letterSpacing=+v; document.getElementById('tpl-block-spacing-v').innerText=v; });
+            bindProp('tpl-block-shadow', v => { if(!selected)return; state.blocks[selected].shadow=+v; document.getElementById('tpl-block-shadow-v').innerText=v; });
+            bindProp('tpl-block-x', v => { if(!selected)return; state.blocks[selected].x=+v; });
+            bindProp('tpl-block-y', v => { if(!selected)return; state.blocks[selected].y=+v; });
+            bindProp('tpl-block-w', v => { if(!selected)return; state.blocks[selected].w=+v; });
+            bindProp('tpl-block-h', v => { if(!selected)return; state.blocks[selected].h=v?+v:null; });
+
+            // Global
+            bindProp('tpl-bg-color', v => { state.bgColor = hexToRgba(v, state.bgOpacity!=null?state.bgOpacity/100:0.92); });
+            bindProp('tpl-bg-opacity', v => { state.bgOpacity=+v; state.bgColor=hexToRgba(rgbToHex(state.bgColor), v/100); document.getElementById('tpl-bg-opacity-v').innerText=v+'%'; });
+            bindProp('tpl-accent-color', v => { state.accentColor=v; });
+            bindProp('tpl-text-color', v => { state.textColor=v; if(selected && selected==='text')state.blocks.text.color=v; });
+            bindProp('tpl-radius', v => { state.shapeRadius=+v; });
+            bindProp('tpl-transparent', v => { state.transparent=v; });
+            bindProp('tpl-bg-cover', v => { state.bgCover=v; });
+
+            // Import image
+            document.getElementById('tpl-bg-file').addEventListener('change', e => {
+                const f = e.target.files[0]; if(!f)return;
+                const r = new FileReader();
+                r.onload = ev => { state.bgImage = ev.target.result; pushHistory(); applyState(); };
+                r.readAsDataURL(f); e.target.value='';
+            });
+            document.getElementById('tpl-bg-clear').onclick = () => { state.bgImage=null; pushHistory(); applyState(); };
+
+            // Block picker
+            document.querySelectorAll('#tpl-block-picker button').forEach(btn => {
+                btn.onclick = () => {
+                    const k = btn.dataset.block;
+                    state.blocks[k] = state.blocks[k] || defaultTemplateFor(currentEditMode).blocks[k];
+                    state.blocks[k].visible = !state.blocks[k].visible;
+                    if (state.blocks[k].visible) selectBlock(k); else if (selected===k) selected=null;
+                    pushHistory(); applyState();
+                };
+            });
+
+            // Boutons header
+            document.getElementById('tpl-btn-undo').onclick = undo;
+            document.getElementById('tpl-btn-reset-mode').onclick = () => {
+                if(!confirm('Réinitialiser le modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » à son apparence par défaut ?'))return;
+                const def = defaultTemplateFor(currentEditMode);
+                state = { mode: currentEditMode, ...def };
+                pushHistory(); applyState();
+            };
+            document.getElementById('tpl-btn-cancel').onclick = closeEditor;
+            document.getElementById('tpl-btn-apply').onclick = () => {
+                // Sauvegarder le template du mode courant ET reporter les styles globaux
+                if (!displaySettings.templates) displaySettings.templates = {};
+                displaySettings.templates[currentEditMode] = JSON.parse(JSON.stringify(state));
+                // Report des styles globaux (couleurs, police) comme avant
+                displaySettings.bgColor = state.bgColor;
+                displaySettings.accentColor = state.accentColor;
+                displaySettings.textColor = state.textColor;
+                displaySettings.shapeRadius = state.shapeRadius;
+                displaySettings.bgImage = state.bgImage;
+                displaySettings.bgCover = !!state.bgCover;
+                displaySettings.transparent = !!state.transparent;
+                displaySettings.bgBlur = 18;
+                saveDisplaySettings();
+                closeEditor();
+                refreshOnAirDisplay();
+                showToast('Modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » enregistré ✨');
+            };
+
+            function hexToRgba(hex, a){
+                let h=hex.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
+                const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+                return `rgba(${r},${g},${b},${a})`;
+            }
+
+            function openEditor() {
+                // Quel mode ouvrir par défaut ? celui sélectionné dans le sélecteur
+                currentEditMode = document.getElementById('obs-mode-select').value;
+                if (!MODES.find(m=>m.id===currentEditMode)) currentEditMode = 'full';
+                loadTemplate(currentEditMode);
+                renderModeTabs();
+                pushHistory();
+                selected = 'text';
+                editor.classList.add('open');
+                setTimeout(applyState, 50);
+                document.addEventListener('keydown', editorKeyHandler);
+            }
+            function closeEditor() {
+                editor.classList.remove('open');
+                document.removeEventListener('keydown', editorKeyHandler);
+            }
+            function editorKeyHandler(e){
+                if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+                if(e.key==='Escape'){ closeEditor(); e.preventDefault(); return; }
+                if(!selected){
+                    if(e.key==='Tab'){selectBlock('text');e.preventDefault();}
+                    return;
+                }
+                const b = state.blocks[selected];
+                const step = e.shiftKey?5:1;
+                if(e.key==='ArrowLeft'){b.x=Math.max(b.w/2,b.x-step);applyState();e.preventDefault();}
+                else if(e.key==='ArrowRight'){b.x=Math.min(100-b.w/2,b.x+step);applyState();e.preventDefault();}
+                else if(e.key==='ArrowUp'){b.y=Math.max(b.h?b.h/2:5,b.y-step);applyState();e.preventDefault();}
+                else if(e.key==='ArrowDown'){b.y=Math.min(100-(b.h?b.h/2:5),b.y+step);applyState();e.preventDefault();}
+                else if(e.key==='Tab'){selectBlock(selected==='ref'?'text':'ref');e.preventDefault();}
+                else if(e.key==='Delete'||e.key==='Backspace'){b.visible=false;selected=null;applyState();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&e.key==='z'){undo();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){b.bold=!b.bold;applyState();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='i'||e.key==='I')){b.italic=!b.italic;applyState();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='u'||e.key==='U')){b.underline=!b.underline;applyState();e.preventDefault();}
+            }
+
+            // On intercepte le clic sur le bouton "Personnaliser"
+            const btn = document.getElementById('btn-open-settings');
+            btn.addEventListener('click', openEditor);
+
+            // Redimensionnement → réappliquer l'échelle du canevas
+            window.addEventListener('resize', () => { if (editor.classList.contains('open')) applyState(); });
+
+            // Fermeture au clic sur fond extérieur ? Non : on garde les boutons explicites.
+        }
+
+        // --- RACCOURCIS CLAVIERS GLOBAUX (navigation versets) ---
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ne pas déclencher quand on est dans un champ ou dans l'éditeur de templates
+                if(document.getElementById('tpl-editor').classList.contains('open')) return;
+                if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+                if(!onAir) return;
+                const book = currentBooks().find(b=>b.name===onAir.bookName);
+                if(!book) return;
+                const chapterIdx = book.chapters.findIndex(c=>c.num==onAir.chapterNum);
+                const curVerse = onAir.verseNums[onAir.verseNums.length-1];
+                const chapter = book.chapters[chapterIdx];
+                if(!chapter) return;
+                const verseIdx = chapter.verses.findIndex(v=>v.num==curVerse);
+
+                if(e.key==='ArrowRight' || e.key===' ' || e.key==='PageDown'){
+                    e.preventDefault();
+                    // Verset suivant (ou partie suivante si verset long)
+                    if(onAir.parts && onAir.parts.length>1 && onAir.partIndex < onAir.parts.length-1){
+                        navigatePart(1); return;
+                    }
+                    if(verseIdx < chapter.verses.length-1){
+                        const nv = chapter.verses[verseIdx+1].num;
+                        triggerDisplay(book.name,chapter.num,[nv]);
+                        highlightVerse(nv);
+                    } else if(chapterIdx < book.chapters.length-1){
+                        const nc = book.chapters[chapterIdx+1];
+                        triggerDisplay(book.name,nc.num,[nc.verses[0].num]);
+                        selectChapter(nc.num);
+                    }
+                } else if(e.key==='ArrowLeft' || e.key==='PageUp'){
+                    e.preventDefault();
+                    if(onAir.parts && onAir.partIndex>0){navigatePart(-1);return;}
+                    if(verseIdx>0){
+                        const nv=chapter.verses[verseIdx-1].num;
+                        triggerDisplay(book.name,chapter.num,[nv]);
+                        highlightVerse(nv);
+                    } else if(chapterIdx>0){
+                        const nc=book.chapters[chapterIdx-1];
+                        const last=nc.verses[nc.verses.length-1].num;
+                        triggerDisplay(book.name,nc.num,[last]);
+                        selectChapter(nc.num);
+                    }
+                } else if(e.key==='ArrowUp' || e.key==='Home'){
+                    e.preventDefault();
+                    triggerDisplay(book.name,chapter.num,[chapter.verses[0].num]);
+                    highlightVerse(chapter.verses[0].num);
+                } else if(e.key==='ArrowDown' || e.key==='End'){
+                    e.preventDefault();
+                    const last=chapter.verses[chapter.verses.length-1].num;
+                    triggerDisplay(book.name,chapter.num,[last]);
+                    highlightVerse(last);
+                } else if(e.key==='Escape'){
+                    clearOBS();
+                }
+            });
+        }
+        function highlightVerse(num) {
+            document.querySelectorAll('.verse-item').forEach(el=>el.classList.remove('active'));
+            const el=document.getElementById('verse-item-'+num);
+            if(el){el.classList.add('active');el.scrollIntoView({behavior:'smooth',block:'center'});}
         }
 
         // ============================================================

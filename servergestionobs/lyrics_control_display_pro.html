@@ -176,6 +176,9 @@
         .scene-root.has-parts::before,.scene-root.has-parts::after{content:'';position:absolute;top:0;width:20%;height:100%;z-index:5;pointer-events:none;opacity:0;}
         .scene-root.has-parts::before{left:0;background:linear-gradient(90deg,rgba(139,92,246,.25),transparent);}
         .scene-root.has-parts::after{right:0;background:linear-gradient(-90deg,rgba(139,92,246,.25),transparent);}
+        .parts-hint-left,.parts-hint-right{position:absolute;top:0;bottom:0;width:16%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.25);font-size:48px;font-weight:800;pointer-events:none;opacity:0;transition:opacity .2s;z-index:5;}
+        .parts-hint-left{left:0;}.parts-hint-right{right:0;}
+        .has-parts:hover .parts-hint-left,.has-parts:hover .parts-hint-right{opacity:1;}
         /* Editeur WYSIWYG paroles - meme design que Bible mais accent violet */
         #tpl-editor-lyr{position:fixed;inset:0;z-index:100;background:rgba(5,8,15,.92);backdrop-filter:blur(12px);display:none;flex-direction:column;color:#f1f5f9;font-family:'Inter',system-ui,sans-serif;}
         #tpl-editor-lyr.open{display:flex;}
@@ -226,6 +229,8 @@
             <div id="obs-card-element">
                 <div id="obs-bg-layer" class="bg-layer"></div>
                 <div id="obs-content-area"></div>
+                <div class="parts-hint-left">‹</div>
+                <div class="parts-hint-right">›</div>
             </div>
         </div>
     </div>
@@ -349,6 +354,8 @@
                             <div id="preview-card" class="hidden">
                                 <div id="preview-bg-layer" class="bg-layer"></div>
                                 <div id="preview-content"></div>
+                                <div class="parts-hint-left">‹</div>
+                                <div class="parts-hint-right">›</div>
                             </div>
                         </div>
                     </div>
@@ -1076,7 +1083,8 @@ function renderLyricsSceneHTML(config,scalePx){
     let displayText=config.text||'';
     let parts=null;let partIndex=config.partIndex||0;
     const splitMode=tpl?tpl.splitMode:'none';const splitChars=(tpl&&tpl.splitChars)||120;
-    if(splitMode==='auto'&&displayText&&displayText.length>splitChars*0.8){
+    if(config.parts&&config.parts.length>1){parts=config.parts;}
+    else if(splitMode==='auto'&&displayText&&displayText.length>splitChars*0.8){
         parts=lyricsSplitSmart(displayText,splitChars);if(parts.length<2)parts=null;
     }
     if(parts&&parts.length>1)displayText=parts[Math.min(partIndex,parts.length-1)];
@@ -1262,9 +1270,15 @@ function initLyricsKeyboardShortcuts(){
         if(!onAir)return;
         const song=songs.find(s=>s.id===onAir.songId);if(!song)return;
         const curIdx=song.sections.findIndex(s=>s.id===onAir.sectionIds[onAir.sectionIds.length-1]);
+        const hasParts = onAir.parts && onAir.parts.length>1;
+        // Navigation entre PARTIES d'abord (comme FreeShow), puis sections
         if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();
+            if(hasParts && (onAir.partIndex||0) < onAir.parts.length-1){
+                navigateLyricPart(1); return;
+            }
             if(curIdx<song.sections.length-1){const nx=song.sections[curIdx+1];triggerDisplay(song.id,[nx.id]);highlightSection(nx.id);}
         }else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();
+            if(hasParts && (onAir.partIndex||0)>0){navigateLyricPart(-1);return;}
             if(curIdx>0){const pv=song.sections[curIdx-1];triggerDisplay(song.id,[pv.id]);highlightSection(pv.id);}
         }else if(e.key==='ArrowUp'||e.key==='Home'){e.preventDefault();
             triggerDisplay(song.id,[song.sections[0].id]);highlightSection(song.sections[0].id);
@@ -1272,6 +1286,12 @@ function initLyricsKeyboardShortcuts(){
             const last=song.sections[song.sections.length-1];triggerDisplay(song.id,[last.id]);highlightSection(last.id);
         }else if(e.key==='Escape'){clearOBS();}
     });
+    function navigateLyricPart(dir){
+        if(!onAir||!onAir.parts||onAir.parts.length<2)return;
+        const next = (onAir.partIndex||0)+dir;
+        if(next<0||next>=onAir.parts.length)return;
+        triggerDisplay(onAir.songId, onAir.sectionIds, {partIndex:next});
+    }
 }
 function highlightSection(id){document.querySelectorAll('.section-item').forEach(el=>el.classList.remove('active'));const el=document.getElementById('section-item-'+id);if(el){el.classList.add('active');el.scrollIntoView({behavior:'smooth',block:'center'});}}
 
@@ -1382,26 +1402,31 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                 `;
             }
 
-            // Modes standard (full/screen80/bottom/bottom-right) : rendu à calques WYSIWYG
-            // si un template existe OU si l'utilisateur a déjà ouvert l'éditeur au moins
-            // une fois (champ templates non vide). Sinon, rendu historique pour ne rien casser.
-            const useLayers = config.mode !== 'scrolling' && displaySettings.templates
-                && displaySettings.templates[config.mode];
-
+            // Modes standard (full/screen80/bottom/bottom-right) : RENDU À CALQUES
+            // SYSTÉMATIQUE (WYSIWYG 1:1), avec le template par défaut si aucun template
+            // personnalisé n'a été sauvegardé. Si le split des paroles longues est
+            // actif → force automatiquement un layout bandeau-bas à la FreeShow.
+            const useLayers = config.mode !== 'scrolling';
             if (useLayers) {
+                let renderMode = config.mode;
+                if (config.parts && config.parts.length > 1) {
+                    renderMode = 'bottom';
+                }
                 card.className = '';
                 card.style.cssText = 'position:absolute;inset:0;margin:0;padding:0;background:transparent;border:none;box-shadow:none;overflow:hidden;';
                 contentArea.style.cssText = 'position:relative;width:100%;height:100%;';
+                const origMode = config.mode; config.mode = renderMode;
                 html = renderLyricsSceneHTML(config, 1);
+                config.mode = origMode;
                 modeClass = '';
                 hasMedia = false;
+                if (config.parts && config.parts.length > 1) card.classList.add('has-parts');
             }
 
             if (hasMedia) modeClass += ' has-bg-media';
             if (!sameContext && config.mode !== 'scrolling') modeClass += ' anim-show';
 
             if (modeClass) card.className = modeClass;
-            else card.className = '';
             applyLookLayout(card, config.mode, config.layout);
 
             const swapContent = () => {
@@ -1905,10 +1930,11 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
         // ============================================================
         // DIFFUSION VERS OBS
         // ============================================================
-        function triggerDisplay(songId, sectionIds) {
+        function triggerDisplay(songId, sectionIds, opts) {
             if (!Array.isArray(sectionIds)) sectionIds = [sectionIds];
             const song = songs.find(s => s.id === songId);
             if (!song) return;
+            opts = opts || {};
 
             const secs = sectionIds.map(id => song.sections.find(s => s.id === id)).filter(Boolean);
             if (secs.length === 0) {
@@ -1956,7 +1982,10 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                 if (config.parts.length < 2) config.parts = null;
             }
 
-            onAir = { songId, sectionIds: sectionIds.slice(), parts: config.parts || null, partIndex: 0 };
+            const partIndex = (config.parts && typeof opts.partIndex === 'number')
+                ? Math.max(0, Math.min(config.parts.length-1, opts.partIndex)) : 0;
+            if (config.parts && config.parts.length > 1) config.partIndex = partIndex;
+            onAir = { songId, sectionIds: sectionIds.slice(), parts: config.parts || null, partIndex };
 
             // 1. Envoyer à OBS via BroadcastChannel (le Blob du fond est cloné vers l'autre onglet)
             bc.postMessage({ action: 'show', config });
@@ -2329,4 +2358,3 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
 
 </body>
 </html>
-/html>

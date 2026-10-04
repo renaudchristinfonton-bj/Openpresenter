@@ -545,6 +545,8 @@
                         <div id="preview-container" style="position: absolute; width: 100%; height: 100%; transform: scale(0.25); transform-origin: top left; pointer-events: none;">
                             <div id="preview-card" class="hidden">
                                 <div id="preview-content"></div>
+                                <div class="parts-hint-left">‹</div>
+                                <div class="parts-hint-right">›</div>
                             </div>
                         </div>
                         <div class="custom-drag-hint" id="custom-drag-hint">
@@ -1434,15 +1436,11 @@
                 if (data.action === 'show') {
                     const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
                     renderDisplay(cfg, container, card, contentArea);
-                    // Indication visuelle "cliquable" quand il y a plusieurs parties
-                    // Indication visuelle "cliquable" quand il y a plusieurs parties.
-                    // IMPORTANT : ne l'activer QUE sur bottom/bottom-right : les
-                    // autres modes (plein écran, 80%, ruban, custom) DOIVENT afficher
-                    // le verset ENTIER quoi qu'il arrive — sinon l'affichage plein
-                    // écran devenait bizarre (tronqué à la première partie) alors que
-                    // l'option "ligne par ligne" ne doit que mettre en forme, pas
-                    // découper, sur ces modes-là.
-                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1 && (cfg.mode === 'bottom' || cfg.mode === 'bottom-right')));
+                    // Indicateurs "partie précédente/suivante" actifs pour TOUS les
+                    // modes quand le verset est découpé (pas seulement bottom/right
+                    // — à la FreeShow, le split fonctionne aussi en plein écran en
+                    // passant par un rendu bandeau-bas automatique).
+                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1));
                 }
             };
         }
@@ -1741,14 +1739,27 @@ function renderDisplay(config, container, card, contentArea, opts) {
                 : `<div class="verse-text" style="font-family:'Merriweather',serif;">"${config.text}"</div>`
             }</div>`;
     } else {
-        // Mode standard (full/screen80/bottom/bottom-right) : RENDU UNIFIÉ À CALQUES
-        // card doit occuper toute la scène 1920×1080 (c'est le layer-content qui
-        // positionnera la "carte couleur" — non : la scène root SE POSITIONNE elle-même).
+        // Modes standard (full/screen80/bottom/bottom-right) : RENDU UNIFIÉ À CALQUES
+        // systématique. Si aucun template n'a encore été sauvegardé pour ce mode,
+        // on utilise le template par défaut. Si le split est actif (verset long
+        // découpé en plusieurs diapositives), on force automatiquement un layout
+        // "bandeau bas" bien lisible à la FreeShow/ProPresenter.
+        let renderMode = config.mode;
+        if (config.parts && config.parts.length > 1) {
+            // Split actif → toujours utiliser le layout "bottom" (bandeau bas)
+            // pour une lisibilité optimale, quel que soit le mode choisi.
+            renderMode = 'bottom';
+            card.classList.add('has-parts');
+        } else {
+            card.classList.remove('has-parts');
+        }
         card.className = '';
         card.style.cssText = 'position:absolute;inset:0;margin:0;padding:0;background:transparent;border:none;box-shadow:none;overflow:hidden;';
         contentArea.style.cssText = 'position:relative;width:100%;height:100%;';
+        const origMode = config.mode;
+        config.mode = renderMode;
         contentArea.innerHTML = renderSceneHTML(config, 1);
-        // Ajustement downscale si le texte déborde du bloc qui le contient
+        config.mode = origMode;
         requestAnimationFrame(() => autoFitLayers(contentArea));
     }
 
@@ -2860,8 +2871,13 @@ function autoFitLayers(root) {
             // annotés (HTML qui ne doit pas être coupé).
             let parts = null;
             const mode = document.getElementById('obs-mode-select').value;
-            const tplForSplit = (displaySettings.templates && displaySettings.templates[mode]) || defaultTemplateFor(mode);
-            const splitMode = (tplForSplit && tplForSplit.splitMode) || (displaySettings.lineMode ? 'auto' : 'none');
+            // Toujours partir du template par défaut du mode, puis appliquer les
+            // personnalisations si elles existent. Garantit que splitMode est
+            // toujours défini ('none' en full/screen80 par défaut, 'auto' en
+            // bottom/bas-droite par défaut), même si l'utilisateur n'a jamais
+            // ouvert l'éditeur.
+            const tplForSplit = Object.assign({}, defaultTemplateFor(mode), (displaySettings.templates && displaySettings.templates[mode]) || {});
+            const splitMode = (tplForSplit && tplForSplit.splitMode) || 'none';
             const splitChars = (tplForSplit && tplForSplit.splitChars) || VERSE_SPLIT_MAX_CHARS;
             if (splitMode === 'auto' && combinedText.length > splitChars * 0.8 && !annotatedHtml) {
                 parts = splitSmart(combinedText, splitChars);

@@ -27,6 +27,48 @@
 
         #obs-container { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; overflow: hidden; }
 
+        /* ===========================================================
+           SCÈNE À CALQUES UNIFIÉE (éditeur / preview / OBS)
+           La carte .scene-root gère les couches dans l'ordre z-index :
+             1 .layer-bg-image   — image de fond (couvre tout l'écran si bgCover,
+                                   sinon reste confinée à la "carte texte")
+             2 .layer-overlay    — couleur/gradient de fond + forme arrondie + bordure
+             3 .layer-content    — référence + badge + versets (positionnement absolu)
+           =========================================================== */
+        .scene-root { position: absolute; box-sizing: border-box; overflow: hidden; }
+        .scene-root.tpl-mode-full     { top:3.7%; left:2.08%; width:95.84%; height:92.6%; padding: 7.4vh 5vw; border-top:2px solid var(--accent-color); border-bottom:2px solid var(--accent-color); }
+        .scene-root.tpl-mode-screen80 { top:10%;   left:10%;    width:80%;    height:80%;    padding: 6vh 5vw;   border-top:6px solid var(--accent-color); border-bottom:6px solid var(--accent-color); }
+        .scene-root.tpl-mode-bottom   { bottom:5.56%; left:10%; width:80%;    height:25%;    padding: 2vh 2.5vw; border-left:8px solid var(--accent-color); }
+        .scene-root.tpl-mode-bottom-right{ bottom:5.56%; right:3%; width:80%;  height:25%;    padding: 2vh 2.5vw; border-right:8px solid var(--accent-color); }
+        .scene-root.has-bg-image .layer-bg-image { position:absolute; inset:0; z-index:0; background-size:cover; background-position:center; }
+        .scene-root.has-bg-cover .layer-bg-image { position:absolute; top:0;left:0;width:100vw;height:100vh; z-index:0; background-size:cover; background-position:center; }
+        .scene-root .layer-overlay { position:absolute; inset:0; z-index:1; background: var(--bg-color); border-radius: var(--shape-radius, 16px); pointer-events:none; }
+        .scene-root.obs-transparent .layer-overlay { background: transparent; }
+        .scene-root.obs-transparent { border-color: transparent !important; background: transparent !important; }
+        .scene-root .layer-content { position:absolute; inset:0; z-index:2; }
+        .scene-root .layer-content .blk { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); margin:0; box-sizing:border-box; }
+        .scene-root .layer-content .blk-ref  { color: var(--accent-color); font-family:'Cinzel',serif; font-weight:800; white-space:nowrap; text-shadow:0 2px 8px rgba(0,0,0,.5); }
+        .scene-root .layer-content .blk-text { color: var(--text-color); font-family:'Merriweather',serif; font-weight:600; line-height:1.35; text-shadow:0 2px 8px rgba(0,0,0,.5); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .scene-root .layer-content .blk-text .verse-line { display:block; }
+        .scene-root .layer-content .blk-badge{ position:absolute; background: var(--accent-color); color:#0b0f1a; font-family:'Inter',sans-serif; font-weight:800; border-radius:999px; padding:.35em 1em; }
+        .scene-root.hide-ref .blk-ref, .scene-root.hide-ref .blk-badge { display:none !important; }
+        .scene-root .blk-align-left   .verse-line{align-self:flex-start;text-align:left;}
+        .scene-root .blk-align-right  .verse-line{align-self:flex-end;text-align:right;}
+        .scene-root .blk-align-center .verse-line{align-self:center;text-align:center;}
+        .scene-root .blk-align-justify .verse-line{text-align:justify;}
+        /* La "carte" hors mode custom doit devenir un simple conteneur transparent
+           (c'est .scene-root qui dessine la couleur/forme aux bonnes dimensions). */
+        #obs-card-element:has(.scene-root), #preview-card:has(.scene-root) {
+            background: transparent !important; border: none !important;
+            box-shadow: none !important; backdrop-filter: none !important;
+        }
+        /* Indicateurs de "partie suivante/précédente" */
+        .scene-root.has-parts::before, .scene-root.has-parts::after{
+            content:''; position:absolute; top:0; width:20%; height:100%; z-index:5; pointer-events:none; opacity:0;
+        }
+        .scene-root.has-parts::before{ left:0; background:linear-gradient(90deg,rgba(245,158,11,.25),transparent); }
+        .scene-root.has-parts::after { right:0; background:linear-gradient(-90deg,rgba(245,158,11,.25),transparent); }
+
         /* Sortie à résolution personnalisée (?res=WxH) : body prend la taille réelle
            de l'écran demandée (--cw/--ch). */
         body.mode-obs.res-custom { width: var(--cw, 1920px) !important; height: var(--ch, 1080px) !important; }
@@ -275,6 +317,8 @@
             padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
         }
         .tpl-section { background: #111c2e; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; }
+        .tpl-select { background:#0b1220; border:1px solid #334155; color:#e2e8f0; padding:4px 8px; border-radius:4px; font-size:11px; }
+        .tpl-select:focus { outline:none; border-color:#fbbf24; }
         .tpl-section h4 { font-size: 10px; font-weight: 800; color: #fbbf24; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
         .tpl-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; color: #cbd5e1; }
         .tpl-row label { min-width: 58px; color: #94a3b8; }
@@ -772,18 +816,14 @@
                 </div>
             </aside>
 
-            <!-- Canevas central 16:9 -->
+            <!-- Canevas central 16:9 — rendu WYSIWYG via renderSceneHTML (même moteur que OBS) -->
             <main class="tpl-canvas-wrap">
                 <div class="tpl-canvas" id="tpl-canvas">
-                    <div class="tpl-bg" id="tpl-bg"></div>
-                    <div class="tpl-bg-overlay" id="tpl-bg-overlay"></div>
-                    <!-- Les blocs sont créés par JS -->
-                    <div class="tpl-block ref" data-block="ref" id="tpl-block-ref">Jean 3:16 <span class="version-badge" style="background:#fbbf24;color:#0b1220;font-family:Inter;font-weight:800;font-size:14px;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle">LSG</span></div>
-                    <div class="tpl-block text" data-block="text" id="tpl-block-text">
-                        <span class="tpl-line">« Car Dieu a tant aimé le monde qu'il a donné</span>
-                        <span class="tpl-line">son Fils unique… »</span>
-                    </div>
-                    <div class="tpl-shortcut-hint">Mode : <span id="tpl-current-mode-label" style="color:#fbbf24;font-weight:700">—</span> · Cliquez sur un bloc puis faites-le glisser</div>
+                    <!-- Le HTML du rendu est injecté ici par rebuildCanvas() à partir de renderSceneHTML. -->
+                    <div id="tpl-canvas-root" style="position:absolute;inset:0;"></div>
+                    <!-- Overlay invisible qui capte les drags/resize et dessine la sélection -->
+                    <div id="tpl-edit-overlay" style="position:absolute;inset:0;z-index:10;pointer-events:none;"></div>
+                    <div class="tpl-shortcut-hint">Mode : <span id="tpl-current-mode-label" style="color:#fbbf24;font-weight:700">—</span> · Cliquez un bloc puis glissez · Ctrl+Z annule · Flèches pour déplacer</div>
                 </div>
             </main>
 
@@ -843,6 +883,16 @@
                         </div>
                     </div>
 
+                    <div class="tpl-section">
+                        <h4>Versets longs (découpage ProPresenter/FreeShow)</h4>
+                        <select id="tpl-split-mode" class="tpl-select w-full">
+                            <option value="none">Affichage complet (pas de split)</option>
+                            <option value="auto">Découper automatiquement en plusieurs diapositives</option>
+                        </select>
+                        <div class="tpl-row mt-2"><label>Caractères / partie</label><input type="range" id="tpl-split-chars" min="80" max="400" step="10"><span id="tpl-split-chars-v" style="width:34px;text-align:right;">180</span></div>
+                        <label class="flex items-center gap-2 text-[11px] text-slate-400 mt-2"><input type="checkbox" id="tpl-split-lines">Afficher plusieurs lignes à l'intérieur d'une diapositive</label>
+                        <p class="text-[10px] text-slate-500 mt-2">En mode split, les flèches ← → (et clics sur les bords de la carte OBS) font défiler les parties. Le split ne s'active QUE si le verset dépasse la longueur.</p>
+                    </div>
                     <div class="tpl-section">
                         <h4>Position & Taille (%)</h4>
                         <div class="tpl-row"><label>X</label><input type="number" id="tpl-block-x" min="0" max="100" step="0.5"><span>%</span></div>
@@ -907,41 +957,51 @@
         // ============================================================
         // RÉGLAGES DE PERSONNALISATION DU RENDU (persistés en localStorage)
         // ============================================================
-        // Layouts PAR MODE : un dictionnaire où chaque clé (full/screen80/bottom/bottom-right)
-        // contient la position/size en % de chaque bloc et les styles. Quand null, le rendu
-        // utilise le CSS historique (comportement par défaut 1:1 identique à avant).
+        // Layouts PAR MODE : dictionnaire où chaque clé contient la position/size
+        // en % de chaque bloc et les styles. C'est LA SEULE source de vérité :
+        // l'éditeur, la preview et OBS utilisent EXACTEMENT ces données pour
+        // produire le même HTML/CSS (WYSIWYG garanti). null = rendu historique.
+        // Coordonnées en % du CANEVAS (1920×1080) ou de la carte selon le mode.
         function defaultTemplateFor(mode) {
             switch(mode) {
                 case 'full': return {
                     bgImage: null, bgColor: 'rgba(15,23,42,0.95)', accentColor:'#f59e0b', textColor:'#ffffff',
                     shapeRadius:24, bgOpacity:95, transparent:false, bgCover:false,
+                    splitMode: 'none', splitChars: 280, splitByLines: false,
                     blocks: {
-                        ref: {visible:true, x:50, y:12, w:80, h:8, fontSize:36, font:'Cinzel', weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:0},
-                        text:{visible:true, x:50, y:52, w:80, h:55, fontSize:64, font:'Merriweather', weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:4}
+                        ref:   {visible:true, x:50, y:12, w:80, h:8,  fontSize:50, font:'Cinzel',      weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:2, italic:false, underline:false, strike:false, bold:false},
+                        badge: {visible:true, x:62, y:12, w:12, h:5,  fontSize:26, font:'Inter',       weight:800, color:'#0b0f1a', align:'center', bg:'#f59e0b'},
+                        text:  {visible:true, x:50, y:55, w:80, h:65, fontSize:72, font:'Merriweather',weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:6, italic:false, underline:false, strike:false, bold:false, lineHeight:1.35}
                     }
                 };
                 case 'screen80': return {
                     bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
                     shapeRadius:20, bgOpacity:92, transparent:false, bgCover:false,
+                    splitMode: 'none', splitChars: 240, splitByLines: false,
                     blocks: {
-                        ref: {visible:true, x:50, y:14, w:80, h:8, fontSize:34, font:'Cinzel', weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:0},
-                        text:{visible:true, x:50, y:55, w:80, h:60, fontSize:54, font:'Merriweather', weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:4}
+                        ref:   {visible:true, x:50, y:12, w:80, h:8,  fontSize:48, font:'Cinzel',      weight:800, color:'#f59e0b', align:'center', letterSpacing:1, shadow:2},
+                        badge: {visible:true, x:62, y:12, w:12, h:5,  fontSize:24, font:'Inter',       weight:800, color:'#0b0f1a', align:'center', bg:'#f59e0b'},
+                        text:  {visible:true, x:50, y:55, w:82, h:68, fontSize:62, font:'Merriweather',weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:6, lineHeight:1.35}
                     }
                 };
                 case 'bottom': return {
                     bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
                     shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+                    splitMode: 'auto', splitChars: 180, splitByLines: true,
                     blocks: {
-                        ref: {visible:true, x:8, y:30, w:35, h:40, fontSize:28, font:'Cinzel', weight:800, color:'#f59e0b', align:'left', letterSpacing:1, shadow:0},
-                        text:{visible:true, x:50, y:70, w:88, h:55, fontSize:42, font:'Merriweather', weight:600, color:'#ffffff', align:'left', letterSpacing:0, shadow:4}
+                        ref:   {visible:true, x:25, y:28, w:42, h:40, fontSize:34, font:'Cinzel',      weight:800, color:'#f59e0b', align:'left',   letterSpacing:1, shadow:2},
+                        badge: {visible:true, x:65, y:28, w:18, h:18, fontSize:22, font:'Inter',       weight:800, color:'#0b0f1a', align:'center', bg:'#f59e0b'},
+                        text:  {visible:true, x:50, y:70, w:90, h:55, fontSize:46, font:'Merriweather',weight:600, color:'#ffffff', align:'left',   letterSpacing:0, shadow:4, lineHeight:1.35}
                     }
                 };
                 case 'bottom-right': return {
                     bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
                     shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+                    splitMode: 'auto', splitChars: 180, splitByLines: true,
                     blocks: {
-                        ref: {visible:true, x:92, y:30, w:35, h:40, fontSize:28, font:'Cinzel', weight:800, color:'#f59e0b', align:'right', letterSpacing:1, shadow:0},
-                        text:{visible:true, x:50, y:70, w:88, h:55, fontSize:42, font:'Merriweather', weight:600, color:'#ffffff', align:'right', letterSpacing:0, shadow:4}
+                        ref:   {visible:true, x:78, y:28, w:42, h:40, fontSize:34, font:'Cinzel',      weight:800, color:'#f59e0b', align:'right',  letterSpacing:1, shadow:2},
+                        badge: {visible:true, x:36, y:28, w:18, h:18, fontSize:22, font:'Inter',       weight:800, color:'#0b0f1a', align:'center', bg:'#f59e0b'},
+                        text:  {visible:true, x:50, y:70, w:90, h:55, fontSize:46, font:'Merriweather',weight:600, color:'#ffffff', align:'right',  letterSpacing:0, shadow:4, lineHeight:1.35}
                     }
                 };
             }
@@ -1437,262 +1497,288 @@
             });
         }
 
-        function renderDisplay(config, container, card, contentArea) {
-            container.style.opacity = '1';
-            card.className = '';
+// ============================================================
+// MOTEUR DE RENDU UNIFIÉ À CALQUES (preview + OBS + éditeur)
+// Produit EXACTEMENT le même HTML/CSS partout, en utilisant
+// le template du mode (ou le template par défaut) comme source
+// de vérité. Les coordonnées sont en % de la scène (1920×1080).
+// ============================================================
 
-            card.style.setProperty('--bg-color', config.bgColor || 'rgba(15, 23, 42, 0.92)');
-            card.style.setProperty('--accent-color', config.accentColor || '#f59e0b');
-            card.style.setProperty('--text-color', config.textColor || '#ffffff');
-            card.style.setProperty('--shape-radius', (config.shapeRadius != null ? config.shapeRadius : 20) + 'px');
+function pickTemplate(config) {
+    const mode = config.mode;
+    const saved = (displaySettings.templates && displaySettings.templates[mode]) || null;
+    if (saved) return JSON.parse(JSON.stringify(saved));
+    return defaultTemplateFor(mode);
+}
 
-            if (config.bgImage) {
-                card.style.setProperty('--bg-image', `url('${config.bgImage}')`);
-                card.style.setProperty('--bg-blur', (config.bgBlur != null ? config.bgBlur : 18) + 'px');
-            } else {
-                card.style.removeProperty('--bg-image');
-            }
+// Découpage intelligent de verset long : respecte la ponctuation
+// et évite de couper au milieu d'un mot. splitChars = nb de
+// caractères max par partie.
+function splitSmart(text, maxChars) {
+    text = String(text || '').trim();
+    if (!text || text.length <= maxChars) return [text];
+    const punct = /[.!?,;:—–\-]/g;
+    const parts = [];
+    let rest = text;
+    while (rest.length > maxChars) {
+        let cut = -1;
+        // Chercher une ponctuation dans la 2e moitié de la fenêtre
+        const w = rest.slice(0, maxChars);
+        let m;
+        punct.lastIndex = Math.floor(maxChars * 0.4);
+        while ((m = punct.exec(w)) !== null) { if (m.index > maxChars * 0.4) cut = m.index + 1; }
+        if (cut < 0) cut = w.lastIndexOf(' ');
+        if (cut < maxChars * 0.4) cut = maxChars; // coupe sèche si aucun espace
+        parts.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+    }
+    if (rest) parts.push(rest);
+    return parts;
+}
 
-            const fontFam = config.fontFamily || 'Merriweather';
+// Génère le HTML d'une scène à calques.
+// scalePx : facteur d'échelle pour les tailles de police (1 = 1920px,
+// plus petit dans l'éditeur ou la preview miniature).
+function renderSceneHTML(config, scalePx = 1) {
+    const tpl = pickTemplate(config);
+    const mode = config.mode;
 
-            // Découpage des versets longs : en modes « bas centré » / « bas droite »,
-            // seule la partie COURANTE du verset est affichée (config.parts[partIndex]).
-            const displayText = (config.parts && config.parts.length > 1
-                && (config.mode === 'bottom' || config.mode === 'bottom-right'))
-                ? config.parts[Math.min(config.partIndex || 0, config.parts.length - 1)]
-                : config.text;
+    // Gestion du split des versets longs (configurable par le template)
+    let displayText = config.text;
+    let parts = null;
+    let partIndex = config.partIndex || 0;
+    const splitMode = tpl ? tpl.splitMode : (config.lineMode ? 'auto' : 'none');
+    const splitChars = (tpl && tpl.splitChars) || 200;
+    if (splitMode !== 'none' && !config.textHtml && displayText && displayText.length > splitChars) {
+        parts = splitSmart(displayText, splitChars);
+        if (parts.length < 2) parts = null;
+    }
+    if (config.parts && config.parts.length > 1) { parts = config.parts; }
+    if (parts && parts.length > 1) {
+        displayText = parts[Math.min(partIndex, parts.length - 1)];
+    }
 
-            const wordCount = displayText.split(/\s+/).filter(Boolean).length;
+    // Couleur de fond avec opacité
+    const bgColor = (tpl && tpl.bgColor) || config.bgColor || 'rgba(15,23,42,0.92)';
+    const accent = (tpl && tpl.accentColor) || config.accentColor || '#f59e0b';
+    const textC = (tpl && tpl.textColor) || config.textColor || '#ffffff';
+    const radius = (tpl && tpl.shapeRadius != null) ? tpl.shapeRadius : (config.shapeRadius != null ? config.shapeRadius : 20);
+    const bgImage = (tpl && tpl.bgImage) || config.bgImage || null;
+    const transparent = (tpl && tpl.transparent) || config.transparent;
+    const bgCover = (tpl && tpl.bgCover) || config.bgCover;
+    const hideRef = (tpl && (tpl.blocks && tpl.blocks.ref && !tpl.blocks.ref.visible)) || config.hideRef;
 
-            // Bloc de texte : soit une seule bulle, soit découpé ligne par ligne (respecte les mêmes
-            // règles de largeur 80% / anti-débordement, gérées ensuite par autoFitDisplay).
-            let textHtml;
-            if (config.textHtml) {
-                // Verset annoté (✏️) : HTML enrichi local, rendu tel quel (par conception).
-                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">${config.textHtml}</div>`;
-            } else if (config.lineMode) {
-                const lines = splitTextIntoLines(displayText, charsPerLineFor(contentArea, displayText.length));
-                textHtml = lines.map(l => `<div class="verse-text verse-line" style="font-family: '${fontFam}', serif;">${l}</div>`).join('');
-            } else {
-                textHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${displayText}"</div>`;
-            }
+    // Style des variables CSS
+    const cssVars = `--bg-color:${transparent?'transparent':bgColor};--accent-color:${accent};--text-color:${textC};--shape-radius:${radius}px;`;
 
-            // 2 versions : si une seconde traduction est fournie, le bloc de texte
-            // devient deux colonnes côte à côte — nom de chaque version au-dessus,
-            // séparateur central. Fonctionne en préview et sur OBS (même config).
-            if (config.dual && config.dual.text) {
-                const dualColumn = (badge, inner) => `
-                    <div style="flex:1 1 0; display:flex; flex-direction:column; min-width:0; padding:0 24px;">
-                        <div class="version-badge" style="font-size:22px; padding:4px 14px; align-self:center; margin-bottom:16px;">${badge}</div>
-                        <div class="flex-1 w-full flex flex-col justify-center min-h-0">${inner}</div>
-                    </div>`;
-                const dualTextHtml = `<div class="verse-text" style="font-family: '${fontFam}', serif;">"${config.dual.text}"</div>`;
-                textHtml = `
-                    <div style="display:flex; width:100%; flex:1 1 auto; align-items:stretch;">
-                        ${dualColumn(config.version, textHtml)}
-                        <div style="width:3px; background:var(--accent-color, #f59e0b); opacity:0.55; margin:10px 0; border-radius:2px;"></div>
-                        ${dualColumn(config.dual.version, dualTextHtml)}
-                    </div>`;
-            }
+    // --- CALQUE 1 : image de fond ---
+    const bgLayer = bgImage ? `<div class="layer-bg-image" style="background-image:url('${escapeQuotes(bgImage)}');"></div>` : '';
+    // --- CALQUE 2 : overlay couleur (désactivé si transparent) ---
+    const overlayLayer = transparent ? '' : `<div class="layer-overlay"></div>`;
 
-            let html = '';
-            let modeClass = '';
+    // --- CALQUE 3 : blocs de contenu ---
+    const blocks = (tpl && tpl.blocks) ? tpl.blocks : defaultTemplateFor(mode).blocks;
 
-            if (config.mode === 'scrolling') {
-                modeClass = 'obs-scrolling';
-                // Vitesse du ruban adaptée à la longueur du texte pour rester lisible
-                const speed = Math.max(15, Math.min(70, wordCount * 0.55));
-                card.style.setProperty('--speed', speed + 's');
-                // En mode ruban défiler, la seconde version (si activée) suit la
-                // première, séparée par le nom de sa traduction.
-                const dualScrolling = (config.dual && config.dual.text)
-                    ? ` <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">${config.dual.version} :</span><span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.dual.text}"</span>`
-                    : '';
-                html = `
-                    <div class="ticker-wrapper" style="font-family: '${fontFam}', serif; font-size: calc(var(--adapt-h, 1080px) * 40 / 1080);">
-                        <div class="ticker-content">
-                            <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">📖 ${config.reference} <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
-                        </div>
-                        <div class="ticker-content">
-                            <span class="verse-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">📖 ${config.reference} <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.version}</span> :</span>
-                            <span class="verse-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">"${config.text}"</span>${dualScrolling}
-                        </div>
-                    </div>
-                `;
-            } else if (config.mode === 'bottom') {
-                modeClass = 'obs-bottom anim-show';
-                html = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ${config.reference}</div>
-                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">${config.version}</span>
-                    </div>
-                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
-                `;
-            } else if (config.mode === 'bottom-right') {
-                modeClass = 'obs-bottom-right anim-show';
-                html = `
-                    <div class="flex items-center justify-end gap-4 mb-2">
-                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">${config.version}</span>
-                        <div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ${config.reference}</div>
-                    </div>
-                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
-                `;
-            } else if (config.mode === 'screen80') {
-                modeClass = 'obs-screen80 anim-show';
-                html = `
-                    <div class="verse-ref mb-6" style="font-size: calc(var(--adapt-h, 1080px) * 50 / 1080);">📖 ${config.reference} <span class="version-badge align-middle" style="font-size: calc(var(--adapt-h, 1080px) * 28 / 1080); padding: 6px 14px;">${config.version}</span></div>
-                    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
-                    <div class="h-8"></div>
-                `;
-            } else if (config.mode === 'custom') {
-                modeClass = 'obs-custom anim-show';
-                if (config.customRefPos) modeClass += ' ' + config.customRefPos;
-                // Classe d'ancrage (bordure d'accent du bon côté)
-                if (config.customPos === 'right') modeClass += ' anchor-right';
-                else if (config.customPos === 'top') modeClass += ' anchor-top';
-                else if (config.customPos === 'center') modeClass += ' anchor-center';
-                if (config.transparent) modeClass += ' obs-transparent';
-                if (config.bgCover) modeClass += ' has-bg-cover';
-                if (config.hideRef) modeClass += ' hide-ref';
-                function pct(v, d){ return (v != null && !isNaN(v)) ? v + '%' : d; }
-                if (config.customLeft  != null) card.style.setProperty('--custom-left',  pct(config.customLeft,  null)); else card.style.removeProperty('--custom-left');
-                if (config.customRight != null) card.style.setProperty('--custom-right', pct(config.customRight, null)); else card.style.removeProperty('--custom-right');
-                card.style.setProperty('--custom-bottom', config.customBottom!= null ? pct(config.customBottom,null) : '8%');
-                card.style.setProperty('--custom-top',    config.customTop  === 'auto' ? 'auto' : pct(config.customTop,'auto'));
-                card.style.setProperty('--custom-width',  config.customWidth ? pct(config.customWidth,null) : 'auto');
-                card.style.setProperty('--custom-height','auto');
-                card.style.setProperty('--custom-align', config.customAlign || 'center');
-                html = `
-                    <div class="flex items-center ${config.customAlign === 'right' ? 'justify-end' : (config.customAlign === 'left' ? 'justify-start' : 'justify-between')} gap-4 mb-2">
-                        ${config.customAlign !== 'right' ? '<div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ' + config.reference + '</div>' : ''}
-                        <span class="version-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 6px 14px;">' + config.version + '</span>
-                        ${config.customAlign === 'right' ? '<div class="verse-ref" style="font-size: calc(var(--adapt-h, 1080px) * 38 / 1080);">📖 ' + config.reference + '</div>' : ''}
-                    </div>
-                    <div class="flex-1 w-full flex flex-col justify-center min-h-0">${textHtml}</div>
-                `;
-            } else { // full
-                modeClass = 'obs-full anim-show';
-                if (config.transparent) modeClass += ' obs-transparent';
-                if (config.bgCover) modeClass += ' has-bg-cover';
-                html = `
-                    <div class="verse-ref mb-6" style="font-size: calc(var(--adapt-h, 1080px) * 50 / 1080);">
-                        <span class="opacity-30" style="font-size: calc(var(--adapt-h, 1080px) * 40 / 1080); margin-right: 16px;">✝</span>
-                        ${config.reference}
-                        <span class="version-badge align-middle" style="font-size: calc(var(--adapt-h, 1080px) * 28 / 1080); padding: 6px 14px;">${config.version}</span>
-                    </div>
-                    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">${textHtml}</div>
-                    <div class="h-8"></div>
-                `;
-            }
+    function blockStyle(b) {
+        if (!b) return 'display:none;';
+        const fs = b.fontSize * scalePx;
+        const ff = b.font || 'Merriweather';
+        const w = b.fontWeight || (b.bold ? 700 : 400);
+        const dec = [b.underline?'underline':'', b.strike?'line-through':''].filter(Boolean).join(' ') || 'none';
+        const sh = b.shadow > 0 ? `0 ${b.shadow*scalePx/2}px ${b.shadow*scalePx}px rgba(0,0,0,${0.3+b.shadow/30})` : 'none';
+        return [
+            `left:${b.x}%;top:${b.y}%;width:${b.w}%;` + (b.h?`height:${b.h}%;`:''),
+            `font-size:${fs}px;`,
+            `font-family:'${ff}',serif;`,
+            `font-weight:${w};`,
+            `color:${b.color||'#fff'};`,
+            `text-align:${b.align||'center'};`,
+            `letter-spacing:${(b.letterSpacing||0)*scalePx}px;`,
+            `text-shadow:${sh};`,
+            `text-decoration:${dec};`,
+            `font-style:${b.italic?'italic':'normal'};`,
+            `line-height:${b.lineHeight||1.35};`,
+            `padding:${(b.padding||0)}px;`,
+            b.bg ? `background:${b.bg};border-radius:999px;padding:${fs*0.25}px ${fs*0.9}px;` : '',
+        ].join('');
+    }
 
-            // Appliquer les décorations aux autres modes aussi
-            if (config.mode !== 'custom') {
-                if (config.transparent) modeClass += ' obs-transparent';
-                if (config.bgCover) modeClass += ' has-bg-cover';
-                if (config.hideRef) modeClass += ' hide-ref';
-            }
-
-            if (config.bgImage) modeClass += ' has-bg-image';
-
-            card.className = modeClass;
-            applyLookLayout(card, config.mode, config.layout);
-            contentArea.innerHTML = html;
-
-            // --- APPLICATION D'UN TEMPLATE UTILISATEUR (éditeur visuel) ---
-            // Si un template a été sauvegardé pour ce mode, on surcharge les positions/sizes
-            // des blocs en CSS custom + inline. Le rendu garde la même structure HTML
-            // mais chaque bloc (.verse-ref / .verse-text / .version-badge) est positionné
-            // absolument selon les % enregistrés dans le template.
-            const tpl = displaySettings.templates && displaySettings.templates[config.mode];
-            if (tpl && config.mode !== 'custom' && config.mode !== 'scrolling') {
-                applyTemplate(card, contentArea, tpl, config.mode);
-            } else {
-                // Ajustement automatique de la taille du texte pour ne jamais déborder
-                autoFitDisplay(config.mode, card, contentArea);
-            }
-
-            // On mémorise ce rendu pour pouvoir le réajuster automatiquement si les polices
-            // web (Cinzel, Merriweather, etc.) finissent de charger APRÈS ce calcul — sinon
-            // le texte peut changer de taille réelle une fois la police définitive appliquée
-            // et déborder du cadre sans que rien ne le rattrape.
-            lastRenderCtx = { mode: config.mode, card, contentArea };
+    // Texte : lignes séparées si splitByLines ou trop long
+    let textInner;
+    if (config.textHtml) {
+        textInner = config.textHtml;
+    } else {
+        const tb = blocks.text || {};
+        const lines = (tpl && tpl.splitByLines)
+            ? displayText.split(/\n/).length > 1 ? displayText.split(/\n/) : splitSmart(displayText, Math.round((tpl.splitChars||200)*0.7))
+            : [displayText];
+        textInner = lines.map(l => `<span class="verse-line">${l}</span>`).join('');
+        if (config.dual && config.dual.text) {
+            textInner = `<div style="display:flex;gap:2vw;width:100%;height:100%;align-items:stretch;">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="blk-badge" style="${blockStyle(blocks.badge)};position:relative;margin-bottom:1vh;">${config.version}</div><div style="width:100%;">${textInner}</div></div>
+                <div style="width:3px;background:${accent};opacity:.55;margin:1vh 0;border-radius:2px;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div class="blk-badge" style="${blockStyle(blocks.badge)};position:relative;margin-bottom:1vh;">${config.dual.version}</div><div style="width:100%;"><span class="verse-line">${config.dual.text}</span></div></div>
+            </div>`;
         }
+    }
 
-        // Applique un template enregistré depuis l'éditeur visuel WYSIWYG : positions
-        // absolues, typographie, couleur, alignement, opacité du fond, image, overlay.
-        function applyTemplate(card, contentArea, tpl, mode) {
-            const refEl = contentArea.querySelector('.verse-ref');
-            const badgeEl = contentArea.querySelector('.version-badge');
-            const textWrap = contentArea.querySelector('.flex-1.w-full, [class*="flex-1"], .verse-text')
-                && contentArea.querySelector('.flex-1.w-full.flex.flex-col, .flex-1.w-full.flex.flex-col.justify-center, .flex-1.w-full.flex.flex-col.justify-center.items-center, .flex-1.w-full.flex.flex-col.justify-center.min-h-0');
-            const textEls = contentArea.querySelectorAll('.verse-text');
+    const refHtml = (blocks.ref && blocks.ref.visible && !hideRef)
+        ? `<div class="blk blk-ref blk-align-${blocks.ref.align||'center'}" style="${blockStyle(blocks.ref)}">📖 ${config.reference}${config.version && !config.dual ? ` <span class="blk-badge" style="${blockStyle(blocks.badge)};position:relative;display:inline-block;margin-left:12px;vertical-align:middle;">${config.version}</span>`:''}</div>`
+        : '';
+    // Badge indépendant (utile pour le placer ailleurs que dans la référence)
+    const badgeHtml = (blocks.badge && blocks.badge.visible && !hideRef && config.version && !config.dual && blocks.ref && blocks.badge && blocks.badge.x !== blocks.ref.x)
+        ? `<div class="blk blk-badge" style="${blockStyle(blocks.badge)}">${config.version}</div>` : '';
+    const textHtml = (blocks.text && blocks.text.visible)
+        ? `<div class="blk blk-text blk-align-${blocks.text.align||'center'}" style="${blockStyle(blocks.text)}">${textInner}</div>` : '';
 
-            // Fond : ajuster opacité via la couleur courante (la carte lit --bg-color)
-            if (tpl.bgColor) card.style.setProperty('--bg-color', tpl.bgColor);
-            if (tpl.accentColor) card.style.setProperty('--accent-color', tpl.accentColor);
-            if (tpl.textColor) card.style.setProperty('--text-color', tpl.textColor);
-            if (tpl.shapeRadius != null) card.style.setProperty('--shape-radius', tpl.shapeRadius + 'px');
-            card.style.setProperty('--bg-image', tpl.bgImage ? `url('${tpl.bgImage}')` : '');
-            card.classList.toggle('obs-transparent', !!tpl.transparent);
-            card.classList.toggle('has-bg-cover', !!tpl.bgCover);
-            if (tpl.bgImage) card.classList.add('has-bg-image'); else card.classList.remove('has-bg-image');
+    const classes = [
+        'scene-root', 'anim-show',
+        `tpl-mode-${mode}`,
+        transparent ? 'obs-transparent' : '',
+        bgCover ? 'has-bg-cover' : (bgImage ? 'has-bg-image' : ''),
+        hideRef ? 'hide-ref' : '',
+        (parts && parts.length > 1 && splitMode !== 'none') ? 'has-parts' : '',
+    ].filter(Boolean).join(' ');
 
-            // On passe contentArea en positionnement absolu total
-            card.style.position = 'relative';
-            const reset = (el) => { if(!el)return; el.style.position='absolute'; el.style.margin='0'; el.style.left='50%'; el.style.top='50%'; el.style.transform='translate(-50%,-50%)'; el.style.display=''; };
+    // Mémoriser les parts pour la navigation clic
+    window.__lastParts = parts;
+    window.__lastPartIndex = partIndex;
 
-            // Bloc référence (+ badge intégré si besoin)
-            const refBlock = tpl.blocks && tpl.blocks.ref;
-            if (refBlock && refBlock.visible && refEl) {
-                reset(refEl);
-                if (badgeEl) badgeEl.style.marginLeft='12px';
-                positionBlock(refEl, refBlock);
-                applyBlockStyle(refEl, refBlock);
-                refEl.style.fontSize = `calc(var(--adapt-h, 1080px) * ${refBlock.fontSize}/1080)`;
-                refEl.style.justifyContent = refBlock.align;
-                refEl.style.textAlign = refBlock.align;
-                refEl.style.alignItems = refBlock.align;
-            } else if (refEl) { refEl.style.display='none'; }
+    return `<div class="${classes}" style="${cssVars}">
+        ${bgLayer}
+        ${overlayLayer}
+        <div class="layer-content">
+            ${refHtml}
+            ${badgeHtml}
+            ${textHtml}
+        </div>
+    </div>`;
+}
 
-            // Bloc verset : cibler le conteneur flex-1
-            const textBlock = tpl.blocks && tpl.blocks.text;
-            if (textBlock && textBlock.visible && textWrap) {
-                reset(textWrap);
-                positionBlock(textWrap, textBlock);
-                // Taille de police : appliquer sur chaque .verse-text et auto-downscale si nécessaire
-                textEls.forEach(el => {
-                    applyBlockStyle(el, textBlock);
-                    el.style.fontSize = `calc(var(--adapt-h, 1080px) * ${textBlock.fontSize}/1080)`;
-                    el.style.fontFamily = `'${textBlock.font||'Merriweather'}', serif`;
-                });
-                // Sécurité : si ça dépasse, scale global
-                setTimeout(()=>{
-                    const w=textWrap.clientWidth, h=textWrap.clientHeight;
-                    if(w<=0||h<=0)return;
-                    const needed=textWrap.scrollHeight;
-                    if(needed>h*1.02){
-                        textWrap.style.transform=`translate(-50%,-50%) scale(${Math.max(0.3,h/needed)})`;
-                    }
-                }, 30);
-            }
+function renderScrollingHTML(config, scalePx = 1) {
+    const fontFam = config.fontFamily || 'Merriweather';
+    const fs = 46 * scalePx;
+    const refFs = 36 * scalePx;
+    const wordCount = String(config.text).split(/\s+/).filter(Boolean).length;
+    const speed = Math.max(15, Math.min(70, wordCount * 0.55));
+    const dual = (config.dual && config.dual.text)
+        ? ` <span class="verse-ref mr-6" style="font-size:${refFs}px;">${config.dual.version} :</span><span class="verse-text" style="font-size:${fs}px;">"${config.dual.text}"</span>` : '';
+    return `<div class="ticker-wrapper" style="font-family:'${fontFam}',serif;font-size:${40*scalePx}px;">
+        <div class="ticker-content" style="animation-duration:${speed}s;">
+            <span class="verse-ref mr-6" style="font-size:${refFs}px;">📖 ${config.reference} <span class="version-badge" style="font-size:${24*scalePx}px;padding:4px 12px;">${config.version}</span> :</span>
+            <span class="verse-text" style="font-size:${fs}px;">"${config.text}"</span>${dual}
+        </div>
+        <div class="ticker-content" style="animation-duration:${speed}s;">
+            <span class="verse-ref mr-6" style="font-size:${refFs}px;">📖 ${config.reference} <span class="version-badge" style="font-size:${24*scalePx}px;padding:4px 12px;">${config.version}</span> :</span>
+            <span class="verse-text" style="font-size:${fs}px;">"${config.text}"</span>${dual}
+        </div>
+    </div>`;
+}
+
+// Point d'entrée principal : rend la scène dans `card` en utilisant le
+// HTML à calques (preview et OBS). scalePx est 1 pour OBS/preview 1920,
+// et une valeur réduite pour la miniature de la preview-zoom.
+function renderDisplay(config, container, card, contentArea, opts) {
+    container.style.opacity = '1';
+    card.className = '';
+    card.style.cssText = ''; // reset
+    card.style.setProperty('--bg-color', config.bgColor || 'rgba(15,23,42,0.92)');
+    card.style.setProperty('--accent-color', config.accentColor || '#f59e0b');
+    card.style.setProperty('--text-color', config.textColor || '#ffffff');
+    card.style.setProperty('--shape-radius', (config.shapeRadius != null ? config.shapeRadius : 20) + 'px');
+
+    if (config.mode === 'scrolling') {
+        card.className = 'obs-scrolling anim-show';
+        contentArea.innerHTML = renderScrollingHTML(config, 1);
+        // Vitesse
+        const tw = contentArea.querySelector('.ticker-content');
+        if (tw) {
+            const speed = Math.max(15, Math.min(70, String(config.text).split(/\s+/).filter(Boolean).length * 0.55));
+            tw.style.animationDuration = speed + 's';
+            const tw2 = tw.nextElementSibling; if (tw2) tw2.style.animationDuration = speed+'s';
         }
-        function positionBlock(el, b){
-            el.style.left = b.x + '%';
-            el.style.top  = b.y + '%';
-            el.style.width = b.w + '%';
-            el.style.height = (b.h ? b.h + '%' : 'auto');
+    } else if (config.mode === 'custom') {
+        // Mode custom : rendu historique avec variables CSS (position libre)
+        const w = (displaySettings.customWidth || 60);
+        const m = (displaySettings.customMargin || 8);
+        const side = (100 - w) / 2;
+        const cpos = displaySettings.customPos || 'bottom';
+        let cLeft=side, cRight=side, cTop='auto', cBottom=m, cWidth=null;
+        switch (cpos) {
+            case 'top':    cLeft=side; cRight=side; cTop=m;    cBottom='auto'; break;
+            case 'center': cLeft=side; cRight=side; cTop=side; cBottom=side;  break;
+            case 'left':   cLeft=m;    cRight=null; cTop='auto'; cBottom=m; cWidth=w; break;
+            case 'right':  cLeft=null; cRight=m;   cTop='auto'; cBottom=m; cWidth=w; break;
+            default:       cLeft=side; cRight=side; cTop='auto'; cBottom=m;
         }
-        function applyBlockStyle(el, b){
-            el.style.fontFamily = `'${b.font||'Merriweather'}', serif`;
-            el.style.fontWeight = b.weight || 400;
-            el.style.color = b.color || '#fff';
-            el.style.textAlign = b.align || 'center';
-            el.style.letterSpacing = (b.letterSpacing||0) + 'px';
-            el.style.textShadow = b.shadow>0 ? `0 ${b.shadow/2}px ${b.shadow}px rgba(0,0,0,${.3+b.shadow/30})` : 'none';
-            el.style.textDecoration = b.underline ? 'underline' : (b.strike?'line-through':'none');
-            el.style.fontStyle = b.italic ? 'italic' : 'normal';
-        }
+        card.className = 'obs-custom anim-show';
+        if (displaySettings.customRefPos) card.classList.add(displaySettings.customRefPos);
+        if (cpos==='right') card.classList.add('anchor-right');
+        else if (cpos==='top') card.classList.add('anchor-top');
+        else if (cpos==='center') card.classList.add('anchor-center');
+        if (config.transparent) card.classList.add('obs-transparent');
+        if (config.bgCover) card.classList.add('has-bg-cover');
+        if (config.hideRef) card.classList.add('hide-ref');
+        function pct(v,d){return (v!=null&&!isNaN(v))?v+'%':d;}
+        card.style.setProperty('--custom-left', pct(cLeft,null));
+        card.style.setProperty('--custom-right', pct(cRight,null));
+        card.style.setProperty('--custom-bottom', pct(cBottom,null));
+        card.style.setProperty('--custom-top', cTop==='auto'?'auto':pct(cTop,'auto'));
+        card.style.setProperty('--custom-width', cWidth?cWidth+'%':'auto');
+        card.style.setProperty('--custom-height', 'auto');
+        card.style.setProperty('--custom-align', displaySettings.customAlign||'center');
+        if (config.bgImage) { card.style.setProperty('--bg-image', `url('${config.bgImage}')`); card.style.setProperty('--bg-blur', (config.bgBlur||18)+'px'); card.classList.add('has-bg-image'); }
+        // Rendu du contenu (HTML legacy simple)
+        const align = displaySettings.customAlign || 'center';
+        contentArea.innerHTML = `
+            <div class="flex items-center ${align==='right'?'justify-end':(align==='left'?'justify-start':'justify-between')} gap-4 mb-2">
+                ${align!=='right'?'<div class="verse-ref" style="font-size:calc(var(--adapt-h,1080px)*38/1080);">📖 '+config.reference+'</div>':''}
+                <span class="version-badge" style="font-size:calc(var(--adapt-h,1080px)*24/1080);padding:6px 14px;">'+config.version+'</span>
+                ${align==='right'?'<div class="verse-ref" style="font-size:calc(var(--adapt-h,1080px)*38/1080);">📖 '+config.reference+'</div>':''}
+            </div>
+            <div class="flex-1 w-full flex flex-col justify-center min-h-0">${
+                config.textHtml ? `<div class="verse-text" style="font-family:'Merriweather',serif;">${config.textHtml}</div>`
+                : `<div class="verse-text" style="font-family:'Merriweather',serif;">"${config.text}"</div>`
+            }</div>`;
+    } else {
+        // Mode standard (full/screen80/bottom/bottom-right) : RENDU UNIFIÉ À CALQUES
+        // card doit occuper toute la scène 1920×1080 (c'est le layer-content qui
+        // positionnera la "carte couleur" — non : la scène root SE POSITIONNE elle-même).
+        card.className = '';
+        card.style.cssText = 'position:absolute;inset:0;margin:0;padding:0;background:transparent;border:none;box-shadow:none;overflow:hidden;';
+        contentArea.style.cssText = 'position:relative;width:100%;height:100%;';
+        contentArea.innerHTML = renderSceneHTML(config, 1);
+        // Ajustement downscale si le texte déborde du bloc qui le contient
+        requestAnimationFrame(() => autoFitLayers(contentArea));
+    }
+
+    applyLookLayout(card, config.mode, config.layout);
+    lastRenderCtx = { mode: config.mode, card, contentArea };
+}
+
+function applyLookLayout(card, mode, layout) {
+    // Conservé pour compatibilité (look & feel custom comme avant)
+    if (layout === 'warm') card.style.filter = 'saturate(1.05)';
+    else if (layout === 'cinema') card.style.filter = 'contrast(1.1) saturate(0.95)';
+    else card.style.filter = '';
+}
+
+// Downscale automatique du bloc .blk-text si son contenu dépasse sa hauteur
+function autoFitLayers(root) {
+    const blk = root.querySelector('.blk-text');
+    if (!blk) return;
+    blk.style.transform = 'translate(-50%,-50%)';
+    // On ne peut pas mesurer facilement en % mais on utilise clientHeight vs scrollHeight
+    let guard = 0;
+    // Réduire par CSS transform:scale si besoin
+    const need = blk.scrollHeight;
+    const have = blk.clientHeight;
+    if (need > have * 1.01 && have > 0) {
+        const s = Math.max(0.35, have / need);
+        blk.style.transform = `translate(-50%,-50%) scale(${s})`;
+    }
+}
+
 
         // Réduit progressivement la taille du texte tant qu'il dépasse l'espace disponible.
         // Se base sur les dimensions réelles mesurées dans le DOM (pas des estimations).
@@ -2767,16 +2853,18 @@
 
             // Découpage des versets longs — piloté par l'OPTION « ligne par ligne »,
             // PAS par le mode du contrôleur : les parties sont calculées et diffusées
-            // dès que le verset est long, mais SEULES les sorties « bas centré » /
-            // « bas droite » (lien général en mode bas, ou liens verrouillés
-            // ?lockMode=bottom / bottom-right) affichent une partie à la fois ; les
-            // autres sorties (plein écran, 80%, ruban) affichent toujours le verset
-            // ENTIER et ne sont en aucun cas affectées.
-            // Ne s'applique pas aux versets annotés (leur HTML enrichi ne doit pas
-            // être coupé au milieu d'une balise).
+            // Découpage intelligent des versets longs : on utilise le RÉGLAGE DU
+            // TEMPLATE DU MODE COURANT (splitMode / splitChars). splitMode='auto'
+            // = on découpe en plusieurs diapositives qu'on navigue avec ← → ou
+            // par clic sur les bords de la carte. Ne s'applique pas aux versets
+            // annotés (HTML qui ne doit pas être coupé).
             let parts = null;
-            if (displaySettings.lineMode && combinedText.length > VERSE_SPLIT_THRESHOLD && !annotatedHtml) {
-                parts = splitVerseIntoParts(combinedText, VERSE_SPLIT_MAX_CHARS);
+            const mode = document.getElementById('obs-mode-select').value;
+            const tplForSplit = (displaySettings.templates && displaySettings.templates[mode]) || defaultTemplateFor(mode);
+            const splitMode = (tplForSplit && tplForSplit.splitMode) || (displaySettings.lineMode ? 'auto' : 'none');
+            const splitChars = (tplForSplit && tplForSplit.splitChars) || VERSE_SPLIT_MAX_CHARS;
+            if (splitMode === 'auto' && combinedText.length > splitChars * 0.8 && !annotatedHtml) {
+                parts = splitSmart(combinedText, splitChars);
                 if (parts.length < 2) parts = null;
             }
             const partIndex = (parts && opts && typeof opts.partIndex === 'number')
@@ -2799,8 +2887,6 @@
                     if (texts2.length > 0) dual = { version: v2.name, text: texts2.join(' ') };
                 }
             }
-
-            const mode = document.getElementById('obs-mode-select').value;
 
             // Mode custom : calcul des marges en % à partir des curseurs, selon la position choisie.
             const w = (displaySettings.customWidth || 60);
@@ -3082,16 +3168,17 @@
         // ============================================================
         // ÉDITEUR DE MODÈLES WYSIWYG façon FreeShow
         // ============================================================
+        // ============================================================
+        // ÉDITEUR DE MODÈLES WYSIWYG — utilise renderSceneHTML pour
+        // produire EXACTEMENT le même rendu qu'OBS/preview (vrai WYSIWYG).
+        // Les blocs sont rendus normalement ; une couche d'overlay ajoute
+        // les poignées de sélection/redimensionnement par-dessus.
+        // ============================================================
         function initTemplateEditor() {
             const editor = document.getElementById('tpl-editor');
-            const canvas = document.getElementById('tpl-canvas');
-            const bgEl = document.getElementById('tpl-bg');
-            const bgOverlay = document.getElementById('tpl-bg-overlay');
+            const canvasRoot = document.getElementById('tpl-canvas-root');
+            const overlay = document.getElementById('tpl-edit-overlay');
             const modeTabsEl = document.getElementById('tpl-mode-tabs');
-            const blockRef = document.getElementById('tpl-block-ref');
-            const blockText = document.getElementById('tpl-block-text');
-            const blockBadge = null; // intégré dans la référence pour l'instant
-            const blocksById = { ref: blockRef, text: blockText };
 
             const MODES = [
                 { id: 'full', label: 'Plein écran' },
@@ -3100,362 +3187,339 @@
                 { id: 'bottom-right', label: 'Bas droite' },
             ];
 
-            let currentEditMode = 'full';
-            let selected = null;  // 'ref' | 'text'
-            let state = null;     // copie profonde du template en cours d'édition
-            let history = [];
-            let historyIdx = -1;
-
-            // --- Charger un template depuis displaySettings (ou valeurs par défaut) ---
-            function loadTemplate(mode) {
-                const saved = (displaySettings.templates && displaySettings.templates[mode]) || null;
-                const tmpl = saved ? JSON.parse(JSON.stringify(saved)) : defaultTemplateFor(mode);
-                state = { mode, ...tmpl };
+            // Verset d'exemple réel (Jean 3:16) pour avoir un aperçu fidèle.
+            // Si un verset est à l'antenne on l'utilise à la place.
+            function sampleVerse() {
+                if (onAir && onAir.bookName) {
+                    const book = currentBooks().find(b=>b.name===onAir.bookName);
+                    if(book){const ch=book.chapters.find(c=>c.num==onAir.chapterNum);if(ch){const v=ch.verses.find(vv=>vv.num===onAir.verseNums[onAir.verseNums.length-1]);if(v)return {reference:`${book.name} ${ch.num}:${v.num}`,text:v.text,version:getCurrentVersion()?getCurrentVersion().name:'LSG'};}}}
+                return { reference:'Jean 3:16', text:'Car Dieu a tant aimé le monde qu\'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu\'il ait la vie éternelle.', version:'LSG' };
             }
 
+            let currentEditMode = 'full';
+            let selected = null;  // 'ref' | 'text' | 'badge'
+            let state = null;     // copie du template en cours d'édition
+            let history = [];
+            let historyIdx = -1;
+            let sample = sampleVerse();
+            let dragging=null, resizing=null, startData=null;
+            let canvasRect = null;
+            let scale = 1; // facteur pixel écran / pixel scène 1920
+
+            function loadTemplate(mode) {
+                const saved = (displaySettings.templates && displaySettings.templates[mode]) || null;
+                state = saved ? JSON.parse(JSON.stringify(saved)) : defaultTemplateFor(mode);
+                state.mode = mode;
+            }
             function pushHistory() {
                 history = history.slice(0, historyIdx+1);
                 history.push(JSON.parse(JSON.stringify(state)));
-                historyIdx = history.length - 1;
-                if (history.length > 50) { history.shift(); historyIdx--; }
+                historyIdx = history.length-1;
+                if(history.length>50){history.shift();historyIdx--;}
             }
-            function undo() {
-                if (historyIdx<=0) return;
-                historyIdx--;
-                state = JSON.parse(JSON.stringify(history[historyIdx]));
-                applyState();
+            function undo(){ if(historyIdx<=0)return; historyIdx--; state=JSON.parse(JSON.stringify(history[historyIdx])); rebuildCanvas(); updatePropsPanel(); }
+
+            function rgbToHex(col){
+                if(!col)return '#0f172a'; if(col.startsWith('#'))return col;
+                const m=col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); if(!m)return '#0f172a';
+                return '#'+[m[1],m[2],m[3]].map(n=>{const h=parseInt(n).toString(16);return h.length===1?'0'+h:h;}).join('');
+            }
+            function hexToRgba(hex,a){let h=hex.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return `rgba(${r},${g},${b},${a})`;}
+
+            // ---- Moteur de rendu du canevas ----
+            function rebuildCanvas() {
+                // Construit un config "fake" à partir de state + sample
+                const fakeConfig = {
+                    reference: sample.reference,
+                    text: sample.text,
+                    version: sample.version,
+                    mode: currentEditMode,
+                    bgColor: state.bgColor, accentColor: state.accentColor, textColor: state.textColor,
+                    fontFamily: 'Merriweather', shapeRadius: state.shapeRadius,
+                    bgImage: state.bgImage, bgBlur:18,
+                    transparent: !!state.transparent, hideRef:false, bgCover: !!state.bgCover,
+                    lineMode: state.splitMode === 'auto',
+                    parts: (state.splitMode==='auto' && state.splitChars) ? splitSmart(sample.text, state.splitChars) : null,
+                    partIndex: 0,
+                };
+                // On injecte le template courant dans displaySettings.templates pour
+                // que renderSceneHTML utilise NOS valeurs (celles en cours d'édition)
+                // plutôt que celles sauvegardées.
+                const bak = displaySettings.templates[currentEditMode];
+                displaySettings.templates[currentEditMode] = state;
+                // Calcul du facteur d'échelle (canevas éditeur ≠ 1920px)
+                const r = document.getElementById('tpl-canvas').getBoundingClientRect();
+                scale = r.width / 1920;
+                canvasRoot.innerHTML = renderSceneHTML(fakeConfig, scale);
+                canvasRoot.style.position='absolute';canvasRoot.style.inset=0;
+                // Rétablir la valeur sauvegardée
+                displaySettings.templates[currentEditMode] = bak;
+                // Re-dessiner l'overlay (sélection + poignées)
+                drawOverlay();
             }
 
-            // --- Appliquer state sur le canevas ---
-            function scaleFactor(){ const r=canvas.getBoundingClientRect(); return r.width/1920; }
-            function pctToPx(pct, ofSize){ return (pct/100) * ofSize; }
-            function applyState() {
-                // Fond
-                if (state.bgImage) {
-                    bgEl.style.backgroundImage = `url('${state.bgImage}')`;
-                    bgEl.style.display = 'block';
-                } else { bgEl.style.backgroundImage=''; bgEl.style.display='none'; }
-                const rgba = state.bgColor || 'rgba(15,23,42,0.92)';
-                // Ajuster l'opacité
-                let finalBg = rgba;
-                try {
-                    const m = rgba.match(/rgba\(([^)]+)\)/);
-                    if (m) {
-                        const parts = m[1].split(',').map(s=>s.trim());
-                        const a = (state.bgOpacity!=null ? state.bgOpacity/100 : parseFloat(parts[3]));
-                        finalBg = `rgba(${parts[0]},${parts[1]},${parts[2]},${a})`;
-                    }
-                } catch(e){}
-                bgOverlay.style.background = state.transparent ? 'transparent' : finalBg;
-                bgOverlay.style.display = state.transparent ? 'none' : 'block';
-                canvas.style.boxShadow = state.transparent ? '0 0 0 1px rgba(251,191,36,.3)' : '';
-                canvas.style.borderRadius = (state.shapeRadius||0)/3 + 'px';
-
-                // Blocs
-                ['ref','text'].forEach(key => {
-                    const el = blocksById[key];
-                    const b = state.blocks[key];
-                    if (!b || !b.visible) { el.style.display='none'; return; }
-                    el.style.display = 'flex';
-                    el.style.left = b.x + '%';
-                    el.style.top = b.y + '%';
-                    el.style.width = b.w + '%';
-                    // Si hauteur fournie, l'utiliser ; sinon auto
-                    if (b.h) el.style.height = b.h + '%'; else el.style.height = 'auto';
-                    el.style.transform = 'translate(-50%, -50%)';
-                    el.style.fontSize = b.fontSize * scaleFactor() + 'px';
-                    el.style.fontFamily = "'" + b.font + "', serif";
-                    el.style.fontWeight = b.weight;
-                    el.style.color = b.color;
-                    el.style.textAlign = b.align;
-                    el.style.letterSpacing = b.letterSpacing + 'px';
-                    el.style.textShadow = b.shadow>0 ? `0 ${b.shadow/2}px ${b.shadow}px rgba(0,0,0,${.3+b.shadow/30})` : 'none';
-                    el.style.textDecoration = b.underline ? 'underline' : (b.strike?'line-through':'none');
-                    el.style.fontStyle = b.italic ? 'italic' : 'normal';
-                    el.classList.toggle('selected', selected===key);
+            // ---- Sélection et poignées sur overlay ----
+            function drawOverlay() {
+                overlay.innerHTML = '';
+                overlay.style.pointerEvents = selected ? 'auto' : 'none';
+                if (!selected) return;
+                const blk = canvasRoot.querySelector('.blk-'+selected);
+                if (!blk) return;
+                const cRect = document.getElementById('tpl-canvas').getBoundingClientRect();
+                const bRect = blk.getBoundingClientRect();
+                const x = bRect.left - cRect.left, y = bRect.top - cRect.top;
+                const w = bRect.width, h = bRect.height;
+                // Rectangle de sélection
+                const sel = document.createElement('div');
+                sel.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border:2px solid #fbbf24;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset;pointer-events:auto;cursor:move;`;
+                sel.dataset.action='drag';
+                overlay.appendChild(sel);
+                // Poignées 4 coins
+                ['nw','ne','sw','se'].forEach(dir=>{
+                    const h_=document.createElement('div');
+                    const pos = {
+                        nw:{left:-5,top:-5,cursor:'nwse-resize'},
+                        ne:{left:w-5,top:-5,cursor:'nesw-resize'},
+                        sw:{left:-5,top:h-5,cursor:'nesw-resize'},
+                        se:{left:w-5,top:h-5,cursor:'nwse-resize'},
+                    }[dir];
+                    h_.style.cssText=`position:absolute;left:${pos.left}px;top:${pos.top}px;width:10px;height:10px;background:#fbbf24;border:1px solid #0b0f1a;border-radius:2px;cursor:${pos.cursor};`;
+                    h_.dataset.action='resize';h_.dataset.dir=dir;
+                    sel.appendChild(h_);
                 });
-
-                // Curseurs des props
-                updatePropsPanel();
+                // Étiquette du bloc (en haut à gauche)
+                const lab = document.createElement('div');
+                lab.style.cssText=`position:absolute;left:-1px;top:-22px;background:#fbbf24;color:#0b0f1a;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px 3px 0 0;font-family:Inter;pointer-events:none;`;
+                lab.textContent = {ref:'Référence',text:'Verset',badge:'Badge'}[selected];
+                sel.appendChild(lab);
             }
 
-            function updatePropsPanel() {
+            // ---- Gestion des évènements sur overlay ----
+            overlay.addEventListener('mousedown', onOverlayDown);
+            overlay.addEventListener('touchstart', onOverlayDown, {passive:false});
+            function onOverlayDown(e){
+                const t=e.target;const act=t.dataset.action;if(!act)return;
+                e.preventDefault();e.stopPropagation();
+                if(act==='drag'){dragging=selected;}
+                else if(act==='resize'){resizing=t.dataset.dir;}
+                const p=pointer(e);const r=document.getElementById('tpl-canvas').getBoundingClientRect();
+                canvasRect=r;
+                startData={x:p.clientX,y:p.clientY,b:{...state.blocks[selected]}};
+                pushHistory();
+            }
+            // Clic sur un bloc DU RENDU pour le sélectionner (sans poignées affichées
+            // tant que pas de sélection)
+            canvasRoot.addEventListener('mousedown', onSceneClick);
+            canvasRoot.addEventListener('touchstart', onSceneClick, {passive:true});
+            function onSceneClick(e){
+                const blk = e.target.closest('.blk-ref, .blk-text, .blk-badge');
+                if(!blk){selected=null;drawOverlay();updatePropsPanel();return;}
+                const key = blk.classList.contains('blk-ref')?'ref':(blk.classList.contains('blk-badge')?'badge':'text');
+                selected = key; drawOverlay(); updatePropsPanel();
+                // Ne pas démarrer de drag ici : on repasse par l'overlay pour les moves.
+                // Mais on démarre si l'utilisateur clique directement sans être passé par l'overlay
+                const p=pointer(e);
+                const r=document.getElementById('tpl-canvas').getBoundingClientRect();
+                canvasRect=r;
+                dragging=key;startData={x:p.clientX,y:p.clientY,b:{...state.blocks[key]}};
+                pushHistory();
+            }
+            function pointer(e){return e.touches && e.touches[0]?e.touches[0]:e;}
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('touchmove', onMove, {passive:false});
+            window.addEventListener('mouseup', onUp);
+            window.addEventListener('touchend', onUp);
+            function onMove(e){
+                if(!dragging && !resizing)return;
+                const p=pointer(e);
+                const dx_pct = (p.clientX - startData.x)/canvasRect.width*100;
+                const dy_pct = (p.clientY - startData.y)/canvasRect.height*100;
+                const b = state.blocks[dragging||selected]; if(!b)return;
+                if(dragging){
+                    b.x = clamp(startData.b.x + dx_pct, b.w/2, 100-b.w/2);
+                    b.y = clamp(startData.b.y + dy_pct, b.h?b.h/2:2, 100-(b.h?b.h/2:2));
+                } else if(resizing){
+                    if(resizing.includes('e')) b.w = clamp(startData.b.w + dx_pct*2, 5, 98);
+                    if(resizing.includes('w')) b.w = clamp(startData.b.w - dx_pct*2, 5, 98);
+                    if(resizing.includes('s')) b.h = clamp((startData.b.h||20) + dy_pct*2, 3, 95);
+                    if(resizing.includes('n')) b.h = clamp((startData.b.h||20) - dy_pct*2, 3, 95);
+                }
+                rebuildCanvas(); updatePropsPanel();
+            }
+            function onUp(){dragging=null;resizing=null;}
+            function clamp(v,mn,mx){return Math.max(mn,Math.min(mx,v));}
+
+            // ---- Mise à jour du panneau de propriétés ----
+            function updatePropsPanel(){
+                document.getElementById('tpl-current-mode-label').innerText = (MODES.find(m=>m.id===currentEditMode)||{}).label||currentEditMode;
+                // Globaux
+                const bgOpacity = state.bgOpacity!=null?state.bgOpacity:92;
+                document.getElementById('tpl-bg-color').value = rgbToHex(state.bgColor);
+                document.getElementById('tpl-bg-opacity').value = bgOpacity;
+                document.getElementById('tpl-bg-opacity-v').innerText = bgOpacity+'%';
+                document.getElementById('tpl-accent-color').value = state.accentColor||'#f59e0b';
+                document.getElementById('tpl-text-color').value = state.textColor||'#ffffff';
+                document.getElementById('tpl-radius').value = state.shapeRadius||0;
+                document.getElementById('tpl-transparent').checked = !!state.transparent;
+                document.getElementById('tpl-bg-cover').checked = !!state.bgCover;
+                const splitModeEl = document.getElementById('tpl-split-mode');
+                if (splitModeEl) {
+                    splitModeEl.value = state.splitMode || 'none';
+                    const sc=document.getElementById('tpl-split-chars');sc.value=state.splitChars||180;sc.disabled=(state.splitMode==='none');
+                    document.getElementById('tpl-split-chars-v').innerText=state.splitChars||180;
+                    document.getElementById('tpl-split-lines').checked = !!state.splitByLines;
+                }
+                // Bloc
                 const noBlock = document.getElementById('tpl-no-block');
                 const props = document.getElementById('tpl-block-props');
-                if (!selected) { noBlock.style.display='block'; props.style.display='none'; return; }
-                noBlock.style.display='none'; props.style.display='flex';
+                if(!selected || !state.blocks[selected] || !state.blocks[selected].visible){noBlock.style.display='block';props.style.display='none';return;}
+                noBlock.style.display='none';props.style.display='flex';
                 const b = state.blocks[selected];
-                const el = blocksById[selected];
-                document.getElementById('tpl-block-color').value = rgbToHex(b.color) || '#ffffff';
-                document.getElementById('tpl-block-font').value = b.font || 'Merriweather';
-                document.getElementById('tpl-block-size').value = b.fontSize;
-                document.getElementById('tpl-block-size-v').innerText = b.fontSize;
-                document.getElementById('tpl-block-weight').value = b.weight;
-                document.getElementById('tpl-block-spacing').value = b.letterSpacing;
-                document.getElementById('tpl-block-spacing-v').innerText = b.letterSpacing;
-                document.getElementById('tpl-block-shadow').value = b.shadow;
-                document.getElementById('tpl-block-shadow-v').innerText = b.shadow;
+                document.getElementById('tpl-block-color').value = rgbToHex(b.color||'#ffffff');
+                document.getElementById('tpl-block-font').value = b.font||'Merriweather';
+                document.getElementById('tpl-block-size').value = b.fontSize;document.getElementById('tpl-block-size-v').innerText=b.fontSize;
+                document.getElementById('tpl-block-weight').value = b.weight||400;
+                document.getElementById('tpl-block-spacing').value = b.letterSpacing||0;document.getElementById('tpl-block-spacing-v').innerText=b.letterSpacing||0;
+                document.getElementById('tpl-block-shadow').value = b.shadow||0;document.getElementById('tpl-block-shadow-v').innerText=b.shadow||0;
                 document.getElementById('tpl-block-x').value = Math.round(b.x*10)/10;
                 document.getElementById('tpl-block-y').value = Math.round(b.y*10)/10;
                 document.getElementById('tpl-block-w').value = Math.round(b.w*10)/10;
-                document.getElementById('tpl-block-h').value = b.h ? Math.round(b.h*10)/10 : '';
-                // Boutons d'alignement actifs
-                document.querySelectorAll('[data-align]').forEach(btn => btn.classList.toggle('active', btn.dataset.align===b.align));
-                document.querySelector('[data-cmd=bold]').classList.toggle('active', b.bold || b.weight>=700);
+                document.getElementById('tpl-block-h').value = b.h?Math.round(b.h*10)/10:'';
+                document.querySelectorAll('[data-align]').forEach(btn=>btn.classList.toggle('active', btn.dataset.align===(b.align||'center')));
+                document.querySelector('[data-cmd=bold]').classList.toggle('active', !!b.bold || (b.weight||400)>=700);
                 document.querySelector('[data-cmd=italic]').classList.toggle('active', !!b.italic);
                 document.querySelector('[data-cmd=underline]').classList.toggle('active', !!b.underline);
                 document.querySelector('[data-cmd=strikeThrough]').classList.toggle('active', !!b.strike);
-
-                // Global
-                document.getElementById('tpl-bg-color').value = rgbToHex(state.bgColor) || '#0f172a';
-                document.getElementById('tpl-bg-opacity').value = state.bgOpacity != null ? state.bgOpacity : 92;
-                document.getElementById('tpl-bg-opacity-v').innerText = (state.bgOpacity!=null?state.bgOpacity:92)+'%';
-                document.getElementById('tpl-accent-color').value = state.accentColor || '#f59e0b';
-                document.getElementById('tpl-text-color').value = state.textColor || '#ffffff';
-                document.getElementById('tpl-radius').value = state.shapeRadius || 0;
-                document.getElementById('tpl-transparent').checked = !!state.transparent;
-                document.getElementById('tpl-bg-cover').checked = !!state.bgCover;
-                document.getElementById('tpl-current-mode-label').innerText = (MODES.find(m=>m.id===currentEditMode)||{}).label || currentEditMode;
-
-                // Block picker
-                document.querySelectorAll('#tpl-block-picker button').forEach(btn => {
-                    const k = btn.dataset.block;
-                    const vis = !!(state.blocks[k] && state.blocks[k].visible);
-                    btn.classList.toggle('active', vis && selected===k);
-                    const dot = btn.querySelector('.dot'); if(dot) dot.style.background = vis ? '#fbbf24' : '#475569';
+                // Sélecteur de bloc
+                document.querySelectorAll('#tpl-block-picker button').forEach(btn=>{
+                    const k=btn.dataset.block;const v=!!(state.blocks[k]&&state.blocks[k].visible);
+                    btn.classList.toggle('active', v && selected===k);
+                    const d=btn.querySelector('.dot');if(d)d.style.background=v?'#fbbf24':'#475569';
                 });
             }
 
-            function rgbToHex(col) {
-                if (!col) return '#0f172a';
-                if (col.startsWith('#')) return col;
-                const m = col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                if (!m) return '#0f172a';
-                return '#' + [m[1],m[2],m[3]].map(n=>{const h=parseInt(n).toString(16);return h.length===1?'0'+h:h}).join('');
+            function bindProp(id, setter){
+                const el=document.getElementById(id);if(!el)return;
+                const evt=(el.type==='color'||el.type==='range'||el.tagName==='SELECT')?'input':'change';
+                el.addEventListener(evt,()=>{
+                    const v=el.type==='checkbox'?el.checked:(el.type==='number'?parseFloat(el.value):el.value);
+                    setter(v);rebuildCanvas();updatePropsPanel();
+                });
             }
+            // Bind bloc
+            bindProp('tpl-block-color', v=>{if(!selected)return;state.blocks[selected].color=v;});
+            bindProp('tpl-block-font', v=>{if(!selected)return;state.blocks[selected].font=v;});
+            bindProp('tpl-block-size', v=>{if(!selected)return;state.blocks[selected].fontSize=+v;document.getElementById('tpl-block-size-v').innerText=v;});
+            bindProp('tpl-block-weight', v=>{if(!selected)return;state.blocks[selected].weight=v;state.blocks[selected].bold=(+v)>=700;});
+            bindProp('tpl-block-spacing', v=>{if(!selected)return;state.blocks[selected].letterSpacing=+v;document.getElementById('tpl-block-spacing-v').innerText=v;});
+            bindProp('tpl-block-shadow', v=>{if(!selected)return;state.blocks[selected].shadow=+v;document.getElementById('tpl-block-shadow-v').innerText=v;});
+            bindProp('tpl-block-x', v=>{if(!selected)return;state.blocks[selected].x=+v;});
+            bindProp('tpl-block-y', v=>{if(!selected)return;state.blocks[selected].y=+v;});
+            bindProp('tpl-block-w', v=>{if(!selected)return;state.blocks[selected].w=+v;});
+            bindProp('tpl-block-h', v=>{if(!selected)return;state.blocks[selected].h=v?+v:null;});
+            // Bind globaux
+            bindProp('tpl-bg-color', v=>{state.bgColor=hexToRgba(v,(state.bgOpacity!=null?state.bgOpacity:92)/100);});
+            bindProp('tpl-bg-opacity', v=>{state.bgOpacity=+v;state.bgColor=hexToRgba(rgbToHex(state.bgColor),v/100);document.getElementById('tpl-bg-opacity-v').innerText=v+'%';});
+            bindProp('tpl-accent-color', v=>{state.accentColor=v;});
+            bindProp('tpl-text-color', v=>{state.textColor=v;if(state.blocks.text)state.blocks.text.color=v;});
+            bindProp('tpl-radius', v=>{state.shapeRadius=+v;});
+            bindProp('tpl-transparent', v=>{state.transparent=v;});
+            bindProp('tpl-bg-cover', v=>{state.bgCover=v;});
+            bindProp('tpl-split-mode', v=>{state.splitMode=v;document.getElementById('tpl-split-chars').disabled=(v==='none');});
+            bindProp('tpl-split-chars', v=>{state.splitChars=+v;document.getElementById('tpl-split-chars-v').innerText=v;});
+            bindProp('tpl-split-lines', v=>{state.splitByLines=v;});
 
-            // --- Navigation entre modes en haut ---
-            function renderModeTabs() {
-                modeTabsEl.innerHTML = '';
-                MODES.forEach(m => {
-                    const b = document.createElement('button');
-                    b.className = 'tpl-mode-tab' + (m.id===currentEditMode?' active':'');
-                    b.innerText = m.label;
-                    b.onclick = () => { pushHistory(); currentEditMode = m.id; loadTemplate(m.id); renderModeTabs(); applyState(); };
+            // Toolbar mise en forme
+            document.querySelectorAll('[data-cmd]').forEach(btn=>{
+                btn.onclick=()=>{if(!selected||!state.blocks[selected])return;const b=state.blocks[selected];const c=btn.dataset.cmd;
+                    if(c==='bold'){b.bold=!b.bold;b.weight=b.bold?700:400;}
+                    else if(c==='italic')b.italic=!b.italic;
+                    else if(c==='underline')b.underline=!b.underline;
+                    else if(c==='strikeThrough')b.strike=!b.strike;
+                    pushHistory();rebuildCanvas();updatePropsPanel();};
+            });
+            document.querySelectorAll('[data-align]').forEach(btn=>{
+                btn.onclick=()=>{if(!selected||!state.blocks[selected])return;state.blocks[selected].align=btn.dataset.align;pushHistory();rebuildCanvas();updatePropsPanel();};
+            });
+
+            // Import image
+            document.getElementById('tpl-bg-file').addEventListener('change',e=>{
+                const f=e.target.files[0];if(!f)return;const r=new FileReader();
+                r.onload=ev=>{state.bgImage=ev.target.result;pushHistory();rebuildCanvas();updatePropsPanel();};
+                r.readAsDataURL(f);e.target.value='';
+            });
+            document.getElementById('tpl-bg-clear').onclick=()=>{state.bgImage=null;pushHistory();rebuildCanvas();updatePropsPanel();};
+
+            // Picker de blocs
+            document.querySelectorAll('#tpl-block-picker button').forEach(btn=>{
+                btn.onclick=()=>{const k=btn.dataset.block;
+                    if(!state.blocks[k])state.blocks[k]=defaultTemplateFor(currentEditMode).blocks[k];
+                    state.blocks[k].visible=!state.blocks[k].visible;
+                    if(state.blocks[k].visible)selected=k;else if(selected===k)selected=null;
+                    pushHistory();rebuildCanvas();updatePropsPanel();};
+            });
+
+            // Onglets
+            function renderModeTabs(){
+                modeTabsEl.innerHTML='';
+                MODES.forEach(m=>{
+                    const b=document.createElement('button');
+                    b.className='tpl-mode-tab'+(m.id===currentEditMode?' active':'');
+                    b.innerText=m.label;
+                    b.onclick=()=>{pushHistory();currentEditMode=m.id;loadTemplate(m.id);renderModeTabs();rebuildCanvas();updatePropsPanel();};
                     modeTabsEl.appendChild(b);
                 });
             }
 
-            // --- Sélection / Drag / Resize ---
-            let dragging=null, resizing=null, startData=null;
-            function selectBlock(key){ selected=key; applyState(); }
-
-            function startDrag(e, key) {
-                if (e.target.classList.contains('tpl-handle')) return;
-                e.preventDefault();
-                selectBlock(key);
-                dragging = key;
-                const p = pointer(e);
-                const rect = canvas.getBoundingClientRect();
-                startData = { x:p.clientX-rect.left, y:p.clientY-rect.top, bx:state.blocks[key].x, by:state.blocks[key].y };
-                pushHistory();
-            }
-            function startResize(e, key, dir) {
-                e.stopPropagation(); e.preventDefault();
-                selectBlock(key);
-                resizing = dir;
-                const p = pointer(e);
-                const rect = canvas.getBoundingClientRect();
-                startData = { x:p.clientX-rect.left, y:p.clientY-rect.top,
-                    bx:state.blocks[key].x, by:state.blocks[key].y, bw:state.blocks[key].w, bh:state.blocks[key].h, shift:e.shiftKey };
-                pushHistory();
-            }
-            function pointer(e){ return e.touches && e.touches[0] ? e.touches[0] : e; }
-            function onMove(e) {
-                const p = pointer(e);
-                const rect = canvas.getBoundingClientRect();
-                const x = ((p.clientX-rect.left)/rect.width)*100;
-                const y = ((p.clientY-rect.top)/rect.height)*100;
-                if (dragging) {
-                    const b = state.blocks[dragging];
-                    const dx = x - startData.x/(rect.width)*100;
-                    const dy = y - startData.y/(rect.height)*100;
-                    b.x = Math.max(b.w/2, Math.min(100-b.w/2, startData.bx + dx));
-                    b.y = Math.max(b.h?b.h/2:5, Math.min(100-(b.h?b.h/2:5), startData.by + dy));
-                    applyState();
-                } else if (resizing) {
-                    const b = state.blocks[selected];
-                    const dx = x - startData.x/(rect.width)*100;
-                    const dy = y - startData.y/(rect.height)*100;
-                    if (resizing.includes('e')) b.w = Math.max(10, Math.min(98, startData.bw + dx*2));
-                    if (resizing.includes('s')) b.h = Math.max(5, Math.min(95, startData.bh + dy*2));
-                    applyState();
-                }
-            }
-            function onUp(){ dragging=null; resizing=null; }
-
-            // Ajout des poignées et évènements
-            Object.keys(blocksById).forEach(key => {
-                const el = blocksById[key];
-                ['nw','ne','sw','se'].forEach(dir => {
-                    const h = document.createElement('div');
-                    h.className = 'tpl-handle ' + dir;
-                    h.addEventListener('mousedown',(e)=>startResize(e,key,dir));
-                    h.addEventListener('touchstart',(e)=>startResize(e,key,dir),{passive:false});
-                    el.appendChild(h);
-                });
-                el.addEventListener('mousedown',(e)=>startDrag(e,key));
-                el.addEventListener('touchstart',(e)=>startDrag(e,key),{passive:false});
-            });
-            canvas.addEventListener('mousedown',(e)=>{ if(e.target===canvas||e.target===bgOverlay||e.target===bgEl){selected=null;applyState();} });
-            window.addEventListener('mousemove',onMove);
-            window.addEventListener('touchmove',onMove,{passive:false});
-            window.addEventListener('mouseup',onUp);
-            window.addEventListener('touchend',onUp);
-
-            // Barre d'outils mise en forme
-            document.querySelectorAll('[data-cmd]').forEach(btn => {
-                btn.onclick = () => {
-                    if (!selected) return;
-                    const b = state.blocks[selected];
-                    const cmd = btn.dataset.cmd;
-                    if (cmd==='bold') b.bold=!b.bold;
-                    else if (cmd==='italic') b.italic=!b.italic;
-                    else if (cmd==='underline') b.underline=!b.underline;
-                    else if (cmd==='strikeThrough') b.strike=!b.strike;
-                    pushHistory(); applyState();
-                };
-            });
-            document.querySelectorAll('[data-align]').forEach(btn => {
-                btn.onclick = () => { if(!selected)return; state.blocks[selected].align=btn.dataset.align; pushHistory(); applyState(); };
-            });
-            function bindProp(id, setter, live) {
-                const el = document.getElementById(id); if(!el)return;
-                const evt = (el.type==='color'||el.type==='range'||el.tagName==='SELECT')?'input':'change';
-                el.addEventListener(evt, () => {
-                    let v = el.type==='checkbox'?el.checked:(el.type==='number'?parseFloat(el.value):el.value);
-                    setter(v); if(live!==false)applyState();
-                });
-            }
-            bindProp('tpl-block-color', v => { if(!selected)return; state.blocks[selected].color=v; });
-            bindProp('tpl-block-font', v => { if(!selected)return; state.blocks[selected].font=v; });
-            bindProp('tpl-block-size', v => { if(!selected)return; state.blocks[selected].fontSize=+v; document.getElementById('tpl-block-size-v').innerText=v; });
-            bindProp('tpl-block-weight', v => { if(!selected)return; state.blocks[selected].weight=v; });
-            bindProp('tpl-block-spacing', v => { if(!selected)return; state.blocks[selected].letterSpacing=+v; document.getElementById('tpl-block-spacing-v').innerText=v; });
-            bindProp('tpl-block-shadow', v => { if(!selected)return; state.blocks[selected].shadow=+v; document.getElementById('tpl-block-shadow-v').innerText=v; });
-            bindProp('tpl-block-x', v => { if(!selected)return; state.blocks[selected].x=+v; });
-            bindProp('tpl-block-y', v => { if(!selected)return; state.blocks[selected].y=+v; });
-            bindProp('tpl-block-w', v => { if(!selected)return; state.blocks[selected].w=+v; });
-            bindProp('tpl-block-h', v => { if(!selected)return; state.blocks[selected].h=v?+v:null; });
-
-            // Global
-            bindProp('tpl-bg-color', v => { state.bgColor = hexToRgba(v, state.bgOpacity!=null?state.bgOpacity/100:0.92); });
-            bindProp('tpl-bg-opacity', v => { state.bgOpacity=+v; state.bgColor=hexToRgba(rgbToHex(state.bgColor), v/100); document.getElementById('tpl-bg-opacity-v').innerText=v+'%'; });
-            bindProp('tpl-accent-color', v => { state.accentColor=v; });
-            bindProp('tpl-text-color', v => { state.textColor=v; if(selected && selected==='text')state.blocks.text.color=v; });
-            bindProp('tpl-radius', v => { state.shapeRadius=+v; });
-            bindProp('tpl-transparent', v => { state.transparent=v; });
-            bindProp('tpl-bg-cover', v => { state.bgCover=v; });
-
-            // Import image
-            document.getElementById('tpl-bg-file').addEventListener('change', e => {
-                const f = e.target.files[0]; if(!f)return;
-                const r = new FileReader();
-                r.onload = ev => { state.bgImage = ev.target.result; pushHistory(); applyState(); };
-                r.readAsDataURL(f); e.target.value='';
-            });
-            document.getElementById('tpl-bg-clear').onclick = () => { state.bgImage=null; pushHistory(); applyState(); };
-
-            // Block picker
-            document.querySelectorAll('#tpl-block-picker button').forEach(btn => {
-                btn.onclick = () => {
-                    const k = btn.dataset.block;
-                    state.blocks[k] = state.blocks[k] || defaultTemplateFor(currentEditMode).blocks[k];
-                    state.blocks[k].visible = !state.blocks[k].visible;
-                    if (state.blocks[k].visible) selectBlock(k); else if (selected===k) selected=null;
-                    pushHistory(); applyState();
-                };
-            });
-
-            // Boutons header
-            document.getElementById('tpl-btn-undo').onclick = undo;
-            document.getElementById('tpl-btn-reset-mode').onclick = () => {
+            // Header buttons
+            document.getElementById('tpl-btn-undo').onclick=undo;
+            document.getElementById('tpl-btn-reset-mode').onclick=()=>{
                 if(!confirm('Réinitialiser le modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » à son apparence par défaut ?'))return;
-                const def = defaultTemplateFor(currentEditMode);
-                state = { mode: currentEditMode, ...def };
-                pushHistory(); applyState();
+                state=defaultTemplateFor(currentEditMode);state.mode=currentEditMode;pushHistory();rebuildCanvas();updatePropsPanel();
             };
-            document.getElementById('tpl-btn-cancel').onclick = closeEditor;
-            document.getElementById('tpl-btn-apply').onclick = () => {
-                // Sauvegarder le template du mode courant ET reporter les styles globaux
-                if (!displaySettings.templates) displaySettings.templates = {};
-                displaySettings.templates[currentEditMode] = JSON.parse(JSON.stringify(state));
-                // Report des styles globaux (couleurs, police) comme avant
-                displaySettings.bgColor = state.bgColor;
-                displaySettings.accentColor = state.accentColor;
-                displaySettings.textColor = state.textColor;
-                displaySettings.shapeRadius = state.shapeRadius;
-                displaySettings.bgImage = state.bgImage;
-                displaySettings.bgCover = !!state.bgCover;
-                displaySettings.transparent = !!state.transparent;
-                displaySettings.bgBlur = 18;
-                saveDisplaySettings();
-                closeEditor();
-                refreshOnAirDisplay();
+            document.getElementById('tpl-btn-cancel').onclick=closeEditor;
+            document.getElementById('tpl-btn-apply').onclick=()=>{
+                if(!displaySettings.templates)displaySettings.templates={};
+                displaySettings.templates[currentEditMode]=JSON.parse(JSON.stringify(state));
+                displaySettings.bgColor=state.bgColor;displaySettings.accentColor=state.accentColor;
+                displaySettings.textColor=state.textColor;displaySettings.shapeRadius=state.shapeRadius;
+                displaySettings.bgImage=state.bgImage;displaySettings.bgCover=!!state.bgCover;
+                displaySettings.transparent=!!state.transparent;displaySettings.bgBlur=18;
+                saveDisplaySettings();closeEditor();refreshOnAirDisplay();
                 showToast('Modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » enregistré ✨');
             };
 
-            function hexToRgba(hex, a){
-                let h=hex.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
-                const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
-                return `rgba(${r},${g},${b},${a})`;
-            }
-
-            function openEditor() {
-                // Quel mode ouvrir par défaut ? celui sélectionné dans le sélecteur
-                currentEditMode = document.getElementById('obs-mode-select').value;
-                if (!MODES.find(m=>m.id===currentEditMode)) currentEditMode = 'full';
-                loadTemplate(currentEditMode);
-                renderModeTabs();
-                pushHistory();
-                selected = 'text';
+            function openEditor(){
+                sample=sampleVerse();
+                currentEditMode=document.getElementById('obs-mode-select').value;
+                if(!MODES.find(m=>m.id===currentEditMode))currentEditMode='full';
+                loadTemplate(currentEditMode);renderModeTabs();pushHistory();selected='text';
                 editor.classList.add('open');
-                setTimeout(applyState, 50);
-                document.addEventListener('keydown', editorKeyHandler);
+                requestAnimationFrame(()=>{rebuildCanvas();updatePropsPanel();});
+                document.addEventListener('keydown',editorKeyHandler);
+                window.addEventListener('resize',rebuildCanvas);
             }
-            function closeEditor() {
-                editor.classList.remove('open');
-                document.removeEventListener('keydown', editorKeyHandler);
-            }
+            function closeEditor(){editor.classList.remove('open');document.removeEventListener('keydown',editorKeyHandler);window.removeEventListener('resize',rebuildCanvas);}
             function editorKeyHandler(e){
-                if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-                if(e.key==='Escape'){ closeEditor(); e.preventDefault(); return; }
-                if(!selected){
-                    if(e.key==='Tab'){selectBlock('text');e.preventDefault();}
-                    return;
-                }
-                const b = state.blocks[selected];
-                const step = e.shiftKey?5:1;
-                if(e.key==='ArrowLeft'){b.x=Math.max(b.w/2,b.x-step);applyState();e.preventDefault();}
-                else if(e.key==='ArrowRight'){b.x=Math.min(100-b.w/2,b.x+step);applyState();e.preventDefault();}
-                else if(e.key==='ArrowUp'){b.y=Math.max(b.h?b.h/2:5,b.y-step);applyState();e.preventDefault();}
-                else if(e.key==='ArrowDown'){b.y=Math.min(100-(b.h?b.h/2:5),b.y+step);applyState();e.preventDefault();}
-                else if(e.key==='Tab'){selectBlock(selected==='ref'?'text':'ref');e.preventDefault();}
-                else if(e.key==='Delete'||e.key==='Backspace'){b.visible=false;selected=null;applyState();e.preventDefault();}
-                else if((e.ctrlKey||e.metaKey)&&e.key==='z'){undo();e.preventDefault();}
-                else if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){b.bold=!b.bold;applyState();e.preventDefault();}
-                else if((e.ctrlKey||e.metaKey)&&(e.key==='i'||e.key==='I')){b.italic=!b.italic;applyState();e.preventDefault();}
-                else if((e.ctrlKey||e.metaKey)&&(e.key==='u'||e.key==='U')){b.underline=!b.underline;applyState();e.preventDefault();}
+                if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;
+                if(e.key==='Escape'){closeEditor();e.preventDefault();return;}
+                if(!selected||!state.blocks[selected]){if(e.key==='Tab'){selected='text';drawOverlay();updatePropsPanel();e.preventDefault();}return;}
+                const b=state.blocks[selected];const step=e.shiftKey?5:1;
+                if(e.key==='ArrowLeft'){b.x=clamp(b.x-step,b.w/2,100-b.w/2);rebuildCanvas();e.preventDefault();}
+                else if(e.key==='ArrowRight'){b.x=clamp(b.x+step,b.w/2,100-b.w/2);rebuildCanvas();e.preventDefault();}
+                else if(e.key==='ArrowUp'){b.y=clamp(b.y-step,b.h?b.h/2:2,100-(b.h?b.h/2:2));rebuildCanvas();e.preventDefault();}
+                else if(e.key==='ArrowDown'){b.y=clamp(b.y+step,b.h?b.h/2:2,100-(b.h?b.h/2:2));rebuildCanvas();e.preventDefault();}
+                else if(e.key==='Tab'){const order=['ref','text','badge'];selected=order[(order.indexOf(selected)+1)%order.length];drawOverlay();updatePropsPanel();e.preventDefault();}
+                else if(e.key==='Delete'||e.key==='Backspace'){b.visible=false;selected=null;rebuildCanvas();updatePropsPanel();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){undo();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B')){b.bold=!b.bold;b.weight=b.bold?700:400;rebuildCanvas();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='i'||e.key==='I')){b.italic=!b.italic;rebuildCanvas();e.preventDefault();}
+                else if((e.ctrlKey||e.metaKey)&&(e.key==='u'||e.key==='U')){b.underline=!b.underline;rebuildCanvas();e.preventDefault();}
             }
 
-            // On intercepte le clic sur le bouton "Personnaliser"
-            const btn = document.getElementById('btn-open-settings');
-            btn.addEventListener('click', openEditor);
-
-            // Redimensionnement → réappliquer l'échelle du canevas
-            window.addEventListener('resize', () => { if (editor.classList.contains('open')) applyState(); });
-
-            // Fermeture au clic sur fond extérieur ? Non : on garde les boutons explicites.
+            // Intercepter clic bouton Personnaliser
+            const btn=document.getElementById('btn-open-settings');
+            btn.addEventListener('click',openEditor);
         }
 
         // --- RACCOURCIS CLAVIERS GLOBAUX (navigation versets) ---

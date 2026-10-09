@@ -1,0 +1,117 @@
+/* ============================================================
+   OPENPRESENTER — Design Tokens
+   Couleurs, espacements, typographie, ombres, rayons.
+   Changer une seule valeur ici change tout le produit.
+   ============================================================ */
+:root {
+  /* === COULEURS FOND (interface contrôleur) === */
+  --bg-0: #07070b;          /* fond le plus sombre */
+  --bg-1: #0d0d14;          /* panneaux */
+  --bg-2: #15151f;          /* cartes / inputs */
+  --bg-3: #1d1d2b;          /* cartes surélevées / hover */
+  --bg-4: #2a2a3c;          /* sélecteurs actifs */
+
+  /* === COULEURS TEXTE (interface) === */
+  --fg-0: #fafaf9;          /* titres, contraste max */
+  --fg-1: #d4d4d8;          /* corps */
+  --fg-2: #9ca3af;          /* secondaire */
+  --fg-3: #6b7280;          /* méta / désactivé */
+
+  /* === COULEURS D'ACCENT (par module) === */
+  --accent-bible:   #f59e0b; /* ambre doré */
+  --accent-songs:   #a78bfa; /* violet */
+  --accent-announcements: #34d399; /* émeraude */
+  --accent-timer:   #fb7185; /* rose */
+  --accent-master:  #fbbf24; /* on-air / avertissement */
+
+  /* === ACCENT PAR DÉFAUT de la scène (modifiable par thème) === */
+  --scene-accent: var(--accent-bible);
+
+  /* === ÉTATS === */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* === TYPOGRAPHIE INTERFACE === */
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Cinzel', 'Poppins', var(--font-ui);
+  --fs-xs: 10px;
+  --fs-sm: 11px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+
+  /* === ESPACEMENTS === */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+
+  /* === RAYONS === */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+
+  /* === OMBRES === */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.5);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.6);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,.7);
+  --shadow-glow: 0 0 20px var(--scene-accent);
+
+  /* === Z-INDEX SYSTÉMATIQUE === */
+  --z-bg:       0;
+  --z-canvas:   1;
+  --z-selection:10;
+  --z-tooltip:  50;
+  --z-modal:    100;
+  --z-toast:    200;
+
+  /* === ANIMATIONS === */
+  --dur-fast: 0.15s;
+  --dur: 0.25s;
+  --dur-slow: 0.5s;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* === TYPOGRAPHIE PAR DEFAUT POUR LA SCENE (sortie OBS) === */
+.scene-root {
+  --scene-font-title: 'Cinzel', serif;
+  --scene-font-body:  'Merriweather', serif;
+  --scene-font-ui:    'Inter', system-ui, sans-serif;
+}
+
+/* === THÈMES PRÊTS (à compléter dans themes/*.json, ici les valeurs par défaut) === */
+body[data-theme='cinema'] {
+  --scene-accent: #fbbf24;
+  --scene-bg-start: #000;
+  --scene-bg-end: #1a1005;
+}
+body[data-theme='warm'] {
+  --scene-accent: #f59e0b;
+  --scene-bg-start: #1c1204;
+  --scene-bg-end: #3b2208;
+}
+body[data-theme='modern'] {
+  --scene-accent: #38bdf8;
+  --scene-bg-start: #030712;
+  --scene-bg-end: #0b1220;
+}
+body[data-theme='minimal'] {
+  --scene-accent: #ffffff;
+  --scene-bg-start: #000;
+  --scene-bg-end: #000;
+}
+body[data-theme='neon'] {
+  --scene-accent: #d946ef;
+  --scene-bg-start: #0a0014;
+  --scene-bg-end: #1a0033;
+}

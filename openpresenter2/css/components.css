@@ -1,0 +1,128 @@
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--fg-1);
+  background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; color: inherit; }
+input:focus, select:focus, textarea:focus, button:focus { outline: none; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-3); }
+
+/* ============================================================
+   COMPOSANTS UI RÉUTILISABLES
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 8px 16px; border-radius: var(--radius-md);
+  font-size: var(--fs-sm); font-weight: 700; letter-spacing: .2px;
+  transition: all var(--dur-fast) var(--ease);
+  background: var(--bg-3); color: var(--fg-1);
+}
+.btn:hover { background: var(--bg-4); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--scene-accent), color-mix(in srgb, var(--scene-accent) 70%, #fff));
+  color: #000; box-shadow: 0 0 20px color-mix(in srgb, var(--scene-accent) 30%, transparent);
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-ghost { background: transparent; border: 1px solid var(--bg-4); color: var(--fg-2); }
+.btn-ghost:hover { background: var(--bg-2); color: var(--fg-0); }
+.btn-danger { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.icon-btn {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); color: var(--fg-2); font-size: 16px; transition: all var(--dur-fast);
+}
+.icon-btn:hover { background: var(--bg-3); color: var(--fg-0); }
+.icon-btn.active { background: color-mix(in srgb, var(--scene-accent) 20%, transparent); color: var(--scene-accent); }
+
+.panel {
+  background: var(--bg-1); border: 1px solid var(--bg-2);
+  border-radius: var(--radius-lg);
+}
+.panel-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--bg-2);
+  font-size: var(--fs-xs); font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--fg-2);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-body { padding: var(--space-3); }
+
+.input, .select {
+  width: 100%; background: var(--bg-0); border: 1px solid var(--bg-3);
+  color: var(--fg-1); padding: 6px 10px; border-radius: var(--radius-sm);
+  font-size: var(--fs-sm); transition: border var(--dur-fast);
+}
+.input:focus, .select:focus { border-color: var(--scene-accent); }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+  background: var(--bg-3); border-radius: 2px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--scene-accent); cursor: pointer;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--scene-accent) 50%, transparent);
+}
+input[type="color"] {
+  width: 32px; height: 24px; border: 1px solid var(--bg-3); border-radius: var(--radius-sm);
+  background: transparent; padding: 0; cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+.row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); font-size: var(--fs-sm); }
+.row label { flex: 1; color: var(--fg-2); }
+.row .value { width: 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--scene-accent); font-size: var(--fs-xs); }
+
+.toolbar { display: flex; gap: 2px; flex-wrap: wrap; padding: 4px; background: var(--bg-0); border-radius: var(--radius-sm); }
+.tool-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-xs); color: var(--fg-2); font-size: 12px; font-weight: 700;
+  transition: all var(--dur-fast);
+}
+.tool-btn:hover { background: var(--bg-3); color: var(--fg-0); }
+.tool-btn.active { background: var(--scene-accent); color: #000; }
+
+/* === Badges / puces === */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 999px; font-size: var(--fs-xs); font-weight: 700;
+  background: color-mix(in srgb, var(--scene-accent) 20%, transparent);
+  color: var(--scene-accent); letter-spacing: .3px;
+}
+.on-air-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block; box-shadow: 0 0 8px var(--danger); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.4;} }
+
+/* === Toast === */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-3); color: var(--fg-0); padding: 10px 20px;
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  border-left: 3px solid var(--scene-accent); font-size: var(--fs-sm); font-weight: 600;
+  z-index: var(--z-toast); animation: toast-in .3s var(--ease);
+}
+@keyframes toast-in { from{opacity:0;transform:translate(-50%,20px);}to{opacity:1;transform:translate(-50%,0);} }
+
+/* === Damier du canevas === */
+.checker-bg {
+  background:
+    linear-gradient(45deg, #1a1a24 25%, transparent 25%) 0 0/20px 20px,
+    linear-gradient(-45deg, #1a1a24 25%, transparent 25%) 0 10px/20px 20px,
+    linear-gradient(45deg, transparent 75%, #1a1a24 75%) 10px -10px/20px 20px,
+    linear-gradient(-45deg, transparent 75%, #1a1a24 75%) -10px 0/20px 20px, #0b0b12;
+}

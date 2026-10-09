@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenPresenter — Sortie OBS</title>
+<link rel="stylesheet" href="../vendor/fonts/fonts.css">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/components.css">
+<style>
+  html, body { background: transparent !important; width: var(--cw, 1920px); height: var(--ch, 1080px); overflow: hidden; }
+  body.mode-obs { margin: 0; padding: 0; background: #000; }
+  /* Fond noir de la page si transparent (pour les sources OBS) */
+  #stage { position: absolute; inset: 0; }
+  body.res-scale #stage { width:1920px; height:1080px; position:absolute; top:50%;left:50%;transform:translate(-50%,-50%) scale(var(--sx,1),var(--sy,1)); }
+  body.res-adapt #stage { width:100%;height:100%; }
+  .parts-hint-l { position:absolute;left:0;top:0;bottom:0; }
+  .parts-hint-r { position:absolute;right:0;top:0;bottom:0; }
+  /* Animations d'entrée */
+  .anim-in { animation: fadeUp .5s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+  @keyframes fadeOut { to{opacity:0;} }
+</style>
+</head><body class="mode-obs res-scale">
+<div id="stage"></div>
+<div class="parts-hint parts-hint-l" id="hint-l">‹</div>
+<div class="parts-hint parts-hint-r" id="hint-r">›</div>
+
+<script src="../js/remote-channel.js"></script>
+<script src="../js/live-mutex.js"></script>
+<script type="module">
+import Engine from '../src/core/engine.mjs';
+const url = new URLSearchParams(location.search);
+const lockMode = url.get('lockMode');      // ex: "bottom" force le preset
+const sceneKey = url.get('scene') || 'main'; // permet plusieurs sorties distinctes
+const res = url.get('res');
+if (res) { const [w,h]=res.split('x').map(Number);document.documentElement.style.setProperty('--cw',w+'px');document.documentElement.style.setProperty('--ch',h+'px');document.body.classList.add('res-custom');document.body.style.width=w+'px';document.body.style.height=h+'px';}
+
+const stage = document.getElementById('stage');
+const bc = new RemoteChannel('op_channel_' + sceneKey);
+let current = null;
+
+bc.onmessage = (event) => {
+  const d = event.data;
+  if (d.action === 'hide') { stage.innerHTML=''; document.getElementById('hint-l').style.opacity=0; document.getElementById('hint-r').style.opacity=0; return; }
+  if (d.action === 'show') {
+    const scene = lockMode ? overridePreset(d.scene, lockMode) : d.scene;
+    const bindings = d.bindings || {};
+    stage.innerHTML = '';
+    const root = Engine.render(scene, stage, bindings, { interactive:false, containerRect:()=>({w:stage.clientWidth,h:stage.clientHeight}) });
+    if (root) { root.classList.add('anim-in'); }
+    const hasParts = !!(bindings.parts && bindings.parts.length > 1 && scene.splitMode==='auto');
+    document.getElementById('hint-l').style.opacity = hasParts && bindings.partIndex>0 ? 0.25 : 0;
+    document.getElementById('hint-r').style.opacity = hasParts && bindings.partIndex < (bindings.parts.length-1) ? 0.25 : 0;
+    current = d;
+  }
+};
+
+// Navigation par clic sur la carte
+document.addEventListener('click', (e) => {
+  try { bc.postMessage({ action:'clickPart', side:(e.clientX < window.innerWidth/2)?'prev':'next', scene:sceneKey }); } catch(_){}
+});
+
+function overridePreset(scene, preset) {
+  // Force un preset sans modifier les styles (pour les scènes verrouillées ?lockMode=bottom)
+  return Object.assign({}, scene, { preset });
+}
+</script>
+</body></html>

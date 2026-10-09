@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>OpenPresenter — Vue pasteur</title>
+<link rel="stylesheet" href="../vendor/fonts/fonts.css"><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/components.css">
+<style>
+html,body{width:100%;height:100%;overflow:hidden;background:#090a10}body{display:grid;grid-template-rows:44px minmax(0,1fr);padding:0 16px 14px;gap:10px}.stage-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #252936}.stage-brand{display:flex;align-items:center;gap:8px;color:#f2f3f5;font-size:11px;font-weight:850}.stage-mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#f5b942,#ed7958);display:grid;place-items:center;color:#17110a;font-size:9px;font-weight:950}.stage-state{display:flex;align-items:center;gap:6px;color:#8a92a3;font-size:9px}.stage-state i{width:7px;height:7px;border-radius:50%;background:#606777}.stage-state.live i{background:#ef5360;box-shadow:0 0 8px #ef5360}.stage-spacer{flex:1}.stage-time{font-variant-numeric:tabular-nums;font-size:12px;font-weight:750;color:#f5c768}.stage-layout{min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr);gap:12px}.stage-left{min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px}.stage-canvas-wrap{position:relative;min-height:0;flex:1;aspect-ratio:16/9;border:1px solid #303440;border-radius:7px;overflow:hidden;background-color:#090a10;background-image:linear-gradient(45deg,#191b24 25%,transparent 25%),linear-gradient(-45deg,#191b24 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#191b24 75%),linear-gradient(-45deg,transparent 75%,#191b24 75%);background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0}.stage-canvas{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:top left}.stage-caption{display:flex;justify-content:space-between;gap:8px;color:#6e7686;font-size:8px}.stage-side{min-height:0;display:flex;flex-direction:column;gap:8px}.stage-card{padding:11px 12px;background:#12151d;border:1px solid #252936;border-radius:7px}.stage-card h2{margin-bottom:7px;color:#7c8494;font-size:8px;font-weight:900;letter-spacing:1px;text-transform:uppercase}.stage-ref{color:#f4c35d;font-size:16px;font-weight:850;line-height:1.25}.stage-text{max-height:31vh;overflow:auto;white-space:pre-wrap;color:#e4e6eb;font-size:12px;line-height:1.7}.stage-parts{display:grid;grid-template-columns:1fr 1fr;gap:6px}.stage-part{padding:8px;background:#191c26;border-radius:5px}.stage-part small{display:block;margin-bottom:4px;color:#848c9c;font-size:8px;text-transform:uppercase;letter-spacing:.5px}.stage-part span{display:block;max-height:72px;overflow:hidden;color:#cdd1da;font-size:9px;line-height:1.5}.stage-controls{display:flex;gap:6px}.stage-controls button{flex:1;padding:9px;background:#1a1d27;border:1px solid #313644;border-radius:5px;color:#c8cbd4;font-size:10px}.stage-controls button:hover{background:#252a36}.stage-controls .live-button{background:#3b191c;border-color:#672f35;color:#ffb0b4}.stage-empty{display:grid;place-items:center;height:100%;padding:25px;color:#747c8d;text-align:center;font-size:12px;line-height:1.6}.stage-empty strong{display:block;color:#e2e5ed;font-size:14px;margin-bottom:5px}@media(max-width:850px){body{padding:0 8px 8px;grid-template-rows:40px minmax(0,1fr)}.stage-layout{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:6px}.stage-side{display:grid;grid-template-columns:1fr 1fr;overflow:auto}.stage-card{padding:7px}.stage-text{max-height:17vh}}
+</style></head><body>
+<header class="stage-head"><div class="stage-brand"><span class="stage-mark">OP</span>Vue pasteur</div><div class="stage-state" id="stage-state"><i></i><span id="stage-state-label">En attente</span></div><div class="stage-spacer"></div><div class="stage-time" id="stage-clock">00:00:00</div></header>
+<main class="stage-layout">
+  <section class="stage-left"><div class="stage-canvas-wrap" id="stage-canvas-wrap"><div class="stage-canvas" id="stage-canvas"></div><div class="stage-empty" id="stage-empty"><div><strong>Prêt à recevoir</strong>La diffusion et la navigation de la scène apparaîtront ici.</div></div></div><div class="stage-caption"><span id="stage-output-label">Sortie principale</span><span>← / → pour naviguer dans les parties</span></div></section>
+  <aside class="stage-side">
+    <section class="stage-card"><h2>Référence / titre</h2><div class="stage-ref" id="stage-ref">—</div></section>
+    <section class="stage-card"><h2>Texte courant</h2><div class="stage-text" id="stage-text">En attente de la diffusion.</div></section>
+    <section class="stage-card"><h2>Parties</h2><div class="stage-parts"><div class="stage-part"><small>Actuelle</small><span id="stage-current-part">—</span></div><div class="stage-part"><small>Suivante</small><span id="stage-next-part">—</span></div></div></section>
+    <div class="stage-controls"><button id="stage-prev">‹ Précédent</button><button class="live-button" id="stage-blank">■ Écran noir</button><button id="stage-next">Suivant ›</button></div>
+  </aside>
+</main>
+<script src="../js/remote-channel.js"></script>
+<script type="module">
+import Engine from '../src/core/engine.mjs';
+const params = new URLSearchParams(location.search); const sceneKey = params.get('scene') || 'main';
+const channel = new window.RemoteChannel(`op_channel_${sceneKey}`);
+document.getElementById('stage-output-label').textContent=`Sortie ${sceneKey}`;
+const wrap = document.getElementById('stage-canvas-wrap'); const canvas = document.getElementById('stage-canvas');
+let timerStarted = Date.now(); let current = null; let ownedURLs = [];
+function clearMediaURLs(){for(const url of ownedURLs)URL.revokeObjectURL(url);ownedURLs=[];}
+function materializeBlobs(value){if(typeof Blob!=='undefined'&&value instanceof Blob){const url=URL.createObjectURL(value);ownedURLs.push(url);return url;}if(Array.isArray(value))return value.map(materializeBlobs);if(value&&typeof value==='object'){for(const key of Object.keys(value))value[key]=materializeBlobs(value[key]);}return value;}
+function scale(){ const width=wrap.clientWidth; if(width)canvas.style.transform=`scale(${width/1920})`; }
+function send(action){ channel.postMessage(action==='clear'?{action:'remoteCommand',command:'clear',scene:sceneKey}:{action:'remoteCommand',command:action,scene:sceneKey}); }
+function updateClock(){const elapsed=Math.floor((Date.now()-timerStarted)/1000);const h=String(Math.floor(elapsed/3600)).padStart(2,'0');const m=String(Math.floor(elapsed%3600/60)).padStart(2,'0');const s=String(elapsed%60).padStart(2,'0');document.getElementById('stage-clock').textContent=`${h}:${m}:${s}`;}
+function updateParts(){if(!current){document.getElementById('stage-current-part').textContent='—';document.getElementById('stage-next-part').textContent='—';return;}const {bindings}=current;const parts=bindings.parts||[];const index=Number(bindings.partIndex||0);document.getElementById('stage-current-part').textContent=parts[index]||bindings.verse||bindings.lyrics||bindings.announcement||bindings.timer||bindings.text||'—';document.getElementById('stage-next-part').textContent=parts[index+1]||'—';}
+channel.onmessage=(event)=>{
+  const data=event.data||{};
+  if(data.action==='hide'){
+    current=null;canvas.replaceChildren();clearMediaURLs();
+    document.getElementById('stage-empty').style.display='grid';
+    document.getElementById('stage-state').classList.remove('live');
+    document.getElementById('stage-state-label').textContent='En attente';
+    document.getElementById('stage-ref').textContent='—';
+    document.getElementById('stage-text').textContent='En attente de la diffusion.';
+    updateParts();return;
+  }
+  if(data.action!=='show'||!data.scene)return;
+  clearMediaURLs();
+  const scene=materializeBlobs(data.scene);
+  const bindings=materializeBlobs(data.bindings||{});
+  current={scene,bindings};
+  document.getElementById('stage-empty').style.display='none';scale();
+  Engine.render(scene,canvas,bindings,{interactive:false,containerRect:()=>({w:1920,h:1080})});
+  document.getElementById('stage-state').classList.add('live');
+  document.getElementById('stage-state-label').textContent='EN DIRECT';
+  document.getElementById('stage-ref').textContent=bindings.ref||bindings.title||'Contenu diffusé';
+  document.getElementById('stage-text').textContent=bindings.verse||bindings.lyrics||bindings.announcement||bindings.timer||bindings.text||'—';
+  updateParts();
+};
+channel.postMessage({action:'ready',scene:sceneKey});
+window.addEventListener('resize',scale);document.getElementById('stage-prev').onclick=()=>send('part-prev');document.getElementById('stage-next').onclick=()=>send('part-next');document.getElementById('stage-blank').onclick=()=>send('clear');document.addEventListener('keydown',(event)=>{if(event.key==='ArrowLeft')send('part-prev');if(event.key==='ArrowRight')send('part-next');if(event.key==='Escape')send('clear');});setInterval(updateClock,250);updateClock();
+</script></body></html>

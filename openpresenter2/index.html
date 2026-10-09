@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OpenPresenter 2 — Studio</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/components.css">
+<style>
+:root{color-scheme:dark}html,body{width:100%;height:100%;background:var(--bg-0)}body{display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) 204px;grid-template-areas:"logo header" "nav main" "nav outputs";height:100dvh;min-width:920px}
+#logo{grid-area:logo;display:grid;place-items:center;background:linear-gradient(145deg,#171521,#242033);border-right:1px solid #242632;border-bottom:1px solid #242632}#logo-mark{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#f5b942,#ed7958);color:#15110b;font-size:13px;font-weight:950;box-shadow:0 8px 25px #f5b94238}
+#header{grid-area:header;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bg-1);border-bottom:1px solid #242632;min-width:0}#header-title{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800;color:var(--fg-0);white-space:nowrap}#header-spacer{flex:1}.header-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--fg-3)}#output-scene-select{width:auto;min-width:128px;padding:6px 24px 6px 9px}.badge-onair{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:#1a1d26;color:#8991a1;border:1px solid #323644;border-radius:5px;font-size:9px;font-weight:900;letter-spacing:1px}.badge-onair.on{background:#3b1619;color:#ff9b9b;border-color:#632528}.badge-onair .on-air-dot{width:6px;height:6px;background:#6b7280;box-shadow:none;animation:none}.badge-onair.on .on-air-dot{background:var(--danger);box-shadow:0 0 8px var(--danger);animation:pulse 1.5s infinite}#header-actions{display:flex;align-items:center;gap:6px}
+#nav{grid-area:nav;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 5px;background:var(--bg-1);border-right:1px solid #242632}.nav-btn{position:relative;width:52px;height:51px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#798092;font-size:9px;font-weight:700;transition:all .15s}.nav-btn:hover{background:#191c26;color:#e8eaf0}.nav-btn.active{background:#23232c;color:#fff;box-shadow:inset 3px 0 var(--accent,var(--scene-accent))}.nav-icon{font-size:20px;line-height:1}#nav-bottom{margin-top:auto}
+#main{grid-area:main;min-width:0;min-height:0;position:relative;overflow:hidden;background:var(--bg-0)}.module{display:none;width:100%;height:100%;overflow:hidden}.module.active{display:flex}.module-bible{display:grid!important;grid-template-columns:270px minmax(0,1fr)}.module-bible:not(.active){display:none!important}
+.bible-sidebar{min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-1);border-right:1px solid #252936}.version-tabs{display:flex;gap:3px;min-height:42px;overflow:auto;padding:7px 7px 6px;border-bottom:1px solid #242632}.version-tab{display:inline-flex;align-items:center;gap:5px;max-width:180px;padding:5px 8px;border-radius:5px;background:transparent;color:#8f97a7;font-size:10px;white-space:nowrap;cursor:pointer}.version-tab:hover{background:#191d27;color:#fff}.version-tab.active{background:#27231b;color:#f5c760}.version-tab-name{overflow:hidden;text-overflow:ellipsis}.version-tab-close{font-size:12px;color:#737b8b}.bible-search-wrap{padding:8px;border-bottom:1px solid #242632}.bible-search-wrap input{font-size:11px}.book-list{flex:1;overflow:auto;padding:5px}.book-item{display:flex;justify-content:space-between;gap:8px;width:100%;padding:7px 9px;border-radius:5px;color:#b0b6c3;text-align:left;font-size:11px;cursor:pointer}.book-item:hover{background:#171a24;color:#fff}.book-item.active{color:#f5c760;background:#29251d}.book-count{font-size:9px;color:#687083}.chapter-panel{display:none;grid-template-columns:repeat(6,minmax(0,1fr));align-content:start;gap:5px;overflow:auto;padding:10px}.chapter-panel.visible{display:grid}.chapter-btn{aspect-ratio:1;background:#171a24;border:1px solid #292e3b;color:#c2c7d2;border-radius:5px;font-size:11px;cursor:pointer}.chapter-btn:hover{background:#292e3b}.chapter-btn.active{background:var(--accent-bible);color:#12100a;border-color:var(--accent-bible);font-weight:800}.chapter-back{grid-column:1/-1!important;aspect-ratio:auto!important;height:30px;color:#9da4b4}
+.bible-main{min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:16px}.bible-toolbar{display:flex;align-items:center;gap:7px;min-height:32px}.bible-toolbar h2{font-size:15px;font-weight:800;color:#f3f4f6}.bible-toolbar-spacer{flex:1}.bible-toolbar .btn{padding:7px 10px;font-size:10px}.bible-list-heading{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 7px;color:#8991a1;font-size:9px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #242632}.verses-list{position:relative;min-height:0;flex:1;overflow:auto;padding:8px;background:#0d0f16;border:1px solid #222632;border-radius:8px}.verse-item{display:grid;grid-template-columns:37px minmax(0,1fr) 24px;align-items:start;gap:10px;padding:9px 8px;border-radius:5px;color:#d4d7df;line-height:1.65;font-size:12px;cursor:pointer;transition:background .1s}.verse-item:hover{background:#171a24}.verse-item.active{background:#33291566;box-shadow:inset 3px 0 var(--accent-bible)}.verse-num{padding-top:1px;text-align:right;color:#e8b750;font-size:10px;font-weight:850;font-variant-numeric:tabular-nums}.verse-text{user-select:text}.verse-actions{display:flex;justify-content:flex-end}.verse-fav{color:#687083;font-size:14px;cursor:pointer}.verse-fav.active{color:#ffd36b}.search-result{display:grid;grid-template-columns:160px 1fr;gap:12px;padding:9px;border-bottom:1px solid #20232d;cursor:pointer}.search-result:hover{background:#171a24}.search-result-ref{color:#f1c261;font-size:10px;font-weight:800}.search-result-text{color:#cbd0da;font-size:11px;line-height:1.6}.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:24px;text-align:center}.empty-state-icon{font-size:40px;margin-bottom:10px}.empty-state h3{color:#f3f4f6;font-size:15px;margin-bottom:7px}.empty-state p{max-width:410px;color:#8991a1;font-size:11px;line-height:1.6;margin-bottom:15px}.empty-state .btn{margin:3px}.pill{display:inline-flex;padding:3px 7px;border:1px solid #35303b;border-radius:999px;color:#b3a476;font-size:9px}
+.module-songs{display:grid!important;grid-template-columns:290px minmax(0,1fr)}.module-songs:not(.active){display:none!important}.songs-sidebar{min-height:0;display:flex;flex-direction:column;background:var(--bg-1);border-right:1px solid #242632}.songs-sidebar-top{padding:9px;border-bottom:1px solid #242632}.songs-sidebar-actions{display:flex;gap:5px;margin-top:7px}.songs-sidebar-actions .btn{flex:1;justify-content:center;font-size:10px}.songs-list{min-height:0;overflow:auto;padding:5px}.song-row{display:flex;justify-content:space-between;gap:10px;padding:9px;border-radius:5px;color:#b4bac7;font-size:11px;cursor:pointer}.song-row:hover{background:#181a25}.song-row.active{background:#252033;color:#d4c0ff}.song-row small{color:#697185}.songs-main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:16px;overflow:hidden}.slides-shell{display:grid;grid-template-columns:260px minmax(0,1fr);width:100%;height:100%;min-height:0}.slides-sidebar{display:flex;flex-direction:column;min-height:0;background:var(--bg-1);border-right:1px solid #252936}.slides-sidebar-head{padding:11px;border-bottom:1px solid #252936}.slides-sidebar-head h2{margin-bottom:8px;color:#f3f4f6;font-size:12px}.slides-sidebar-head .btn{width:100%;justify-content:center}.announcement-list{flex:1;overflow:auto;padding:6px}.announcement-row{display:flex;flex-direction:column;gap:4px;width:100%;padding:9px;border-radius:6px;text-align:left;color:#bfc6d2;cursor:pointer}.announcement-row:hover{background:#171a24}.announcement-row.active{background:#1d2925;color:#a9f0d1}.announcement-row strong{font-size:10px}.announcement-row small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#727b8d;font-size:9px;line-height:1.4}.announcement-workspace{display:flex;flex-direction:column;min-height:0;overflow:auto;padding:17px;gap:12px}.announcement-toolbar{display:flex;align-items:center;gap:7px}.announcement-toolbar h2{font-size:15px;color:#f3f4f6}.announcement-fields{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:12px}.announcement-fields-main{display:flex;flex-direction:column;gap:9px}.announcement-fields label,.timer-card label{display:flex;flex-direction:column;gap:5px;color:#8992a2;font-size:9px;font-weight:750}.announcement-fields input,.announcement-fields select,.announcement-fields textarea,.timer-card input{width:100%;padding:8px 9px;border:1px solid #303543;border-radius:5px;background:#12151d;color:#e8eaf0;font-size:11px}.announcement-fields textarea{min-height:220px;resize:vertical;line-height:1.7}.announcement-image-box{display:flex;flex-direction:column;gap:7px}.announcement-image-preview{display:grid;place-items:center;width:100%;aspect-ratio:16/9;overflow:hidden;background:#0a0c12;border:1px dashed #343a48;border-radius:7px;color:#687183;font-size:10px}.announcement-image-preview img{width:100%;height:100%;object-fit:cover}.announcement-actions{display:flex;gap:6px;justify-content:flex-end}.module-timer{align-items:center;justify-content:center}.timer-layout{display:grid;grid-template-columns:minmax(280px,420px) minmax(260px,440px);align-items:center;gap:20px;width:min(900px,96%)}.timer-card{padding:18px;background:#11131b;border:1px solid #2c2c38;border-radius:10px}.timer-card h2{margin-bottom:12px;color:#f3f4f6;font-size:15px}.timer-display{margin:12px 0;color:#ff9aa9;font-size:clamp(38px,8vw,72px);font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:2px;text-align:center}.timer-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.timer-buttons{display:flex;gap:7px;margin-top:12px}.timer-buttons .btn{flex:1;justify-content:center}.timer-hint{margin-top:9px;color:#707888;font-size:9px;line-height:1.5}.timer-preview-card{padding:20px;background:#14131a;border:1px solid #342d38;border-radius:10px}.timer-preview-card h3{color:#8f97a6;font-size:9px;letter-spacing:1px;text-transform:uppercase}.timer-preview-card p{margin:8px 0;color:#dfe1e8;font-size:12px;line-height:1.6}.song-detail-toolbar{display:flex;align-items:center;gap:7px;margin-bottom:10px}.song-detail-title{font-size:15px;font-weight:800;color:#f3f4f6}.song-sections{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:7px}.song-section-card{display:flex;gap:10px;padding:10px;background:#10121a;border:1px solid #252936;border-radius:7px}.song-section-card.active{border-color:#896de0}.song-section-label{min-width:82px;color:#c4b3ff;font-size:10px;font-weight:800}.song-section-content{flex:1;white-space:pre-wrap;color:#d5d8e0;line-height:1.7;font-size:12px}.song-section-card button{align-self:start;color:#9ca3af;font-size:10px}.module-placeholder{display:flex;flex:1;align-items:center;justify-content:center;padding:24px}.placeholder-card{max-width:520px;padding:35px;border:1px solid #252936;border-radius:12px;background:#11131b;text-align:center}.placeholder-card .icon{font-size:40px}.placeholder-card h2{margin:12px 0 7px;color:#f5f5f5;font-size:17px}.placeholder-card p{color:#8f97a6;font-size:12px;line-height:1.6}
+#outputs{grid-area:outputs;min-height:0;display:grid;grid-template-columns:1.08fr 1.08fr 1fr 1fr;gap:9px;padding:8px 10px 10px;background:#0d0f16;border-top:1px solid #252936;overflow:hidden}.output-block{min-width:0;display:flex;flex-direction:column;gap:5px;padding:7px 8px;background:#12151d;border:1px solid #242936;border-radius:7px;overflow:hidden}.output-block.preview{border-color:#574a73}.output-block.program{border-color:#633033;box-shadow:inset 0 1px #9b3d43}.output-label{display:flex;align-items:center;gap:6px;min-height:14px;color:#8e96a7;font-size:8px;font-weight:900;letter-spacing:.9px}.output-label .dot{width:6px;height:6px;flex:none;border-radius:50%;background:#52596a}.output-label .dot.on{background:#f04f5a;box-shadow:0 0 8px #f04f5a}.output-label .dot.preview-dot{background:#ac89ff;box-shadow:0 0 8px #ac89ff}.output-label button{margin-left:auto;padding:3px 7px;font-size:9px}.output-canvas-wrap{position:relative;flex:1;min-height:0;overflow:hidden;aspect-ratio:16/9;background-color:#08090d;background-image:linear-gradient(45deg,#171923 25%,transparent 25%),linear-gradient(-45deg,#171923 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#171923 75%),linear-gradient(-45deg,transparent 75%,#171923 75%);background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0}.output-canvas{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:top left;background:transparent}.output-meta{min-height:10px;color:#6f7787;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.out-control{margin-left:auto;color:#f1b855;font-size:8px;letter-spacing:0}
+#links-modal{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;background:#000b;backdrop-filter:blur(5px)}.links-dialog{width:min(620px,90vw);max-height:80vh;overflow:auto;padding:20px;background:#11131b;border:1px solid #323646;border-radius:11px;box-shadow:0 30px 90px #000b}.links-dialog h2{font-size:15px;color:#f3f4f6;margin-bottom:7px}.links-dialog p{font-size:10px;color:#939aaa;line-height:1.6;margin-bottom:12px}.obs-link-row{display:grid;grid-template-columns:130px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px;margin:5px 0;background:#191c26;border-radius:6px}.obs-link-name{font-size:10px;color:#e1e3e9;font-weight:700}.obs-link-url{font:9px ui-monospace,monospace;color:#c2a4ff;word-break:break-all}.obs-link-row button{padding:5px 8px;font-size:9px}
+#backup-modal,#remote-modal{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;background:#000b;backdrop-filter:blur(5px)}.backup-dialog,.remote-dialog{width:min(480px,90vw);padding:22px;background:#11131b;border:1px solid #323646;border-radius:11px;box-shadow:0 30px 90px #000b}.backup-dialog h2,.remote-dialog h2{font-size:15px;color:#f3f4f6;margin-bottom:7px}.backup-dialog p,.remote-dialog p{font-size:10px;color:#939aaa;line-height:1.6;margin-bottom:15px}.backup-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.backup-status{min-height:16px;margin-top:10px;color:#97a0b1;font-size:10px}.remote-qr{display:flex;align-items:center;gap:18px;padding:12px;background:#191c26;border-radius:8px}.remote-qr canvas{width:168px;height:168px;image-rendering:pixelated;border-radius:6px;background:#fff}.remote-url{min-width:0;color:#c5aaff;font:10px ui-monospace,monospace;word-break:break-all}.remote-help{font-size:9px!important;color:#7f8797!important;margin:11px 0 0!important}
+@media(max-width:1100px){body{grid-template-rows:52px minmax(0,1fr) 180px}.module-bible{grid-template-columns:230px minmax(0,1fr)}#outputs{gap:5px;padding:6px}.output-block{padding:5px}.output-label{font-size:7px;letter-spacing:.4px}.output-label button{padding:2px 4px;font-size:8px}.bible-toolbar{gap:4px}.bible-toolbar .btn{padding:6px 7px}.bible-sidebar{font-size:10px}}
+</style>
+</head>
+<body data-theme="cinema" style="--scene-accent:var(--accent-bible)">
+<div id="logo"><div id="logo-mark">OP</div></div>
+<header id="header">
+  <div id="header-title">OpenPresenter Studio <span class="badge-onair" id="onair-status"><span class="on-air-dot"></span>STANDBY</span></div>
+  <span class="header-label">Éditer la sortie</span>
+  <select id="output-scene-select" class="input" aria-label="Sortie à personnaliser">
+    <option value="main">Principale</option><option value="annexe">Annexe</option><option value="lt">Lower third</option>
+  </select>
+  <div id="header-spacer"></div>
+  <div id="header-actions">
+    <button class="btn btn-ghost" id="btn-links">🔗 Liens OBS</button>
+    <button class="btn btn-ghost" id="btn-stage">▣ Stage</button>
+    <button class="btn btn-ghost" id="btn-remote">📱 Remote</button>
+    <button class="btn btn-ghost" id="btn-backup">💾 Sauvegarde</button>
+    <button class="btn btn-ghost" id="btn-clear" title="Masquer toutes les sorties (Échap)">✕ Effacer</button>
+    <button class="btn btn-primary" id="btn-editor">🎨 Studio de scène</button>
+  </div>
+</header>
+<nav id="nav" aria-label="Modules">
+  <button class="nav-btn active" data-module="bible" style="--accent:var(--accent-bible)"><span class="nav-icon">📖</span>Bible</button>
+  <button class="nav-btn" data-module="songs" style="--accent:var(--accent-songs)"><span class="nav-icon">🎵</span>Paroles</button>
+  <button class="nav-btn" data-module="slides" style="--accent:var(--accent-announcements)"><span class="nav-icon">🖼️</span>Diapos</button>
+  <button class="nav-btn" data-module="timer" style="--accent:var(--accent-timer)"><span class="nav-icon">⏱️</span>Minuteur</button>
+  <div id="nav-bottom"><button class="nav-btn" id="btn-settings"><span class="nav-icon">⚙️</span>Réglages</button></div>
+</nav>
+<main id="main">
+  <section class="module module-bible active" id="module-bible" data-accent="var(--accent-bible)">
+    <aside class="bible-sidebar">
+      <div class="version-tabs" id="version-tabs" role="tablist" aria-label="Versions de la Bible"></div>
+      <div class="bible-search-wrap"><input class="input" id="bible-search" type="search" placeholder="⌕ Rechercher dans la Bible…" aria-label="Rechercher dans la Bible"></div>
+      <div class="book-list" id="books-list"></div>
+      <div class="chapter-panel" id="chapters-grid" aria-label="Choisir un chapitre"></div>
+    </aside>
+    <section class="bible-main">
+      <div class="bible-toolbar">
+        <button class="btn btn-ghost" id="bible-back" style="display:none" title="Retour aux livres">←</button>
+        <h2 id="bible-current-title">Bibliothèque biblique</h2>
+        <span class="bible-toolbar-spacer"></span>
+        <button class="btn btn-ghost" id="bible-favorites-filter" title="Afficher les favoris">☆ Favoris</button>
+        <button class="btn btn-ghost" id="bible-favorite" title="Ajouter le verset sélectionné aux favoris" disabled>☆</button>
+        <button class="btn btn-ghost" id="bible-note" title="Ajouter une annotation au verset sélectionné" disabled>✎ Note</button>
+        <button class="btn btn-ghost" id="bible-split" title="Activer le découpage des versets longs">↔ Découpage</button>
+        <button class="btn btn-primary" id="bible-take" title="Envoyer le verset aperçu aux sorties OBS (Entrée)" disabled>▶ Diffuser</button>
+      </div>
+      <div class="verses-list" id="verses-list">
+        <div class="empty-state" id="bible-empty">
+          <div class="empty-state-icon">📖</div>
+          <h3>Votre studio de culte commence ici</h3>
+          <p>Importez une Bible XML pour chercher et diffuser dans des milliers de versets, ou chargez l’exemple pour découvrir le flux Preview → On Air.</p>
+          <div><button class="btn btn-primary" id="bible-load-sample">📖 Charger l’exemple</button><label class="btn btn-ghost" style="cursor:pointer">Importer un XML<input type="file" id="bible-import-xml" accept=".xml,application/xml,text/xml" hidden></label></div>
+          <span class="pill">Les données restent sur cet appareil</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:#697183;font-size:9px"><span>Un clic = aperçu · double-clic ou Entrée = diffuser</span><span id="bible-selection-info"></span></div>
+    </section>
+  </section>
+
+  <section class="module module-songs" id="module-songs" data-accent="var(--accent-songs)">
+    <aside class="songs-sidebar">
+      <div class="songs-sidebar-top"><input class="input" id="songs-search" type="search" placeholder="⌕ Rechercher un chant…"><div class="songs-sidebar-actions"><button class="btn btn-primary" id="songs-new">＋ Nouveau</button><label class="btn btn-ghost" style="cursor:pointer">Importer<input type="file" id="songs-import" accept=".txt,.pro,.chordpro,.cho,.chosng,.xml" multiple hidden></label></div></div>
+      <div class="songs-list" id="songs-list"><div class="empty-state"><p>Importez un fichier ChordPro, OpenSong ou texte pour constituer votre bibliothèque.</p></div></div>
+    </aside>
+    <section class="songs-main">
+      <div class="song-detail-toolbar"><h2 class="song-detail-title" id="song-title">Bibliothèque de chants</h2><span class="bible-toolbar-spacer"></span><button class="btn btn-ghost" id="song-editor" disabled>✎ Modifier</button><button class="btn btn-primary" id="song-take" disabled>▶ Diffuser</button></div>
+      <div class="song-sections" id="song-sections"><div class="empty-state"><div class="empty-state-icon">🎵</div><h3>Importez vos chants</h3><p>OpenPresenter reconnaît les fichiers texte, ChordPro et OpenSong. Choisissez ensuite une section pour l’envoyer en aperçu.</p></div></div>
+    </section>
+  </section>
+  <section class="module" id="module-slides">
+    <div class="slides-shell">
+      <aside class="slides-sidebar">
+        <div class="slides-sidebar-head"><h2>Diapositives & annonces</h2><button class="btn btn-primary" id="announcement-new">＋ Nouvelle annonce</button></div>
+        <div class="announcement-list" id="announcement-list"><div class="empty-state"><p>Créez une annonce texte ou ajoutez une image de fond.</p></div></div>
+      </aside>
+      <section class="announcement-workspace">
+        <div class="announcement-toolbar"><h2 id="announcement-heading">Nouvelle annonce</h2><span class="bible-toolbar-spacer"></span><button class="btn btn-ghost" id="announcement-delete" disabled>Supprimer</button><button class="btn btn-ghost" id="announcement-preview">◉ Aperçu</button><button class="btn btn-primary" id="slides-take" disabled>▶ Diffuser</button></div>
+        <div class="announcement-fields">
+          <div class="announcement-fields-main">
+            <label>Titre<input id="announcement-title" maxlength="120" placeholder="Ex. Bienvenue, culte du dimanche"></label>
+            <label>Section / badge<input id="announcement-section" maxlength="50" value="ANNONCE" placeholder="ANNONCE"></label>
+            <label>Message<textarea id="announcement-body" maxlength="3000" placeholder="Écrivez le texte à afficher…"></textarea></label>
+          </div>
+          <div class="announcement-image-box">
+            <span style="color:#8992a2;font-size:9px;font-weight:750">IMAGE DE FOND (FACULTATIVE)</span>
+            <div class="announcement-image-preview" id="announcement-image-preview">Aucune image importée</div>
+            <label class="btn btn-ghost" style="cursor:pointer;justify-content:center">📷 Choisir une image<input type="file" id="announcement-image-file" accept="image/*" hidden></label>
+            <button class="btn btn-ghost" id="announcement-image-remove" type="button">Retirer l’image</button>
+            <p class="timer-hint">Les images sont conservées dans la bibliothèque locale. Leur calque reste déplaçable dans le Studio de scène.</p>
+          </div>
+        </div>
+        <div class="announcement-actions"><button class="btn btn-primary" id="announcement-save">Enregistrer l’annonce</button></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="module module-timer" id="module-timer">
+    <div class="timer-layout">
+      <section class="timer-card">
+        <h2>⏱️ Minuteur de culte</h2>
+        <div class="timer-inputs"><label>Minutes<input id="timer-minutes" type="number" min="0" max="999" value="10"></label><label>Secondes<input id="timer-seconds" type="number" min="0" max="59" value="0"></label></div>
+        <div class="timer-display" id="timer-display">10:00</div>
+        <div class="timer-buttons"><button class="btn btn-primary" id="timer-start">▶ Démarrer</button><button class="btn btn-ghost" id="timer-pause">Ⅱ Pause</button><button class="btn btn-ghost" id="timer-reset">↺</button></div>
+        <div class="timer-buttons"><button class="btn btn-ghost" id="timer-preview">◉ Aperçu</button><button class="btn btn-primary" id="timer-take" disabled>▶ Diffuser</button></div>
+        <p class="timer-hint">Le compte à rebours continue pendant que vous changez de module. Utilisez le Studio de scène pour déplacer le chiffre et personnaliser son thème.</p>
+      </section>
+      <section class="timer-preview-card"><h3>Affichage</h3><p>Le minuteur utilise le même moteur à calques que la Bible, les paroles et les sorties OBS.</p><p id="timer-state-label">Prêt · 10 minutes</p></section>
+    </div>
+  </section>
+</main>
+
+<section id="outputs" aria-label="Aperçu et sorties">
+  <article class="output-block preview" id="out-preview">
+    <div class="output-label"><span class="dot preview-dot"></span>PREVIEW <span id="preview-meta" class="out-control">En attente</span><button class="btn btn-primary" id="btn-take" disabled>▶ LIVE</button></div>
+    <div class="output-canvas-wrap"><div class="output-canvas" id="out-preview-canvas"></div></div>
+    <div class="output-meta">Sélection privée · non visible dans OBS</div>
+  </article>
+  <article class="output-block program" id="out-main">
+    <div class="output-label"><span class="dot" id="dot-main"></span>PROGRAM · PRINCIPALE <span id="meta-main" class="out-control">—</span></div>
+    <div class="output-canvas-wrap"><div class="output-canvas" id="out-main-canvas"></div></div>
+    <div class="output-meta">Canal OBS : main</div>
+  </article>
+  <article class="output-block" id="out-annexe">
+    <div class="output-label"><span class="dot" id="dot-annexe"></span>ANNEXE <span id="meta-annexe" class="out-control">—</span></div>
+    <div class="output-canvas-wrap"><div class="output-canvas" id="out-annexe-canvas"></div></div>
+    <div class="output-meta">Sortie OBS indépendante · thème personnalisable</div>
+  </article>
+  <article class="output-block" id="out-lt">
+    <div class="output-label"><span class="dot" id="dot-lt"></span>LOWER THIRD <span id="meta-lt" class="out-control">—</span></div>
+    <div class="output-canvas-wrap"><div class="output-canvas" id="out-lt-canvas"></div></div>
+    <div class="output-meta">Sortie OBS indépendante · thème personnalisable</div>
+  </article>
+</section>
+
+<div id="remote-modal" role="dialog" aria-modal="true" aria-label="Télécommande sur téléphone"><div class="remote-dialog"><h2>📱 Télécommande téléphone</h2><p>Scannez ce QR depuis un téléphone sur le même réseau que le serveur OpenPresenter. La télécommande permet de naviguer, diffuser et masquer les sorties.</p><div class="remote-qr"><canvas id="remote-qr-canvas" width="168" height="168"></canvas><code class="remote-url" id="remote-url"></code></div><p class="remote-help">Le serveur doit être lancé sur un réseau de confiance. Si le téléphone ne se connecte pas, ouvrez l’URL copiée depuis le navigateur du téléphone.</p><div class="backup-actions" style="margin-top:14px"><button class="btn btn-ghost" id="remote-copy">Copier le lien</button><button class="btn btn-ghost" id="remote-close">Fermer</button></div></div></div>
+<div id="backup-modal" role="dialog" aria-modal="true" aria-label="Sauvegarder OpenPresenter"><div class="backup-dialog"><h2>💾 Sauvegarde locale</h2><p>Exportez vos scènes, thèmes, Bibles, chants, annotations et médias dans une archive <b>.openpresenter.zip</b>. L’archive reste sur votre appareil : aucun compte ni service cloud requis.</p><div class="backup-actions"><button class="btn btn-ghost" id="backup-close">Fermer</button><label class="btn btn-ghost" style="cursor:pointer">Importer une archive<input type="file" id="backup-import-file" accept=".zip,.openpresenter.zip,application/zip" hidden></label><button class="btn btn-primary" id="backup-export">Exporter .openpresenter.zip</button></div><div class="backup-status" id="backup-status"></div></div></div>
+<div id="links-modal" role="dialog" aria-modal="true" aria-label="Liens OBS"><div class="links-dialog"><h2>🔗 Sorties OBS indépendantes</h2><p>Dans OBS, ajoutez chaque adresse comme <b>Source Navigateur</b> en 1920 × 1080. Chaque scène possède son propre thème, ses calques et son mode d’affichage. Le navigateur OBS doit partager le canal avec ce contrôleur.</p><div id="links-list"></div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-ghost" id="links-close">Fermer</button></div></div></div>
+
+<script src="js/remote-channel.js"></script>
+<script src="js/qrcode.js"></script>
+<script src="vendor/js/jszip.min.js"></script>
+<script type="module">
+import Engine from './src/core/engine.mjs';
+import database from './src/core/database.mjs';
+import { createBackupZip, importBackupZip } from './src/core/backup.mjs';
+import { applyThemeToScene, getTheme } from './src/core/themes.mjs';
+import { parseBibleXML } from './src/modules/bible/xml.mjs';
+import { parseSongFile } from './src/modules/songs/parser.mjs';
+import SongEditor from './src/modules/songs/SongEditor.mjs';
+import SceneEditor from './src/components/SceneEditor.mjs';
+
+const OUTPUT_KEYS = ['main', 'annexe', 'lt'];
+const OUTPUT_PRESETS = { main: 'full', annexe: 'bottom', lt: 'lowerthird' };
+const App = {
+  bibleVersions: [], currentBible: null, currentBook: null, currentChapter: null,
+  songs: [], currentSong: null, selectedSongSection: 0,
+  announcements: [], currentAnnouncement: null, announcementAsset: null,
+  preview: null, onAir: null, selectedVerse: null, selectedPositionIndex: -1,
+  timer: { durationMs: 600000, remainingMs: 600000, endAt: 0, running: false, interval: null },
+  favorites: new Set(), annotations: new Map(), favoritesOnly: false,
+  currentModule: 'bible', themeId: 'cinema',
+  scenes: {
+    main: { bible: Engine.defaultScene('full', 'bible'), songs: Engine.defaultScene('full', 'songs'), announcements: Engine.defaultScene('full', 'announcements'), timer: Engine.defaultScene('full', 'timer') },
+    annexe: { bible: Engine.defaultScene('bottom', 'bible'), songs: Engine.defaultScene('bottom', 'songs'), announcements: Engine.defaultScene('bottom', 'announcements'), timer: Engine.defaultScene('bottom', 'timer') },
+    lt: { bible: Engine.defaultScene('lowerthird', 'bible'), songs: Engine.defaultScene('lowerthird', 'songs'), announcements: Engine.defaultScene('lowerthird', 'announcements'), timer: Engine.defaultScene('lowerthird', 'timer') },
+  },
+};
+const channels = Object.fromEntries(OUTPUT_KEYS.map((key) => [key, new window.RemoteChannel(`op_channel_${key}`)]));
+const id = (selector) => document.getElementById(selector);
+const bibleEmptyView = id('bible-empty');
+const norm = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const clone = (value) => structuredClone(value);
+
+function showToast(message, tone = 'normal') {
+  const toast = document.createElement('div'); toast.className = 'toast'; toast.textContent = message;
+  if (tone === 'error') toast.style.borderLeftColor = '#ef4444';
+  document.body.appendChild(toast); setTimeout(() => toast.remove(), 3200);
+}
+function sceneId(output, kind) { return `${output}.${kind}`; }
+function makeScene(preset, kind) { return applyThemeToScene(Engine.defaultScene(preset, kind), App.themeId); }
+function cleanSceneForStorage(scene) {
+  const saved = clone(scene);
+  delete saved.id;
+  for (const layer of saved.layers || []) {
+    if (layer.assetId) layer.src = null;
+    if (layer.source?.assetId) layer.source.image = null;
+  }
+  return saved;
+}
+async function saveScene(output, kind, scene) {
+  App.scenes[output][kind] = scene;
+  await database.saveScene(sceneId(output, kind), cleanSceneForStorage(scene));
+}
+async function addAsset(file) {
+  const saved = await database.saveAsset(file);
+  return { id: saved.id, url: await database.assetURL(saved.id) };
+}
+function sceneForOutput(output, content) {
+  const scene = App.scenes[output]?.[content.kind];
+  return scene ? clone(scene) : null;
+}
+async function sceneForRemote(scene) {
+  const payload = clone(scene);
+  for (const layer of payload.layers || []) {
+    const assetId = layer.assetId || layer.source?.assetId;
+    if (!assetId) continue;
+    const asset = await database.get('assets', assetId);
+    if (!asset?.blob) continue;
+    if (layer.type === 'image') layer.src = asset.blob;
+    else { layer.source ||= {}; layer.source.image = asset.blob; }
+  }
+  return payload;
+}
+async function bindingsForRemote(content) {
+  const bindings = clone(content.bindings);
+  if (content.assetId) {
+    const asset = await database.get('assets', content.assetId);
+    if (asset?.blob) bindings.image = asset.blob;
+  }
+  return bindings;
+}
+
+function scaleCanvas(canvas) {
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  const width = wrap.clientWidth;
+  if (!width) return;
+  canvas.style.transform = `scale(${width / 1920})`;
+}
+function renderCanvas(canvasId, scene, bindings) {
+  const canvas = id(canvasId); if (!canvas) return;
+  scaleCanvas(canvas);
+  if (!scene || !bindings) { canvas.replaceChildren(); return; }
+  Engine.render(scene, canvas, bindings, { interactive: false, containerRect: () => ({ w: 1920, h: 1080 }) });
+}
+function renderPreview() {
+  if (!App.preview) {
+    renderCanvas('out-preview-canvas', null, null);
+    id('preview-meta').textContent = 'En attente'; id('btn-take').disabled = true;
+    return;
+  }
+  const scene = sceneForOutput('main', App.preview);
+  renderCanvas('out-preview-canvas', scene, App.preview.bindings);
+  id('preview-meta').textContent = App.preview.bindings.ref || App.preview.bindings.title || (App.preview.kind === 'timer' ? App.preview.bindings.timer : 'Contenu prêt');
+  id('btn-take').disabled = false;
+  const take = id('bible-take'); if (take) take.disabled = App.preview.kind !== 'bible';
+  const songTake = id('song-take'); if (songTake) songTake.disabled = App.preview.kind !== 'songs';
+  const slideTake = id('slides-take'); if (slideTake) slideTake.disabled = App.preview.kind !== 'announcements';
+  const timerTake = id('timer-take'); if (timerTake) timerTake.disabled = App.preview.kind !== 'timer';
+}
+let outputRevision = 0;
+async function syncOutput(key, revision = outputRevision) {
+  if (!App.onAir) {
+    renderCanvas(`out-${key}-canvas`, null, null);
+    channels[key].postMessage({ action: 'hide' });
+    id(`dot-${key}`).classList.remove('on'); id(`meta-${key}`).textContent = '—';
+    return;
+  }
+  const onAir = App.onAir;
+  const scene = sceneForOutput(key, onAir);
+  const [remote, bindings] = await Promise.all([sceneForRemote(scene), bindingsForRemote(onAir)]);
+  if (revision !== outputRevision || onAir !== App.onAir) return;
+  renderCanvas(`out-${key}-canvas`, scene, onAir.bindings);
+  channels[key].postMessage({ action: 'show', scene: remote, bindings });
+  id(`dot-${key}`).classList.add('on');
+  id(`meta-${key}`).textContent = onAir.bindings.ref || onAir.bindings.title || 'En direct';
+}
+async function broadcastScenes() {
+  const revision = ++outputRevision;
+  await Promise.all(OUTPUT_KEYS.map((key) => syncOutput(key, revision)));
+}
+function setPreview(kind, bindings, extras = {}) {
+  App.preview = { kind, bindings: clone(bindings), ...extras };
+  renderPreview();
+}
+function takePreview() {
+  if (!App.preview) return;
+  App.onAir = clone(App.preview);
+  renderPreview();
+  broadcastScenes();
+  id('onair-status').classList.add('on'); id('onair-status').lastChild.textContent = 'ON AIR';
+  showToast('Diffusion envoyée aux sorties configurées');
+}
+function clearAll() {
+  outputRevision += 1;
+  App.onAir = null;
+  id('onair-status').classList.remove('on'); id('onair-status').lastChild.textContent = 'STANDBY';
+  OUTPUT_KEYS.forEach((key) => {
+    renderCanvas(`out-${key}-canvas`, null, null);
+    channels[key].postMessage({ action: 'hide' });
+    id(`dot-${key}`).classList.remove('on'); id(`meta-${key}`).textContent = '—';
+  });
+}
+function setTheme(idValue) {
+  const theme = getTheme(idValue);
+  App.themeId = theme.id;
+  document.body.dataset.theme = theme.id;
+  document.body.style.setProperty('--scene-accent', theme.accent);
+  database.setSetting('lastTheme', theme.id).catch(() => {});
+}
+
+// ---- Navigation, sorties, raccourcis globaux ----
+document.querySelectorAll('.nav-btn[data-module]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn[data-module]').forEach((item) => item.classList.toggle('active', item === button));
+    document.querySelectorAll('.module').forEach((item) => item.classList.toggle('active', item.id === `module-${button.dataset.module}`));
+    App.currentModule = button.dataset.module;
+    const accent = getComputedStyle(button).getPropertyValue('--accent').trim();
+    if (accent) document.body.style.setProperty('--scene-accent', accent);
+  });
+});
+id('btn-clear').onclick = clearAll;
+id('btn-take').onclick = takePreview;
+id('bible-take').onclick = takePreview;
+id('song-take').onclick = takePreview;
+id('btn-editor').onclick = () => {
+  const kind = ({ songs: 'songs', slides: 'announcements', timer: 'timer' })[App.currentModule] || 'bible';
+  const output = id('output-scene-select').value;
+  const sampleBindings = kind === 'songs'
+    ? { title: 'Mon chant', section: 'Refrain', lyrics: 'Quel ami fidèle et tendre,\nQue de se reposer sur Toi !' }
+    : kind === 'announcements'
+      ? { title: 'Bienvenue', section: 'ANNONCE', announcement: 'Bienvenue à notre célébration.', image: App.preview?.kind === kind ? App.preview.bindings.image : null }
+      : kind === 'timer'
+        ? { title: 'CULTE', section: 'COMPTE À REBOURS', timer: '10:00' }
+        : { ref: 'Jean 3:16', badge: App.currentBible?.name || 'LSG', verse: 'Car Dieu a tant aimé le monde qu’il a donné son Fils unique.' };
+  SceneEditor.openSceneEditor({
+    kind, scene: App.scenes[output][kind], sampleBindings, onAsset: addAsset,
+    onThemeChange: setTheme,
+    onSave: async (scene) => {
+      await saveScene(output, kind, scene);
+      if (App.preview?.kind === kind) renderPreview();
+      if (App.onAir?.kind === kind) await broadcastScenes();
+      showToast(`Scène « ${scene.name || output} » enregistrée`);
+    },
+  });
+};
+document.addEventListener('keydown', (event) => {
+  const focused = event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName));
+  if (focused) return;
+  if (event.key === 'Escape') { clearAll(); return; }
+  if (event.key === 'Enter' && App.preview) { event.preventDefault(); takePreview(); return; }
+  if ((event.key === 'ArrowDown' || event.key === 'ArrowRight') && App.currentModule === 'bible') { moveBibleSelection(1); event.preventDefault(); }
+  if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && App.currentModule === 'bible') { moveBibleSelection(-1); event.preventDefault(); }
+});
+window.addEventListener('resize', () => {
+  ['preview', ...OUTPUT_KEYS].forEach((key) => scaleCanvas(id(`out-${key}-canvas`)));
+  renderPreview();
+  if (App.onAir) OUTPUT_KEYS.forEach((key) => renderCanvas(`out-${key}-canvas`, sceneForOutput(key, App.onAir), App.onAir.bindings));
+});
+
+// ---- Liens OBS : canaux séparés, un thème et un layout par sortie ----
+function obsUrl(key) {
+  const url = new URL('./obs/output.html', location.href);
+  url.searchParams.set('scene', key);
+  if (key === 'annexe') url.searchParams.set('lockMode', 'bottom');
+  if (key === 'lt') url.searchParams.set('lockMode', 'lowerthird');
+  return url.toString();
+}
+async function copyText(text, button) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const textarea = document.createElement('textarea'); textarea.value = text; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); textarea.remove();
+  }
+  const old = button.textContent; button.textContent = 'Copié ✓'; setTimeout(() => button.textContent = old, 1200);
+}
+id('btn-links').onclick = () => {
+  const list = id('links-list'); list.replaceChildren();
+  const names = { main: 'Principale — plein écran', annexe: 'Annexe — bandeau bas', lt: 'Lower third — fond transparent' };
+  for (const key of OUTPUT_KEYS) {
+    const row = document.createElement('div'); row.className = 'obs-link-row';
+    const label = document.createElement('span'); label.className = 'obs-link-name'; label.textContent = names[key];
+    const url = document.createElement('code'); url.className = 'obs-link-url'; url.textContent = obsUrl(key);
+    const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'btn btn-ghost'; copy.textContent = 'Copier';
+    copy.onclick = () => copyText(url.textContent, copy);
+    row.append(label, url, copy); list.appendChild(row);
+  }
+  id('links-modal').style.display = 'flex';
+};
+id('links-close').onclick = () => { id('links-modal').style.display = 'none'; };
+id('links-modal').addEventListener('click', (event) => { if (event.target === id('links-modal')) id('links-modal').style.display = 'none'; });
+function helperUrl(page, output = 'main') {
+  const url = new URL(`./app/${page}.html`, location.href); url.searchParams.set('scene', output); return url.toString();
+}
+id('btn-stage').onclick = () => { window.open(helperUrl('stage', id('output-scene-select').value), '_blank', 'noopener'); };
+id('btn-remote').onclick = () => {
+  const url = helperUrl('remote', id('output-scene-select').value);
+  id('remote-url').textContent = url; id('remote-modal').style.display = 'flex';
+  const canvas = id('remote-qr-canvas'); canvas.replaceChildren();
+  const created = window.OpenQR?.toCanvas(canvas, url, 240);
+  if (!created) id('remote-url').textContent = `${url} (QR trop long : copiez le lien)`;
+};
+id('remote-close').onclick = () => { id('remote-modal').style.display = 'none'; };
+id('remote-modal').addEventListener('click', (event) => { if (event.target === id('remote-modal')) id('remote-modal').style.display = 'none'; });
+id('remote-copy').onclick = () => copyText(id('remote-url').textContent.split(' (QR')[0], id('remote-copy'));
+id('btn-backup').onclick = () => { id('backup-status').textContent = ''; id('backup-modal').style.display = 'flex'; };
+id('backup-close').onclick = () => { id('backup-modal').style.display = 'none'; };
+id('backup-modal').addEventListener('click', (event) => { if (event.target === id('backup-modal')) id('backup-modal').style.display = 'none'; });
+id('backup-export').onclick = async () => {
+  const button = id('backup-export'); button.disabled = true; id('backup-status').textContent = 'Préparation de l’archive…';
+  try {
+    const blob = await createBackupZip(database, window.JSZip);
+    const url = URL.createObjectURL(blob); const link = document.createElement('a');
+    link.href = url; link.download = `openpresenter-${new Date().toISOString().slice(0, 10)}.openpresenter.zip`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    id('backup-status').textContent = 'Archive téléchargée avec succès.';
+  } catch (error) { id('backup-status').textContent = `Export impossible : ${error.message}`; }
+  finally { button.disabled = false; }
+};
+id('backup-import-file').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+  if (!confirm('Importer cette sauvegarde et fusionner son contenu avec les données locales ? Les éléments portant le même identifiant seront mis à jour.')) return;
+  id('backup-status').textContent = 'Vérification et import…';
+  try {
+    const result = await importBackupZip(file, database, window.JSZip, { replace: false });
+    clearAll(); App.preview = null; App.currentBook = null; App.currentChapter = null; App.currentSong = null;
+    App.favorites.clear(); App.annotations.clear(); renderPreview(); await boot();
+    const total = Object.values(result.imported).reduce((sum, count) => sum + count, 0);
+    id('backup-status').textContent = `Import terminé · ${total} éléments intégrés.`;
+    showToast('Sauvegarde OpenPresenter importée');
+  } catch (error) { id('backup-status').textContent = `Import impossible : ${error.message}`; showToast(error.message, 'error'); }
+});
+
+// ---- Bible : recherche, import XML, favoris, notes, Preview → Program ----
+const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<bible translation="Exemple LSG">
+  <book number="43" name="Jean"><chapter number="3">
+    <verse number="16">Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle.</verse>
+    <verse number="17">Dieu, en effet, n'a pas envoyé son Fils dans le monde pour qu'il juge le monde, mais pour que le monde soit sauvé par lui.</verse>
+    <verse number="18">Celui qui croit en lui n'est point jugé; mais celui qui ne croit pas est déjà jugé, parce qu'il n'a pas cru au nom du Fils unique de Dieu.</verse>
+    <verse number="19">Et ce jugement c'est que, la lumière étant venue dans le monde, les hommes ont préféré les ténèbres à la lumière.</verse>
+  </chapter></book>
+</bible>`;
+function verseKey(versionId, bookNum, chapterNum, verseNum) { return `${versionId}|${bookNum}|${chapterNum}|${verseNum}`; }
+const bibleNavigationCache = new WeakMap();
+function bibleNavigation(bible) {
+  if (!bible) return { items: [], indexByKey: new Map() };
+  if (bibleNavigationCache.has(bible)) return bibleNavigationCache.get(bible);
+  const items = []; const indexByKey = new Map();
+  for (const book of bible.books || []) for (const chapter of book.chapters || []) for (const verse of chapter.verses || []) {
+    const index = items.length; const key = verseKey(bible.id, book.num, chapter.num, verse.num);
+    items.push({ book, chapter, verse, key }); indexByKey.set(key, index);
+  }
+  const navigation = { items, indexByKey }; bibleNavigationCache.set(bible, navigation); return navigation;
+}
+function favoriteId(key) { return `favorite:${key}`; }
+function annotationId(key) { return `annotation:${key}`; }
+function showBibleEmpty() {
+  if (bibleEmptyView) {
+    bibleEmptyView.style.display = 'flex';
+    id('verses-list').replaceChildren(bibleEmptyView);
+  }
+  id('bible-current-title').textContent = App.currentBible ? 'Choisir un livre et un chapitre' : 'Bibliothèque biblique';
+}
+function renderVersionTabs() {
+  const tabs = id('version-tabs'); tabs.replaceChildren();
+  for (const version of App.bibleVersions) {
+    const button = document.createElement('button'); button.type = 'button';
+    button.className = `version-tab${App.currentBible?.id === version.id ? ' active' : ''}`; button.title = version.name;
+    const name = document.createElement('span'); name.className = 'version-tab-name'; name.textContent = version.name;
+    button.appendChild(name);
+    button.onclick = () => selectBible(version);
+    tabs.appendChild(button);
+  }
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'version-tab'; add.textContent = '＋'; add.title = 'Importer une autre version';
+  add.onclick = () => id('bible-import-xml').click(); tabs.appendChild(add);
+}
+async function selectBible(version) {
+  App.currentBible = version; App.currentBook = null; App.currentChapter = null; App.selectedVerse = null; App.selectedPositionIndex = -1; App.favoritesOnly = false;
+  await database.setSetting('currentBibleId', version.id);
+  id('bible-favorites-filter').classList.remove('active');
+  renderVersionTabs(); renderBooks(); showBibleEmpty();
+}
+function renderBooks() {
+  const list = id('books-list'); list.replaceChildren();
+  id('chapters-grid').classList.remove('visible'); list.style.display = App.currentBible ? 'block' : 'none';
+  if (!App.currentBible) return;
+  App.currentBible.books.forEach((book) => {
+    const button = document.createElement('button'); button.type = 'button';
+    button.className = `book-item${App.currentBook?.num === book.num ? ' active' : ''}`;
+    const name = document.createElement('span'); name.textContent = book.name;
+    const count = document.createElement('span'); count.className = 'book-count'; count.textContent = `${book.chapters.length} ch.`;
+    button.append(name, count); button.onclick = () => selectBook(book);
+    list.appendChild(button);
+  });
+}
+function selectBook(book) {
+  App.currentBook = book; App.currentChapter = null;
+  id('books-list').style.display = 'none';
+  const grid = id('chapters-grid'); grid.replaceChildren(); grid.classList.add('visible');
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'chapter-btn chapter-back'; back.textContent = '← Tous les livres';
+  back.onclick = () => { App.currentBook = null; App.currentChapter = null; grid.classList.remove('visible'); id('books-list').style.display = 'block'; id('bible-back').style.display = 'none'; id('bible-current-title').textContent = App.currentBible?.name || 'Bible'; showBibleEmpty(); };
+  grid.appendChild(back);
+  book.chapters.forEach((chapter) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'chapter-btn'; button.textContent = String(chapter.num); button.title = `${book.name} ${chapter.num}`;
+    button.onclick = () => selectChapter(book, chapter);
+    grid.appendChild(button);
+  });
+  id('bible-back').style.display = 'inline-flex'; id('bible-current-title').textContent = `${book.name} · choisir un chapitre`;
+}
+function selectChapter(book, chapter) {
+  App.currentBook = book; App.currentChapter = chapter; App.favoritesOnly = false;
+  id('chapters-grid').classList.remove('visible'); id('books-list').style.display = 'block';
+  id('bible-back').style.display = 'inline-flex'; id('bible-current-title').textContent = `${book.name} ${chapter.num}`;
+  id('bible-search').value = ''; renderBooks(); renderVerses();
+}
+function renderVerses() {
+  const list = id('verses-list'); list.replaceChildren();
+  if (!App.currentChapter || !App.currentBible) { showBibleEmpty(); return; }
+  App.currentChapter.verses.forEach((verse) => {
+    const key = verseKey(App.currentBible.id, App.currentBook.num, App.currentChapter.num, verse.num);
+    const row = document.createElement('div'); row.className = `verse-item${App.selectedVerse?.key === key ? ' active' : ''}`;
+    row.dataset.verseKey = key;
+    const number = document.createElement('span'); number.className = 'verse-num'; number.textContent = String(verse.num);
+    const text = document.createElement('span'); text.className = 'verse-text'; text.textContent = verse.text;
+    const actions = document.createElement('span'); actions.className = 'verse-actions';
+    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = `verse-fav${App.favorites.has(key) ? ' active' : ''}`; favorite.dataset.favoriteKey = key; favorite.title = App.favorites.has(key) ? 'Retirer des favoris' : 'Ajouter aux favoris'; favorite.textContent = App.favorites.has(key) ? '★' : '☆';
+    actions.appendChild(favorite); row.append(number, text, actions); list.appendChild(row);
+  });
+  id('bible-selection-info').textContent = `${App.currentChapter.verses.length} versets`;
+  updateBibleActions();
+}
+function updateBibleActions() {
+  const selectedKey = App.selectedVerse?.key;
+  const inBible = App.preview?.kind === 'bible';
+  id('bible-take').disabled = !inBible;
+  id('bible-favorite').disabled = !selectedKey;
+  id('bible-note').disabled = !selectedKey;
+  id('bible-favorite').textContent = selectedKey && App.favorites.has(selectedKey) ? '★ Favori' : '☆ Favori';
+}
+function bibleBindings(book, chapter, verse) {
+  const scene = App.scenes.main.bible;
+  const bindings = { ref: `${book.name} ${chapter.num}:${verse.num}`, badge: App.currentBible?.name || '', verse: verse.text };
+  if (scene.splitMode === 'auto' && verse.text.length > Math.max(80, Number(scene.splitChars || 180) * .82)) {
+    bindings.parts = Engine.splitSmart(verse.text, scene.splitChars || 180); bindings.partIndex = 0;
+  }
+  return bindings;
+}
+function previewVerse(book, chapter, verse) {
+  const key = verseKey(App.currentBible.id, book.num, chapter.num, verse.num);
+  App.selectedPositionIndex = bibleNavigation(App.currentBible).indexByKey.get(key) ?? -1;
+  App.selectedVerse = { book, chapter, verse, key };
+  setPreview('bible', bibleBindings(book, chapter, verse));
+  updateBibleActions();
+  id('bible-selection-info').textContent = `${book.name} ${chapter.num}:${verse.num}`;
+  document.querySelectorAll('.verse-item').forEach((item) => item.classList.toggle('active', item.dataset.verseKey === key));
+}
+function moveBibleSelection(delta) {
+  const navigation = bibleNavigation(App.currentBible);
+  if (!navigation.items.length) return false;
+  let index = App.selectedPositionIndex;
+  if (index < 0 && App.selectedVerse) index = navigation.indexByKey.get(App.selectedVerse.key) ?? -1;
+  if (index < 0) index = delta > 0 ? -1 : navigation.items.length;
+  const nextIndex = Math.max(0, Math.min(navigation.items.length - 1, index + Math.sign(delta || 1)));
+  const next = navigation.items[nextIndex];
+  App.currentBook = next.book; App.currentChapter = next.chapter; App.favoritesOnly = false;
+  id('books-list').style.display = 'block'; id('chapters-grid').classList.remove('visible');
+  id('bible-back').style.display = 'inline-flex'; id('bible-search').value = '';
+  id('bible-favorites-filter').classList.remove('active');
+  renderBooks(); renderVerses();
+  previewVerse(next.book, next.chapter, next.verse);
+  document.querySelector(`.verse-item[data-verse-key="${CSS.escape(next.key)}"]`)?.scrollIntoView({ block: 'nearest' });
+  return true;
+}
+async function toggleFavorite(key = App.selectedVerse?.key) {
+  if (!key) return;
+  if (App.favorites.has(key)) { App.favorites.delete(key); await database.delete('notes', favoriteId(key)); }
+  else {
+    App.favorites.add(key);
+    const [versionId, bookNum, chapterNum, verseNum] = key.split('|');
+    await database.put('notes', { id: favoriteId(key), kind: 'favorite', versionId, bookNum: Number(bookNum), chapterNum: Number(chapterNum), verseNum: Number(verseNum), createdAt: Date.now() });
+  }
+  if (App.favoritesOnly) renderFavorites(); else if (App.currentChapter) renderVerses();
+  updateBibleActions();
+}
+async function annotateSelected() {
+  const selected = App.selectedVerse; if (!selected) return;
+  const current = App.annotations.get(selected.key)?.text || '';
+  const text = prompt(`Annotation pour ${selected.book.name} ${selected.chapter.num}:${selected.verse.num}`, current);
+  if (text === null) return;
+  if (!text.trim()) { App.annotations.delete(selected.key); await database.delete('notes', annotationId(selected.key)); }
+  else {
+    const record = { id: annotationId(selected.key), kind: 'annotation', key: selected.key, text: text.trim(), updatedAt: Date.now() };
+    App.annotations.set(selected.key, record); await database.put('notes', record);
+  }
+  showToast(text.trim() ? 'Annotation enregistrée' : 'Annotation supprimée');
+}
+function renderFavorites() {
+  const list = id('verses-list'); list.replaceChildren();
+  id('bible-current-title').textContent = 'Versets favoris';
+  const favorites = [...App.favorites].map((key) => {
+    const [versionId, bookNum, chapterNum, verseNum] = key.split('|');
+    const bible = App.bibleVersions.find((version) => version.id === versionId);
+    const book = bible?.books.find((item) => item.num === Number(bookNum));
+    const chapter = book?.chapters.find((item) => item.num === Number(chapterNum));
+    const verse = chapter?.verses.find((item) => item.num === Number(verseNum));
+    return bible && book && chapter && verse ? { key, bible, book, chapter, verse } : null;
+  }).filter(Boolean);
+  if (!favorites.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.innerHTML = '<h3>Aucun favori pour le moment</h3><p>Utilisez l’étoile à droite d’un verset pour le garder à portée de main.</p>'; list.appendChild(empty); return; }
+  favorites.forEach((item) => appendSearchResult(list, item));
+}
+function appendSearchResult(list, item) {
+  const row = document.createElement('div'); row.className = 'search-result';
+  const reference = document.createElement('div'); reference.className = 'search-result-ref'; reference.textContent = `${item.book.name} ${item.chapter.num}:${item.verse.num} · ${item.bible.name}`;
+  const text = document.createElement('div'); text.className = 'search-result-text'; text.textContent = item.verse.text;
+  row.append(reference, text);
+  row.onclick = () => { App.currentBible = item.bible; App.currentBook = item.book; App.currentChapter = item.chapter; App.favoritesOnly = false; renderVersionTabs(); renderBooks(); renderVerses(); previewVerse(item.book, item.chapter, item.verse); };
+  list.appendChild(row);
+}
+function searchBible(query) {
+  const value = norm(query);
+  if (!value && !App.favoritesOnly) { if (App.currentChapter) renderVerses(); else showBibleEmpty(); return; }
+  const list = id('verses-list'); list.replaceChildren();
+  id('bible-current-title').textContent = App.favoritesOnly ? 'Versets favoris' : `Recherche · ${query}`;
+  const results = [];
+  const versions = App.currentBible ? [App.currentBible] : [];
+  searchLoop: for (const bible of versions) {
+    for (const book of bible.books) {
+      for (const chapter of book.chapters) {
+        for (const verse of chapter.verses) {
+          const key = verseKey(bible.id, book.num, chapter.num, verse.num);
+          if ((!value || norm(`${book.name} ${chapter.num}:${verse.num} ${verse.text}`).includes(value)) && (!App.favoritesOnly || App.favorites.has(key))) {
+            results.push({ key, bible, book, chapter, verse });
+            if (results.length >= 250) break searchLoop;
+          }
+        }
+      }
+    }
+  }
+  id('bible-selection-info').textContent = results.length >= 250 ? '250+ résultats · affinez votre recherche' : `${results.length} résultat${results.length === 1 ? '' : 's'}`;
+  if (!results.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.innerHTML = '<h3>Aucun résultat</h3><p>Essayez un autre mot ou vérifiez la version sélectionnée.</p>'; list.appendChild(empty); }
+  else results.forEach((item) => appendSearchResult(list, item));
+}
+// Verse list selection never broadcasts until the operator explicitly takes it.
+id('verses-list').addEventListener('click', (event) => {
+  const favorite = event.target.closest('[data-favorite-key]');
+  if (favorite) { event.stopPropagation(); toggleFavorite(favorite.dataset.favoriteKey); return; }
+  const row = event.target.closest('.verse-item'); if (!row || !App.currentChapter) return;
+  const verse = App.currentChapter.verses.find((item) => verseKey(App.currentBible.id, App.currentBook.num, App.currentChapter.num, item.num) === row.dataset.verseKey);
+  if (verse) previewVerse(App.currentBook, App.currentChapter, verse);
+});
+id('verses-list').addEventListener('dblclick', (event) => { if (event.target.closest('.verse-item')) takePreview(); });
+id('bible-search').addEventListener('input', () => {
+  clearTimeout(id('bible-search')._timer);
+  id('bible-search')._timer = setTimeout(() => searchBible(id('bible-search').value), 140);
+});
+id('bible-load-sample').onclick = async () => {
+  try {
+    const parsed = parseBibleXML(SAMPLE_XML, 'Exemple');
+    const bible = App.bibleVersions.find((item) => item.name === parsed.name) || parsed;
+    if (!App.bibleVersions.some((item) => item.id === bible.id)) { await database.saveBible(bible); App.bibleVersions.push(bible); }
+    await selectBible(bible);
+    const book = bible.books.find((item) => item.name === 'Jean') || bible.books[0];
+    const chapter = book.chapters[0];
+    App.currentBook = book; App.currentChapter = chapter; renderBooks(); renderVerses();
+    showToast('Exemple LSG chargé · Jean 3');
+  } catch (error) { showToast(error.message, 'error'); }
+};
+id('bible-import-xml').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+  try {
+    const bible = parseBibleXML(await file.text(), file.name.replace(/\.xml$/i, '') || 'Bible importée');
+    await database.saveBible(bible); App.bibleVersions = App.bibleVersions.filter((item) => item.id !== bible.id); App.bibleVersions.push(bible);
+    await selectBible(bible); renderVersionTabs(); renderBooks(); showBibleEmpty();
+    showToast(`${bible.name} importée · ${bible.books.length} livres`);
+  } catch (error) { showToast(`Import impossible : ${error.message}`, 'error'); }
+});
+id('bible-back').onclick = () => {
+  if (App.currentBook) { App.currentBook = null; App.currentChapter = null; id('books-list').style.display = 'block'; id('chapters-grid').classList.remove('visible'); id('bible-back').style.display = 'none'; id('bible-current-title').textContent = App.currentBible?.name || 'Bible'; showBibleEmpty(); }
+};
+id('bible-favorite').onclick = () => toggleFavorite();
+id('bible-note').onclick = annotateSelected;
+id('bible-favorites-filter').onclick = () => {
+  App.favoritesOnly = !App.favoritesOnly; id('bible-favorites-filter').classList.toggle('active', App.favoritesOnly);
+  id('bible-search').value = ''; searchBible('');
+};
+id('bible-split').onclick = async () => {
+  const scene = App.scenes.main.bible; scene.splitMode = scene.splitMode === 'auto' ? 'none' : 'auto';
+  id('bible-split').classList.toggle('active', scene.splitMode === 'auto');
+  await saveScene('main', 'bible', scene);
+  if (App.selectedVerse) previewVerse(App.selectedVerse.book, App.selectedVerse.chapter, App.selectedVerse.verse);
+  showToast(scene.splitMode === 'auto' ? 'Découpage automatique activé' : 'Découpage automatique désactivé');
+};
+
+// ---- Module Paroles : le parseur et le panneau seront chargés avec le module dédié ----
+id('songs-search').addEventListener('input', () => renderSongsList(id('songs-search').value));
+id('songs-import').addEventListener('change', async (event) => {
+  const files = Array.from(event.target.files || []); event.target.value = '';
+  for (const file of files) {
+    try { const song = parseSongFile(await file.text(), file.name); await database.saveSong(song); App.songs.push(song); }
+    catch (error) { showToast(`Import chant impossible : ${error.message}`, 'error'); }
+  }
+  renderSongsList(id('songs-search').value); showToast(`${files.length} fichier${files.length === 1 ? '' : 's'} importé${files.length === 1 ? '' : 's'}`);
+});
+id('songs-new').onclick = () => createSong();
+id('song-take').onclick = takePreview;
+id('song-editor').onclick = () => editCurrentSong();
+id('announcement-new').onclick = startNewAnnouncement;
+id('announcement-save').onclick = saveAnnouncement;
+id('announcement-preview').onclick = previewAnnouncement;
+id('slides-take').onclick = takePreview;
+id('announcement-delete').onclick = deleteAnnouncement;
+id('announcement-image-remove').onclick = () => { App.announcementAsset = null; renderAnnouncementImage(); };
+id('announcement-image-file').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+  try { App.announcementAsset = await addAsset(file); renderAnnouncementImage(); showToast('Image enregistrée dans la bibliothèque locale'); }
+  catch (error) { showToast(`Import image impossible : ${error.message}`, 'error'); }
+});
+id('timer-start').onclick = startTimer;
+id('timer-pause').onclick = pauseTimer;
+id('timer-reset').onclick = resetTimer;
+id('timer-preview').onclick = previewTimer;
+id('timer-take').onclick = takePreview;
+id('timer-minutes').addEventListener('change', setTimerDurationFromInputs);
+id('timer-seconds').addEventListener('change', setTimerDurationFromInputs);
+function renderSongsList(query = '') {
+  const list = id('songs-list'); list.replaceChildren();
+  const q = norm(query); const songs = App.songs.filter((song) => !q || norm(song.title).includes(q));
+  if (!songs.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.innerHTML = '<p>Aucun chant trouvé. Créez un chant ou importez un fichier.</p>'; list.appendChild(empty); return; }
+  songs.forEach((song) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = `song-row${App.currentSong?.id === song.id ? ' active' : ''}`;
+    const title = document.createElement('span'); title.textContent = song.title;
+    const count = document.createElement('small'); count.textContent = `${song.sections.length} sec.`;
+    button.append(title, count); button.onclick = () => selectSong(song); list.appendChild(button);
+  });
+}
+function selectSong(song) {
+  App.currentSong = song; App.selectedSongSection = 0; id('song-title').textContent = song.title;
+  id('song-editor').disabled = false; renderSongsList(id('songs-search').value);
+  const sections = id('song-sections'); sections.replaceChildren();
+  song.sections.forEach((section, index) => {
+    const card = document.createElement('article'); card.className = `song-section-card${index === App.selectedSongSection ? ' active' : ''}`;
+    const label = document.createElement('span'); label.className = 'song-section-label'; label.textContent = section.name;
+    const content = document.createElement('span'); content.className = 'song-section-content'; content.textContent = section.lines.join('\n');
+    card.append(label, content);
+    card.onclick = () => { App.selectedSongSection = index; sections.querySelectorAll('.song-section-card').forEach((item, i) => item.classList.toggle('active', i === index)); previewSongSection(index); };
+    sections.appendChild(card);
+  });
+  if (song.sections.length) previewSongSection(0);
+}
+function previewSongSection(index) {
+  const song = App.currentSong; const section = song?.sections[index]; if (!section) return;
+  const bindings = { title: song.title, section: section.name, lyrics: section.lines.join('\n') };
+  const scene = App.scenes.main.songs;
+  if (scene.splitMode === 'auto') {
+    const text = bindings.lyrics;
+    if (text.length > (scene.splitChars || 160)) { bindings.parts = Engine.splitSmart(text, scene.splitChars || 160); bindings.partIndex = 0; bindings.lyrics = bindings.parts[0]; }
+  }
+  setPreview('songs', bindings); id('song-take').disabled = false;
+}
+function createSong() {
+  SongEditor.openSongEditor({ onSave: async (song) => {
+    await database.saveSong(song); App.songs.push(song); selectSong(song); showToast('Chant créé et enregistré');
+  } });
+}
+function editCurrentSong() {
+  const original = App.currentSong; if (!original) return;
+  SongEditor.openSongEditor({ song: original, onSave: async (edited) => {
+    Object.assign(original, edited); await database.saveSong(original); selectSong(original); showToast('Chant enregistré');
+  } });
+}
+
+function renderAnnouncementList() {
+  const list = id('announcement-list'); list.replaceChildren();
+  if (!App.announcements.length) {
+    const empty = document.createElement('div'); empty.className = 'empty-state'; empty.innerHTML = '<p>Créez votre première annonce. Les diapositives et leurs images sont sauvegardées localement.</p>';
+    list.appendChild(empty); return;
+  }
+  for (const announcement of App.announcements) {
+    const button = document.createElement('button'); button.type = 'button';
+    button.className = `announcement-row${App.currentAnnouncement?.id === announcement.id ? ' active' : ''}`;
+    const title = document.createElement('strong'); title.textContent = announcement.title || 'Annonce sans titre';
+    const body = document.createElement('small'); body.textContent = announcement.body || 'Image uniquement';
+    button.append(title, body); button.onclick = () => loadAnnouncement(announcement); list.appendChild(button);
+  }
+}
+function renderAnnouncementImage() {
+  const frame = id('announcement-image-preview'); frame.replaceChildren();
+  if (!App.announcementAsset?.url) { frame.textContent = 'Aucune image importée'; return; }
+  const image = document.createElement('img'); image.src = App.announcementAsset.url; image.alt = 'Aperçu de l’image de l’annonce'; frame.appendChild(image);
+}
+async function loadAnnouncement(announcement) {
+  App.currentAnnouncement = announcement;
+  id('announcement-heading').textContent = announcement.title || 'Annonce';
+  id('announcement-title').value = announcement.title || '';
+  id('announcement-section').value = announcement.section || 'ANNONCE';
+  id('announcement-body').value = announcement.body || '';
+  App.announcementAsset = announcement.assetId ? { id: announcement.assetId, url: await database.assetURL(announcement.assetId) } : null;
+  renderAnnouncementImage(); renderAnnouncementList();
+  id('announcement-delete').disabled = false;
+}
+function startNewAnnouncement() {
+  App.currentAnnouncement = null; App.announcementAsset = null;
+  id('announcement-heading').textContent = 'Nouvelle annonce';
+  id('announcement-title').value = ''; id('announcement-section').value = 'ANNONCE'; id('announcement-body').value = '';
+  id('announcement-delete').disabled = true; renderAnnouncementImage(); renderAnnouncementList();
+  id('announcement-title').focus();
+}
+async function saveAnnouncement() {
+  const title = id('announcement-title').value.trim(); const body = id('announcement-body').value.trim();
+  if (!title && !body && !App.announcementAsset) { showToast('Ajoutez un titre, un message ou une image.', 'error'); return; }
+  const announcement = {
+    id: App.currentAnnouncement?.id || `announcement_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+    title: title || 'Annonce sans titre', section: id('announcement-section').value.trim() || 'ANNONCE',
+    body, assetId: App.announcementAsset?.id || null, updatedAt: Date.now(),
+  };
+  try {
+    await database.put('announcements', announcement);
+    App.announcements = App.announcements.filter((item) => item.id !== announcement.id).concat(announcement);
+    App.currentAnnouncement = announcement; id('announcement-heading').textContent = announcement.title;
+    id('announcement-delete').disabled = false; renderAnnouncementList(); showToast('Annonce enregistrée');
+  } catch (error) { showToast(`Sauvegarde impossible : ${error.message}`, 'error'); }
+}
+async function deleteAnnouncement() {
+  const announcement = App.currentAnnouncement; if (!announcement) return;
+  if (!confirm(`Supprimer « ${announcement.title} » ?`)) return;
+  await database.delete('announcements', announcement.id);
+  App.announcements = App.announcements.filter((item) => item.id !== announcement.id);
+  if (App.preview?.announcementId === announcement.id) App.preview = null;
+  App.currentAnnouncement = null; startNewAnnouncement(); renderAnnouncementList(); renderPreview();
+  showToast('Annonce supprimée');
+}
+function previewAnnouncement() {
+  const title = id('announcement-title').value.trim() || 'Annonce';
+  const bindings = { title, section: id('announcement-section').value.trim() || 'ANNONCE', announcement: id('announcement-body').value.trim(), image: App.announcementAsset?.url || null };
+  setPreview('announcements', bindings, { assetId: App.announcementAsset?.id || null, assetURL: App.announcementAsset?.url || null, announcementId: App.currentAnnouncement?.id || null });
+}
+
+function timerText(milliseconds) {
+  const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(seconds / 60); const rem = seconds % 60;
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+  return `${String(minutes).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+}
+function timerBindings() { return { title: 'CULTE', section: 'COMPTE À REBOURS', timer: timerText(App.timer.remainingMs) }; }
+let lastTimerText = '';
+function updateTimer() {
+  if (App.timer.running) {
+    App.timer.remainingMs = Math.max(0, App.timer.endAt - Date.now());
+    if (App.timer.remainingMs === 0) { App.timer.running = false; clearInterval(App.timer.interval); App.timer.interval = null; showToast('Le minuteur est terminé'); }
+  }
+  const value = timerText(App.timer.remainingMs);
+  id('timer-display').textContent = value;
+  id('timer-state-label').textContent = App.timer.running ? 'En cours · sortie synchronisée à chaque seconde' : App.timer.remainingMs ? `Prêt · ${value}` : 'Terminé';
+  if (value === lastTimerText) return;
+  lastTimerText = value;
+  if (App.preview?.kind === 'timer') { App.preview.bindings.timer = value; renderPreview(); }
+  if (App.onAir?.kind === 'timer') { App.onAir.bindings.timer = value; broadcastScenes(); }
+}
+function setTimerDurationFromInputs() {
+  if (App.timer.running) return;
+  const minutes = Math.max(0, Math.min(999, Number(id('timer-minutes').value) || 0));
+  const seconds = Math.max(0, Math.min(59, Number(id('timer-seconds').value) || 0));
+  App.timer.durationMs = (minutes * 60 + seconds) * 1000;
+  App.timer.remainingMs = App.timer.durationMs; lastTimerText = ''; updateTimer();
+}
+function startTimer() {
+  if (App.timer.running) return;
+  if (App.timer.remainingMs <= 0) setTimerDurationFromInputs();
+  App.timer.endAt = Date.now() + App.timer.remainingMs; App.timer.running = true;
+  clearInterval(App.timer.interval); App.timer.interval = setInterval(updateTimer, 200); updateTimer();
+}
+function pauseTimer() {
+  if (App.timer.running) { App.timer.remainingMs = Math.max(0, App.timer.endAt - Date.now()); App.timer.running = false; clearInterval(App.timer.interval); App.timer.interval = null; }
+  lastTimerText = ''; updateTimer();
+}
+function resetTimer() {
+  App.timer.running = false; clearInterval(App.timer.interval); App.timer.interval = null;
+  App.timer.remainingMs = App.timer.durationMs; lastTimerText = ''; updateTimer();
+}
+function previewTimer() { setPreview('timer', timerBindings()); }
+
+function navigateLivePart(delta) {
+  const parts = App.onAir?.bindings?.parts;
+  if (!parts?.length) return false;
+  const next = Number(App.onAir.bindings.partIndex || 0) + Math.sign(delta || 1);
+  if (next < 0 || next >= parts.length) return false;
+  App.onAir.bindings.partIndex = next;
+  if (App.onAir.kind === 'bible') App.onAir.bindings.verse = parts[next];
+  if (App.onAir.kind === 'songs') App.onAir.bindings.lyrics = parts[next];
+  broadcastScenes(); return true;
+}
+function moveSongSelection(delta) {
+  const sections = App.currentSong?.sections || [];
+  if (!sections.length) return false;
+  const next = Math.max(0, Math.min(sections.length - 1, App.selectedSongSection + Math.sign(delta || 1)));
+  if (next === App.selectedSongSection && App.preview?.kind === 'songs') return false;
+  App.selectedSongSection = next;
+  document.querySelectorAll('.song-section-card').forEach((card, index) => card.classList.toggle('active', index === next));
+  previewSongSection(next); return true;
+}
+async function navigateAnnouncement(delta) {
+  const announcements = App.announcements;
+  if (!announcements.length) return false;
+  const liveId = App.onAir?.kind === 'announcements' ? App.onAir.announcementId : null;
+  const previewId = App.preview?.kind === 'announcements' ? App.preview.announcementId : null;
+  const selectedId = liveId || previewId || App.currentAnnouncement?.id;
+  let index = announcements.findIndex((item) => item.id === selectedId);
+  if (index < 0) index = delta > 0 ? -1 : announcements.length;
+  const nextIndex = Math.max(0, Math.min(announcements.length - 1, index + Math.sign(delta || 1)));
+  if (nextIndex === index) return false;
+  await loadAnnouncement(announcements[nextIndex]);
+  previewAnnouncement();
+  takePreview();
+  return true;
+}
+function handleRemoteCommand(command) {
+  if (command === 'clear') { clearAll(); return; }
+  if (command === 'take') { takePreview(); return; }
+  if (command === 'part-prev') { navigateLivePart(-1); return; }
+  if (command === 'part-next') { navigateLivePart(1); return; }
+  if (command !== 'prev' && command !== 'next') return;
+  const delta = command === 'next' ? 1 : -1;
+  // Navigation distante = navigation du programme en cours, pas du dernier
+  // aperçu visité. Ainsi un minuteur ou une annonce live ne fait jamais bouger la Bible.
+  const liveKind = App.onAir?.kind;
+  const moduleKind = ({ songs: 'songs', slides: 'announcements', timer: 'timer' })[App.currentModule] || 'bible';
+  const kind = liveKind || App.preview?.kind || moduleKind;
+  if (kind === 'timer') return;
+  if (kind === 'announcements') {
+    navigateAnnouncement(delta).catch((error) => showToast(`Navigation impossible : ${error.message}`, 'error'));
+    return;
+  }
+  const moved = kind === 'songs' ? moveSongSelection(delta) : moveBibleSelection(delta);
+  if (moved) takePreview();
+}
+
+// ---- Réception de navigation OBS et commandes téléphone ----
+for (const key of OUTPUT_KEYS) channels[key].onmessage = (event) => {
+  const data = event.data || {};
+  if (data.action === 'ready') { syncOutput(key, outputRevision); return; }
+  if (data.action === 'remoteHello') { channels[key].postMessage({ action: 'remoteAck', scene: key }); return; }
+  if (data.action === 'remoteCommand') { handleRemoteCommand(data.command); return; }
+  if (data.action === 'clickPart') navigateLivePart(data.side === 'prev' ? -1 : 1);
+};
+
+function registerOfflineShell() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((error) => console.warn('Offline shell non activé :', error));
+}
+window.addEventListener('beforeunload', () => database.releaseAssetURLs());
+async function boot() {
+  registerOfflineShell();
+  const persistent = await database.ready();
+  if (!persistent) showToast('Stockage persistant indisponible : les changements ne survivront pas à la fermeture.', 'error');
+  setTheme(await database.getSetting('lastTheme', 'cinema'));
+  for (const key of OUTPUT_KEYS) for (const kind of ['bible', 'songs', 'announcements', 'timer']) {
+    const stored = await database.get('scenes', sceneId(key, kind));
+    if (stored) App.scenes[key][kind] = await database.hydrateScene(stored);
+    else App.scenes[key][kind] = makeScene(OUTPUT_PRESETS[key], kind);
+  }
+  App.bibleVersions = await database.all('bibles');
+  const selectedBibleId = await database.getSetting('currentBibleId', null);
+  App.currentBible = App.bibleVersions.find((version) => version.id === selectedBibleId) || App.bibleVersions[0] || null;
+  const notes = await database.all('notes');
+  for (const item of notes) {
+    if (item.kind === 'favorite') App.favorites.add(`${item.versionId}|${item.bookNum}|${item.chapterNum}|${item.verseNum}`);
+    if (item.kind === 'annotation') App.annotations.set(item.key, item);
+  }
+  App.songs = await database.all('songs');
+  App.announcements = await database.all('announcements'); App.currentAnnouncement = null; App.announcementAsset = null;
+  renderVersionTabs(); renderBooks(); renderSongsList(); renderAnnouncementList(); startNewAnnouncement();
+  if (App.currentBible) showBibleEmpty();
+  updateTimer();
+  ['preview', ...OUTPUT_KEYS].forEach((key) => scaleCanvas(id(`out-${key}-canvas`)));
+  const activeTheme = App.themeId;
+  document.body.dataset.theme = activeTheme;
+}
+boot().catch((error) => { console.error(error); showToast(`Erreur de démarrage : ${error.message}`, 'error'); });
+</script>
+</body>
+</html>

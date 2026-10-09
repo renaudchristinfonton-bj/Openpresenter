@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="color-scheme" content="dark">
+<title>Télécommande OpenPresenter</title>
+<link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/components.css">
+<style>
+html,body{min-height:100%;overflow:auto;background:#090a10}body{display:flex;justify-content:center;padding:14px;font-family:var(--font-ui)}.remote{width:min(100%,540px);display:flex;flex-direction:column;gap:10px;padding-bottom:20px}.remote-head{display:flex;align-items:center;gap:10px;padding:10px 4px}.remote-mark{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,#f5b942,#ed7958);color:#17110a;font-weight:950}.remote-title{flex:1}.remote-title strong{display:block;font-size:14px;color:#f7f7f8}.remote-title small{display:block;margin-top:3px;color:#7e8697;font-size:9px}.remote-state{display:flex;align-items:center;gap:5px;color:#929aab;font-size:9px}.state-dot{width:7px;height:7px;border-radius:50%;background:#a6763c}.remote-state.connected .state-dot{background:#22c55e;box-shadow:0 0 8px #22c55e}.remote-now{padding:12px 14px;border:1px solid #282c38;border-radius:10px;background:linear-gradient(135deg,#141720,#11131b)}.remote-now .label{color:#7c8494;font-size:8px;font-weight:900;letter-spacing:1.1px}.remote-now h1{margin:5px 0;color:#f5c65e;font-size:16px;font-weight:850}.remote-now p{max-height:84px;overflow:hidden;color:#c8ccd5;font-size:11px;line-height:1.55;white-space:pre-wrap}.remote-progress{display:flex;justify-content:space-between;gap:8px;color:#777f90;font-size:9px}.remote-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.remote-button{min-height:65px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;border:1px solid #303543;border-radius:10px;background:#171a24;color:#f1f2f5;font-weight:800;font-size:12px;touch-action:manipulation;user-select:none}.remote-button:active{transform:scale(.98);background:#252a38}.remote-button small{font-size:8px;font-weight:500;color:#8f97a7}.remote-button.primary{background:linear-gradient(135deg,#e9ac3b,#e7894f);color:#17120a;border:none}.remote-button.primary small{color:#4b3617}.remote-button.clear{background:#29191c;border-color:#563035;color:#ffa6a6}.remote-button.segment{min-height:48px;background:#181720;border-color:#393146;color:#dcc8ff}.remote-section-title{padding:3px 2px;color:#727a89;font-size:8px;font-weight:900;letter-spacing:1px;text-transform:uppercase}.remote-footer{text-align:center;color:#596171;font-size:8px;line-height:1.5}.remote-footer a{color:#9a89c0;text-decoration:none}
+</style></head><body>
+<main class="remote">
+  <header class="remote-head"><div class="remote-mark">OP</div><div class="remote-title"><strong>OpenPresenter Remote</strong><small>Contrôle en direct · Sortie <span id="remote-scene">main</span></small></div><div class="remote-state" id="remote-state"><span class="state-dot"></span><span id="remote-state-label">Connexion…</span></div></header>
+  <section class="remote-now"><div class="label">À L’ÉCRAN</div><h1 id="remote-reference">En attente du contrôleur</h1><p id="remote-content">Ouvrez le contrôleur OpenPresenter sur l’ordinateur relié à l’OBS.</p><div class="remote-progress"><span id="remote-kind">—</span><span id="remote-parts">—</span></div></section>
+  <div class="remote-section-title">Naviguer et diffuser</div>
+  <section class="remote-controls">
+    <button class="remote-button" data-command="prev">◀ Précédent<small>Verset ou section</small></button>
+    <button class="remote-button" data-command="next">Suivant ▶<small>Verset ou section</small></button>
+    <button class="remote-button primary" data-command="take">● DIFFUSER<small>Envoyer l’aperçu aux sorties OBS</small></button>
+    <button class="remote-button clear" data-command="clear">■ ÉCRAN NOIR<small>Masquer toutes les sorties</small></button>
+  </section>
+  <div class="remote-section-title">Texte découpé</div>
+  <section class="remote-controls">
+    <button class="remote-button segment" data-command="part-prev">‹ Partie précédente</button>
+    <button class="remote-button segment" data-command="part-next">Partie suivante ›</button>
+  </section>
+  <footer class="remote-footer">Les commandes restent sur le réseau local. <span id="remote-hint">Ouvrez le serveur OpenPresenter 2 sur un réseau de confiance.</span><br><a href="../index.html">Ouvrir le Studio</a></footer>
+</main>
+<script src="../js/remote-channel.js"></script>
+<script type="module">
+const params = new URLSearchParams(location.search);
+const scene = params.get('scene') || 'main';
+document.getElementById('remote-scene').textContent = scene;
+const channel = new window.RemoteChannel(`op_channel_${scene}`);
+const ref = document.getElementById('remote-reference');
+const content = document.getElementById('remote-content');
+const state = document.getElementById('remote-state');
+const stateLabel = document.getElementById('remote-state-label');
+const kinds = { bible: 'Bible', songs: 'Paroles', announcements: 'Annonce', timer: 'Minuteur' };
+function send(command) { channel.postMessage({ action: 'remoteCommand', command, scene }); }
+document.querySelectorAll('[data-command]').forEach((button) => {
+  button.addEventListener('click', () => { send(button.dataset.command); if (navigator.vibrate) navigator.vibrate(12); });
+});
+channel.onStatusChange?.((status) => { if (status === 'connected') { state.classList.add('connected'); stateLabel.textContent = 'Relais actif'; } else if (status === 'unavailable') { stateLabel.textContent = 'Mode local'; } else { state.classList.remove('connected'); stateLabel.textContent = 'Connexion…'; } });
+channel.onmessage = (event) => {
+  const data = event.data || {};
+  if (data.action === 'remoteAck') { state.classList.add('connected'); stateLabel.textContent = 'Contrôleur connecté'; return; }
+  if (data.action === 'hide') { ref.textContent = 'Écran noir'; content.textContent = 'Les sorties OBS sont masquées.'; document.getElementById('remote-kind').textContent = 'En attente'; document.getElementById('remote-parts').textContent = '—'; return; }
+  if (data.action !== 'show' || !data.bindings) return;
+  state.classList.add('connected'); stateLabel.textContent = 'Synchronisé';
+  const b = data.bindings;
+  ref.textContent = b.ref || b.title || 'Contenu en direct';
+  content.textContent = b.verse || b.lyrics || b.announcement || b.text || b.timer || '—';
+  document.getElementById('remote-kind').textContent = kinds[data.scene?.kind] || data.scene?.name || 'En direct';
+  document.getElementById('remote-parts').textContent = b.parts?.length > 1 ? `Partie ${(b.partIndex || 0) + 1} / ${b.parts.length}` : 'Texte complet';
+};
+channel.postMessage({ action: 'remoteHello', scene });
+channel.postMessage({ action: 'ready', scene });
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft') send('prev');
+  if (event.key === 'ArrowRight') send('next');
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); send('take'); }
+  if (event.key === 'Escape') send('clear');
+});
+</script></body></html>

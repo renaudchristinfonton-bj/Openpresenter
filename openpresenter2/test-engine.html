@@ -6,7 +6,7 @@
 <style>
 body{padding:40px;display:flex;flex-direction:column;gap:24px;align-items:center;background:#0b0b12;}
 h1{color:#fff;font-size:20px;}
-.stage{position:relative;width:min(960px,90vw);aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.6);border:1px solid #222;}
+.stage{position:relative;width:min(960px,90vw);aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.6);border:1px solid #222;}#stage-inner{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:top left;}
 .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
 select,button{background:var(--bg-2);color:#fff;border:1px solid var(--bg-3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;}
 button:hover{background:var(--bg-3);}
@@ -28,13 +28,13 @@ button:hover{background:var(--bg-3);}
   <button id="toggle-transparent">🔍 Transparent</button>
   <button id="split-test">📜 Split (verset long)</button>
 </div>
-<div class="stage checker-bg" id="stage"></div>
+<div class="stage checker-bg" id="stage"><div id="stage-inner"></div></div>
 <p class="info">Clique les boutons pour changer de preset. Le damier simule un fond vidéo/caméra (transparence).</p>
 
-<script src="store.js"></script>
 <script type="module">
 import Engine from './src/core/engine.mjs';
 const stage=document.getElementById('stage');
+const canvas=document.getElementById('stage-inner');
 let currentKind='bible',currentPreset='full',transparent=false;
 const longVerse='Car Dieu a tant aimé le monde qu\'il a donné son Fils unique, afin que quiconque croit en lui ne périsse point, mais qu\'il ait la vie éternelle. En effet, Dieu n\'a pas envoyé son Fils dans le monde pour condamner le monde, mais afin que le monde soit sauvé par lui.';
 function render(){
@@ -45,8 +45,9 @@ function render(){
         parts: scene.splitMode==='auto' ? Engine.splitSmart(longVerse, scene.splitChars) : null, partIndex:0 }
     : { title:'🎵 Quel ami fidèle', section:'Refrain',
         lyrics:'Quel ami fidèle et tendre,\nQue de se reposer sur Toi !\nDe tout souci se décharger,\nEt de tout remettre à Ta foi.' };
-  stage.innerHTML='';
-  const root = Engine.render(scene, stage, bindings, {
+  canvas.style.transform=`scale(${stage.clientWidth/1920})`;
+  canvas.replaceChildren();
+  const root = Engine.render(scene, canvas, bindings, {
     interactive:false,
     containerRect:()=>({w:stage.clientWidth, h:stage.clientHeight})
   });

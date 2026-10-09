@@ -1,0 +1,16 @@
+{
+  "name": "openpresenter-2",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "OpenPresenter 2 — web-first worship presentation studio",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "happy-dom": "^20.14.6",
+    "jszip": "^3.10.2"
+  }
+}

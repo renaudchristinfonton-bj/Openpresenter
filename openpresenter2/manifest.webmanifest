@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "OpenPresenter 2 — Studio de culte",
+  "short_name": "OpenPresenter",
+  "description": "Studio de présentation de culte, scènes OBS et télécommande locale.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#07070b",
+  "theme_color": "#14131a",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "./assets/op-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

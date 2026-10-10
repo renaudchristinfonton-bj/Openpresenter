@@ -41,6 +41,13 @@ test('offline server serves the V2 app and relays only within a WebSocket channe
 
   const health = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
   assert.equal(health.relay, true);
+  const network = await fetch(`http://127.0.0.1:${port}/openpresenter2/api/network-addresses`).then((response) => response.json());
+  assert.equal(network.port, port);
+  assert.ok(Array.isArray(network.addresses));
+  for (const entry of network.addresses) {
+    const [first, second] = entry.address.split('.').map(Number);
+    assert.ok(first === 10 || (first === 192 && second === 168) || (first === 172 && second >= 16 && second <= 31));
+  }
   const page = await fetch(`http://127.0.0.1:${port}/openpresenter2/index.html`);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /OpenPresenter Studio/);

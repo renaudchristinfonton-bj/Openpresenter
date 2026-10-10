@@ -5,6 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,25 @@ const baseHeaders = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Cross-Origin-Resource-Policy': 'same-origin',
 };
+
+function isPrivateIPv4(address) {
+  const [a, b] = String(address).split('.').map(Number);
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+function lanAddresses() {
+  const seen = new Set();
+  const addresses = [];
+  for (const [name, entries] of Object.entries(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family !== 'IPv4' || entry.internal || !isPrivateIPv4(entry.address) || seen.has(entry.address)) continue;
+      seen.add(entry.address);
+      addresses.push({ name, address: entry.address });
+    }
+  }
+  const rank = (address) => address.startsWith('192.168.') ? 0 : address.startsWith('10.') ? 1 : 2;
+  addresses.sort((left, right) => rank(left.address) - rank(right.address) || left.name.localeCompare(right.name));
+  return addresses;
+}
 
 function closeSocket(socket, code = 1000, reason = '') {
   if (socket.destroyed) return;
@@ -119,6 +139,10 @@ const server = http.createServer(async (request, response) => {
   if (requestUrl.pathname === '/health') {
     response.writeHead(200, { ...baseHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     response.end(JSON.stringify({ name: 'OpenPresenter 2', relay: true })); return;
+  }
+  if (requestUrl.pathname === `${APP_PREFIX}/api/network-addresses`) {
+    response.writeHead(200, { ...baseHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(JSON.stringify({ port: PORT, addresses: lanAddresses() })); return;
   }
   if (requestUrl.pathname === '/') {
     response.writeHead(302, { ...baseHeaders, Location: `${APP_PREFIX}/` }); response.end(); return;

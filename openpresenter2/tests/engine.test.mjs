@@ -64,6 +64,28 @@ test('splitSmart covers long text without losing words or punctuation', () => {
   assert.deepEqual(splitSmart('', 20), ['']);
 });
 
+test('split bindings follow each output scene without mutating the full source content', () => {
+  const source = { ref: 'Jean 3:16', verse: 'Au commencement, Dieu créa les cieux et la terre. '.repeat(5) };
+  const fullScene = defaultScene('full', 'bible');
+  const bottomScene = defaultScene('bottom', 'bible');
+  bottomScene.splitChars = 52;
+
+  const full = Engine.prepareBindingsForScene(fullScene, 'bible', source);
+  const bottom = Engine.prepareBindingsForScene(bottomScene, 'bible', source, 1);
+  assert.equal(full.parts, undefined, 'a scene configured for full text does not inherit another output’s split');
+  assert.equal(full.verse, source.verse);
+  assert.ok(bottom.parts.length > 1);
+  assert.equal(bottom.partIndex, 1);
+  assert.equal(bottom.verse, bottom.parts[1]);
+  assert.equal(source.verse, 'Au commencement, Dieu créa les cieux et la terre. '.repeat(5), 'source bindings stay intact for other outputs');
+
+  const announcement = Engine.prepareBindingsForScene(
+    { splitMode: 'auto', splitChars: 40 }, 'announcements', { announcement: 'Bienvenue à notre rassemblement. '.repeat(4) },
+  );
+  assert.ok(announcement.parts.length > 1, 'announcement messages use the same output-specific splitting engine');
+  assert.equal(announcement.announcement, announcement.parts[0]);
+});
+
 test('color helpers support short hex, full hex, alpha, and rgb conversion', () => {
   assert.equal(hexToRgba('#abc', 0.5), 'rgba(170,187,204,0.5)');
   assert.equal(hexToRgba('#112233', 1), 'rgba(17,34,51,1)');

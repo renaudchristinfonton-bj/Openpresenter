@@ -26,6 +26,10 @@ test('controller boots, loads the demo Bible, previews, takes live, and opens ed
     indexedDB: window.indexedDB,
     confirm: () => true,
     prompt: () => null,
+    fetch: async (url) => {
+      assert.equal(url, './api/network-addresses');
+      return { ok: true, json: async () => ({ port: 8788, addresses: [{ name: 'wlan0', address: '192.168.1.44' }] }) };
+    },
   };
   Object.defineProperty(window.CSS, 'escape', { value: window.CSS.escape || ((value) => String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&')), configurable: true });
   for (const [key, value] of Object.entries(globals)) {
@@ -92,6 +96,12 @@ test('controller boots, loads the demo Bible, previews, takes live, and opens ed
   editorCanvas.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 960, bottom: 540, width: 960, height: 540 });
   window.dispatchEvent(new window.Event('resize'));
   window.document.querySelector('.se-theme-card[title="Néon"]').click();
+  const splitMode = window.document.querySelector('#se-inspector select');
+  assert.equal(splitMode.value, 'auto', 'the annexe preset starts with its own long-text split mode');
+  const splitChars = window.document.querySelector('#se-inspector input[type="range"]');
+  splitChars.value = '60';
+  splitChars.dispatchEvent(new window.Event('input', { bubbles: true }));
+  splitChars.dispatchEvent(new window.Event('change', { bubbles: true }));
   const verseLayerRow = [...window.document.querySelectorAll('.se-layer-row')].find((row) => row.textContent.includes('Verset'));
   verseLayerRow.querySelector('.se-layer-select').click();
   const layerSelector = `#se-canvas-inner [data-layer-id="${verseLayerRow.dataset.layerId}"]`;
@@ -105,8 +115,20 @@ test('controller boots, loads the demo Bible, previews, takes live, and opens ed
   assert.ok(movedX > startX, 'WYSIWYG layer dragging updates the normalized scene geometry');
   window.document.getElementById('se-save').click();
   await new Promise((resolve) => setTimeout(resolve, 250));
-  assert.ok(channels.find((channel) => channel.name === 'op_channel_annexe').messages.some((message) => message.action === 'show' && message.scene.themeId === 'neon' && message.scene.layers.some((layer) => layer.name === 'Verset' && layer.x > 53)));
-  assert.ok(channels.find((channel) => channel.name === 'op_channel_main').messages.some((message) => message.action === 'show' && message.scene.themeId === 'cinema'));
+  const annexeChannel = channels.find((channel) => channel.name === 'op_channel_annexe');
+  assert.ok(annexeChannel.messages.some((message) => message.action === 'show' && message.scene.themeId === 'neon' && message.scene.layers.some((layer) => layer.name === 'Verset' && layer.x > 53)));
+  assert.ok(mainChannel.messages.some((message) => message.action === 'show' && message.scene.themeId === 'cinema'));
+  let annexeBible = [...annexeChannel.messages].reverse().find((message) => message.action === 'show' && message.scene.kind === 'bible');
+  let mainBible = [...mainChannel.messages].reverse().find((message) => message.action === 'show' && message.scene.kind === 'bible');
+  assert.ok(annexeBible.bindings.parts?.length > 1, 'the annexe splits long Bible text using its own scene settings');
+  assert.equal(annexeBible.bindings.verse, annexeBible.bindings.parts[0]);
+  assert.equal(mainBible.bindings.parts, undefined, 'the main output keeps full text according to its independent scene settings');
+  annexeChannel.onmessage({ data: { action: 'remoteCommand', command: 'part-next', scene: 'annexe' } });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  annexeBible = [...annexeChannel.messages].reverse().find((message) => message.action === 'show' && message.scene.kind === 'bible');
+  mainBible = [...mainChannel.messages].reverse().find((message) => message.action === 'show' && message.scene.kind === 'bible');
+  assert.equal(annexeBible.bindings.partIndex, 1, 'part navigation advances only the annexe output');
+  assert.equal(mainBible.bindings.parts, undefined);
 
   window.document.querySelector('.nav-btn[data-module="songs"]').click();
   window.document.getElementById('songs-new').click();
@@ -160,4 +182,13 @@ test('controller boots, loads the demo Bible, previews, takes live, and opens ed
   assert.equal(window.document.getElementById('bible-selection-info').textContent, bibleSelectionBeforeTimerNavigation, 'remote next while the timer is live must not navigate the Bible');
   assert.equal(mainChannel.messages.filter((message) => message.action === 'show').length, liveUpdatesBeforeTimerNavigation, 'remote next while the timer is live must not replace the live timer');
   window.document.getElementById('timer-pause').click();
+
+  window.document.getElementById('btn-remote').click();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(window.document.getElementById('remote-network-picker').style.display, 'block');
+  assert.match(window.document.getElementById('remote-url').textContent, /^http:\/\/192\.168\.1\.44:8000\/openpresenter2\/app\/remote\.html\?scene=annexe/);
+  assert.equal(window.document.getElementById('remote-network-address').value, '192.168.1.44');
+  window.document.getElementById('remote-network-custom').value = '10.0.0.22';
+  window.document.getElementById('remote-network-apply').click();
+  assert.match(window.document.getElementById('remote-url').textContent, /^http:\/\/10\.0\.0\.22:8000\/openpresenter2\/app\/remote\.html\?scene=annexe/);
 });

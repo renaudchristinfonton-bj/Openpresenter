@@ -436,6 +436,23 @@ function splitSmart(text, maxChars = 220) {
   return parts;
 }
 
+const TEXT_BINDING_BY_KIND = Object.freeze({ bible: 'verse', songs: 'lyrics', announcements: 'announcement' });
+function prepareBindingsForScene(scene, kind, bindings = {}, partIndex = 0) {
+  const output = { ...bindings };
+  delete output.parts;
+  delete output.partIndex;
+  const textBinding = TEXT_BINDING_BY_KIND[kind];
+  const text = output[textBinding];
+  if (scene?.splitMode !== 'auto' || typeof text !== 'string' || !text.trim()) return output;
+  const parts = splitSmart(text, scene.splitChars || 220);
+  if (parts.length <= 1) return output;
+  const index = clamp(Number(partIndex) || 0, 0, parts.length - 1);
+  output.parts = parts;
+  output.partIndex = index;
+  output[textBinding] = parts[index];
+  return output;
+}
+
 // CSS autonome : tous les types de calques partagent un unique système x/y/w/h.
 if (typeof document !== 'undefined' && !document.getElementById('openpresenter-engine-style')) {
   const style = document.createElement('style');
@@ -461,8 +478,8 @@ if (typeof document !== 'undefined' && !document.getElementById('openpresenter-e
 }
 
 const Engine = Object.freeze({
-  createLayer, defaultScene, render, splitSmart, hexToRgba, rgbToHex, escapeHtml,
+  createLayer, defaultScene, render, splitSmart, prepareBindingsForScene, hexToRgba, rgbToHex, escapeHtml,
   clone(value) { return clone(value); },
 });
-export { createLayer, defaultScene, render, splitSmart, hexToRgba, rgbToHex };
+export { createLayer, defaultScene, render, splitSmart, prepareBindingsForScene, hexToRgba, rgbToHex };
 export default Engine;

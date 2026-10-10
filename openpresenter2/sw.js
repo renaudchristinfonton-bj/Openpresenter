@@ -28,7 +28,7 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || request.url.startsWith('ws:') || request.url.startsWith('wss:')) return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.includes('/ws')) return;
+  if (url.origin !== self.location.origin || url.pathname.includes('/ws') || url.pathname.endsWith('/api/network-addresses')) return;
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       try {

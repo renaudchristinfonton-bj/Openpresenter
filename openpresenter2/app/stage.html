@@ -5,55 +5,178 @@
 <link rel="stylesheet" href="../vendor/fonts/fonts.css"><link rel="stylesheet" href="../css/tokens.css"><link rel="stylesheet" href="../css/components.css">
 <style>
 html,body{width:100%;height:100%;overflow:hidden;background:#090a10}body{display:grid;grid-template-rows:44px minmax(0,1fr);padding:0 16px 14px;gap:10px}.stage-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #252936}.stage-brand{display:flex;align-items:center;gap:8px;color:#f2f3f5;font-size:11px;font-weight:850}.stage-mark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#f5b942,#ed7958);display:grid;place-items:center;color:#17110a;font-size:9px;font-weight:950}.stage-state{display:flex;align-items:center;gap:6px;color:#8a92a3;font-size:9px}.stage-state i{width:7px;height:7px;border-radius:50%;background:#606777}.stage-state.live i{background:#ef5360;box-shadow:0 0 8px #ef5360}.stage-spacer{flex:1}.stage-time{font-variant-numeric:tabular-nums;font-size:12px;font-weight:750;color:#f5c768}.stage-layout{min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr);gap:12px}.stage-left{min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px}.stage-canvas-wrap{position:relative;min-height:0;flex:1;aspect-ratio:16/9;border:1px solid #303440;border-radius:7px;overflow:hidden;background-color:#090a10;background-image:linear-gradient(45deg,#191b24 25%,transparent 25%),linear-gradient(-45deg,#191b24 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#191b24 75%),linear-gradient(-45deg,transparent 75%,#191b24 75%);background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0}.stage-canvas{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:top left}.stage-caption{display:flex;justify-content:space-between;gap:8px;color:#6e7686;font-size:8px}.stage-side{min-height:0;display:flex;flex-direction:column;gap:8px}.stage-card{padding:11px 12px;background:#12151d;border:1px solid #252936;border-radius:7px}.stage-card h2{margin-bottom:7px;color:#7c8494;font-size:8px;font-weight:900;letter-spacing:1px;text-transform:uppercase}.stage-ref{color:#f4c35d;font-size:16px;font-weight:850;line-height:1.25}.stage-text{max-height:31vh;overflow:auto;white-space:pre-wrap;color:#e4e6eb;font-size:12px;line-height:1.7}.stage-parts{display:grid;grid-template-columns:1fr 1fr;gap:6px}.stage-part{padding:8px;background:#191c26;border-radius:5px}.stage-part small{display:block;margin-bottom:4px;color:#848c9c;font-size:8px;text-transform:uppercase;letter-spacing:.5px}.stage-part span{display:block;max-height:72px;overflow:hidden;color:#cdd1da;font-size:9px;line-height:1.5}.stage-controls{display:flex;gap:6px}.stage-controls button{flex:1;padding:9px;background:#1a1d27;border:1px solid #313644;border-radius:5px;color:#c8cbd4;font-size:10px}.stage-controls button:hover{background:#252a36}.stage-controls .live-button{background:#3b191c;border-color:#672f35;color:#ffb0b4}.stage-empty{display:grid;place-items:center;height:100%;padding:25px;color:#747c8d;text-align:center;font-size:12px;line-height:1.6}.stage-empty strong{display:block;color:#e2e5ed;font-size:14px;margin-bottom:5px}@media(max-width:850px){body{padding:0 8px 8px;grid-template-rows:40px minmax(0,1fr)}.stage-layout{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:6px}.stage-side{display:grid;grid-template-columns:1fr 1fr;overflow:auto}.stage-card{padding:7px}.stage-text{max-height:17vh}}
+.stage-side{overflow-y:auto}.stage-timer-value{margin:3px 0;color:#4ade80;text-align:center;font-size:clamp(28px,4vw,52px);font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1}.stage-timer-value.warn{color:#fbbf24}.stage-timer-value.crit{color:#fb7185}.stage-timer-value.overtime{animation:stagePulse 1s steps(2) infinite}@keyframes stagePulse{50%{opacity:.28}}.stage-timer-status,.stage-timer-next{margin-top:5px;color:#818a9a;text-align:center;font-size:8px}.stage-message-card[data-tone="important"]{border-color:#735927;background:#211a10}.stage-message-card[data-tone="urgent"]{border-color:#72353b;background:#241315}.stage-message-current{min-height:40px;max-height:18vh;overflow:auto;color:#e9ebf0;font-size:11px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.stage-message-card[data-tone="important"] .stage-message-current{color:#fde68a}.stage-message-card[data-tone="urgent"] .stage-message-current{color:#fecaca}.stage-message-meta{margin-top:5px;color:#7f8797;font-size:8px}.stage-message-history{display:grid;gap:4px;max-height:100px;overflow:auto;margin-top:8px;padding-top:6px;border-top:1px solid #252936}.stage-message-history div{color:#818999;font-size:8px;line-height:1.4}.stage-admin-toggle{padding:6px 8px;border:1px solid #343949;border-radius:5px;background:#171a24;color:#c3b1fa;font-size:9px}.stage-admin-drawer{position:fixed;right:14px;bottom:14px;z-index:20;width:min(380px,94vw);max-height:84vh;overflow:auto;padding:14px;background:#10131b;border:1px solid #42404f;border-radius:9px;box-shadow:0 20px 60px #000b}.stage-admin-drawer[hidden]{display:none}.stage-admin-drawer h2{margin:0 0 8px;color:#d4c3ff;font-size:11px;letter-spacing:.6px;text-transform:uppercase}.stage-admin-row{display:flex;gap:6px;margin:6px 0}.stage-admin-row label{flex:1;display:flex;flex-direction:column;gap:3px;color:#858d9d;font-size:8px}.stage-admin-row input,.stage-admin-row select,.stage-admin-drawer textarea{min-width:0;width:100%;padding:7px;border:1px solid #343949;border-radius:5px;background:#171a24;color:#e7e9ef;font-size:10px}.stage-admin-drawer textarea{min-height:62px;resize:vertical}.stage-admin-actions{display:flex;flex-wrap:wrap;gap:5px}.stage-admin-actions button{flex:1;padding:7px;border:1px solid #343949;border-radius:5px;background:#1c202b;color:#dddfe7;font-size:9px}.stage-admin-actions .stage-send{background:#54427d;border-color:#7b66ad;color:#fff}.stage-admin-hint{margin:6px 0;color:#737c8d;font-size:8px;line-height:1.5}
+.scene-enter-fade{animation:op-fade-in var(--scene-transition-duration,250ms) ease both}.scene-exit-fade{animation:op-fade-out var(--scene-transition-duration,250ms) ease both}.scene-enter-zoom{animation:op-zoom-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-zoom{animation:op-zoom-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-up{animation:op-slide-up-in var(--scene-transition-duration,250ms) ease both}.scene-exit-slide-up{animation:op-slide-up-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-down{animation:op-slide-down-in var(--scene-transition-duration,250ms) ease both}.scene-exit-slide-down{animation:op-slide-down-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-left{animation:op-slide-left-in var(--scene-transition-duration,250ms) ease both}.scene-exit-slide-left{animation:op-slide-left-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-right{animation:op-slide-right-in var(--scene-transition-duration,250ms) ease both}.scene-exit-slide-right{animation:op-slide-right-out var(--scene-transition-duration,250ms) ease both}.scene-enter-wipe{animation:op-wipe-in var(--scene-transition-duration,250ms) ease both}.scene-exit-wipe{animation:op-wipe-out var(--scene-transition-duration,250ms) ease both}.scene-enter-blur{animation:op-blur-in var(--scene-transition-duration,250ms) ease both}.scene-exit-blur{animation:op-blur-out var(--scene-transition-duration,250ms) ease both}@keyframes op-fade-in{from{opacity:0}to{opacity:1}}@keyframes op-fade-out{to{opacity:0}}@keyframes op-zoom-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}@keyframes op-zoom-out{to{opacity:0;transform:scale(1.06)}}@keyframes op-slide-up-in{from{opacity:0;transform:translateY(4%)}to{opacity:1;transform:translateY(0)}}@keyframes op-slide-up-out{to{opacity:0;transform:translateY(4%)}}@keyframes op-slide-down-in{from{opacity:0;transform:translateY(-4%)}to{opacity:1;transform:translateY(0)}}@keyframes op-slide-down-out{to{opacity:0;transform:translateY(-4%)}}@keyframes op-slide-left-in{from{opacity:0;transform:translateX(4%)}to{opacity:1;transform:translateX(0)}}@keyframes op-slide-left-out{to{opacity:0;transform:translateX(-4%)}}@keyframes op-slide-right-in{from{opacity:0;transform:translateX(-4%)}to{opacity:1;transform:translateX(0)}}@keyframes op-slide-right-out{to{opacity:0;transform:translateX(4%)}}@keyframes op-wipe-in{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}@keyframes op-wipe-out{to{clip-path:inset(0 0 0 100%)}}@keyframes op-blur-in{from{opacity:0;filter:blur(18px)}to{opacity:1;filter:blur(0)}}@keyframes op-blur-out{to{opacity:0;filter:blur(18px)}}
 </style></head><body>
-<header class="stage-head"><div class="stage-brand"><span class="stage-mark">OP</span>Vue pasteur</div><div class="stage-state" id="stage-state"><i></i><span id="stage-state-label">En attente</span></div><div class="stage-spacer"></div><div class="stage-time" id="stage-clock">00:00:00</div></header>
+<header class="stage-head"><div class="stage-brand"><span class="stage-mark">OP</span>Vue pasteur</div><div class="stage-state" id="stage-state"><i></i><span id="stage-state-label">En attente</span></div><div class="stage-spacer"></div><div class="stage-time" id="stage-clock">--:--:--</div><button class="stage-admin-toggle" id="stage-admin-toggle" type="button">⚙ Contrôle</button></header>
 <main class="stage-layout">
   <section class="stage-left"><div class="stage-canvas-wrap" id="stage-canvas-wrap"><div class="stage-canvas" id="stage-canvas"></div><div class="stage-empty" id="stage-empty"><div><strong>Prêt à recevoir</strong>La diffusion et la navigation de la scène apparaîtront ici.</div></div></div><div class="stage-caption"><span id="stage-output-label">Sortie principale</span><span>← / → pour naviguer dans les parties</span></div></section>
   <aside class="stage-side">
     <section class="stage-card"><h2>Référence / titre</h2><div class="stage-ref" id="stage-ref">—</div></section>
     <section class="stage-card"><h2>Texte courant</h2><div class="stage-text" id="stage-text">En attente de la diffusion.</div></section>
-    <section class="stage-card"><h2>Parties</h2><div class="stage-parts"><div class="stage-part"><small>Actuelle</small><span id="stage-current-part">—</span></div><div class="stage-part"><small>Suivante</small><span id="stage-next-part">—</span></div></div></section>
+    <section class="stage-card"><h2>Parties / diapositive</h2><div class="stage-parts"><div class="stage-part"><small>Actuelle</small><span id="stage-current-part">—</span></div><div class="stage-part"><small>Suivante</small><span id="stage-next-part">—</span></div></div></section>
+    <section class="stage-card"><h2>Minuteur · <span id="stage-timer-label">Prédication</span></h2><div class="stage-timer-value" id="stage-timer-value">10:00</div><div class="stage-timer-status" id="stage-timer-status">En attente</div><div class="stage-timer-next" id="stage-timer-next"></div></section>
+    <section class="stage-card stage-message-card" id="stage-message-card" data-tone="info"><h2>Message de la régie</h2><div class="stage-message-current" id="stage-message-current">Aucun message reçu.</div><div class="stage-message-meta" id="stage-message-meta"></div><div class="stage-message-history" id="stage-message-history"></div></section>
     <div class="stage-controls"><button id="stage-prev">‹ Précédent</button><button class="live-button" id="stage-blank">■ Écran noir</button><button id="stage-next">Suivant ›</button></div>
   </aside>
 </main>
+<aside class="stage-admin-drawer" id="stage-admin-drawer" hidden>
+  <h2>Régie · minuteur</h2>
+  <div class="stage-admin-row"><label>Libellé<input id="stage-admin-timer-label" maxlength="80" value="Prédication"></label><label>Minutes<input id="stage-admin-timer-minutes" type="number" min="0" max="999" value="10"></label><label>Secondes<input id="stage-admin-timer-seconds" type="number" min="0" max="59" value="0"></label></div>
+  <div class="stage-admin-actions"><button id="stage-admin-start">▶ Démarrer</button><button id="stage-admin-pause">Ⅱ Pause / Reprendre</button><button id="stage-admin-reset">↺ Réinitialiser</button><button id="stage-admin-next">Suivant dans la file</button></div>
+  <div class="stage-admin-actions"><button id="stage-admin-minus">− 1 min</button><button id="stage-admin-plus">＋ 1 min</button></div>
+  <p class="stage-admin-hint" id="stage-admin-queue">File de décomptes gérée dans le Studio.</p>
+  <h2 style="margin-top:14px">Message au pasteur</h2>
+  <textarea id="stage-admin-message" maxlength="1000" placeholder="Votre message à la scène…"></textarea>
+  <div class="stage-admin-row"><label>Ton<select id="stage-admin-tone"><option value="info">Info</option><option value="important">Important</option><option value="urgent">URGENT</option></select></label><label>De<input id="stage-admin-author" maxlength="60" placeholder="Régie"></label></div>
+  <div class="stage-admin-actions"><button class="stage-send" id="stage-admin-send">Envoyer le message</button><button id="stage-admin-clear">Effacer les messages</button></div>
+</aside>
 <script src="../js/remote-channel.js"></script>
 <script type="module">
 import Engine from '../src/core/engine.mjs';
 const params = new URLSearchParams(location.search); const sceneKey = params.get('scene') || 'main';
 const channel = new window.RemoteChannel(`op_channel_${sceneKey}`);
-document.getElementById('stage-output-label').textContent=`Sortie ${sceneKey}`;
+const stageChannel = new window.RemoteChannel('op_stage');
+document.getElementById('stage-output-label').textContent = `Sortie ${sceneKey}`;
 const wrap = document.getElementById('stage-canvas-wrap'); const canvas = document.getElementById('stage-canvas');
-let timerStarted = Date.now(); let current = null; let ownedURLs = [];
-function clearMediaURLs(){for(const url of ownedURLs)URL.revokeObjectURL(url);ownedURLs=[];}
-function materializeBlobs(value){if(typeof Blob!=='undefined'&&value instanceof Blob){const url=URL.createObjectURL(value);ownedURLs.push(url);return url;}if(Array.isArray(value))return value.map(materializeBlobs);if(value&&typeof value==='object'){for(const key of Object.keys(value))value[key]=materializeBlobs(value[key]);}return value;}
-function scale(){ const width=wrap.clientWidth; if(width)canvas.style.transform=`scale(${width/1920})`; }
-function send(action){ channel.postMessage(action==='clear'?{action:'remoteCommand',command:'clear',scene:sceneKey}:{action:'remoteCommand',command:action,scene:sceneKey}); }
-function updateClock(){const elapsed=Math.floor((Date.now()-timerStarted)/1000);const h=String(Math.floor(elapsed/3600)).padStart(2,'0');const m=String(Math.floor(elapsed%3600/60)).padStart(2,'0');const s=String(elapsed%60).padStart(2,'0');document.getElementById('stage-clock').textContent=`${h}:${m}:${s}`;}
-function updateParts(){if(!current){document.getElementById('stage-current-part').textContent='—';document.getElementById('stage-next-part').textContent='—';return;}const {bindings}=current;const parts=bindings.parts||[];const index=Number(bindings.partIndex||0);document.getElementById('stage-current-part').textContent=parts[index]||bindings.verse||bindings.lyrics||bindings.announcement||bindings.timer||bindings.text||'—';document.getElementById('stage-next-part').textContent=parts[index+1]||'—';}
-channel.onmessage=(event)=>{
-  const data=event.data||{};
-  if(data.action==='hide'){
-    current=null;canvas.replaceChildren();clearMediaURLs();
-    document.getElementById('stage-empty').style.display='grid';
-    document.getElementById('stage-state').classList.remove('live');
-    document.getElementById('stage-state-label').textContent='En attente';
-    document.getElementById('stage-ref').textContent='—';
-    document.getElementById('stage-text').textContent='En attente de la diffusion.';
-    updateParts();return;
+let current = null; let ownedURLs = []; const mediaAssetURLs = new Map(); let timerState = { label: 'Prédication', durationMs: 600000, remainingMs: 600000, running: false, endAt: 0 }; let queue = []; let messages = [];
+const byId = (name) => document.getElementById(name);
+function clearMediaURLs() { for (const url of ownedURLs) URL.revokeObjectURL(url); ownedURLs = []; }
+const TRANSITIONS = new Set(['fade', 'zoom', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'wipe', 'blur']);
+function applySceneTransition(root, scene, direction) {
+  const setting = direction === 'in' ? scene?.transitionIn : scene?.transitionOut;
+  const mode = String(setting || 'fade');
+  if (!root || mode === 'none' || !TRANSITIONS.has(mode)) return 0;
+  const duration = Math.max(80, Math.min(2000, Number(scene?.transitionDurationMs) || 250));
+  root.style.setProperty('--scene-transition-duration', `${duration}ms`);
+  root.classList.add(`scene-${direction === 'in' ? 'enter' : 'exit'}-${mode}`);
+  return duration;
+}
+function clearStageView() {
+  canvas.replaceChildren(); clearMediaURLs();
+  byId('stage-empty').style.display = 'grid'; byId('stage-state').classList.remove('live'); byId('stage-state-label').textContent = 'En attente';
+  byId('stage-ref').textContent = '—'; byId('stage-text').textContent = 'En attente de la diffusion.'; updateParts();
+}
+function hideCurrentScene() {
+  const previous = current; current = null;
+  const root = canvas.querySelector('.scene-root');
+  const duration = applySceneTransition(root, previous?.scene, 'out');
+  if (!duration) { clearStageView(); return; }
+  setTimeout(() => { if (!current && canvas.contains(root)) clearStageView(); }, duration + 40);
+}
+function materializeBlobs(value) {
+  if (typeof Blob !== 'undefined' && value instanceof Blob) { const url = URL.createObjectURL(value); ownedURLs.push(url); return url; }
+  if (Array.isArray(value)) return value.map(materializeBlobs);
+  if (value && typeof value === 'object') for (const key of Object.keys(value)) value[key] = materializeBlobs(value[key]);
+  return value;
+}
+function materializeMediaBindings(bindings = {}) {
+  const field = bindings.mediaAssetId ? 'media' : bindings.imageAssetId ? 'image' : null;
+  const assetId = field === 'media' ? bindings.mediaAssetId : field === 'image' ? bindings.imageAssetId : null;
+  if (!assetId || !field) return materializeBlobs(bindings);
+  if (mediaAssetURLs.has(assetId)) {
+    const cachedURL = mediaAssetURLs.get(assetId); mediaAssetURLs.delete(assetId); mediaAssetURLs.set(assetId, cachedURL);
+    bindings[field] = cachedURL; return materializeBlobs(bindings);
   }
-  if(data.action!=='show'||!data.scene)return;
-  clearMediaURLs();
-  const scene=materializeBlobs(data.scene);
-  const bindings=materializeBlobs(data.bindings||{});
-  current={scene,bindings};
-  document.getElementById('stage-empty').style.display='none';scale();
-  Engine.render(scene,canvas,bindings,{interactive:false,containerRect:()=>({w:1920,h:1080})});
-  document.getElementById('stage-state').classList.add('live');
-  document.getElementById('stage-state-label').textContent='EN DIRECT';
-  document.getElementById('stage-ref').textContent=bindings.ref||bindings.title||'Contenu diffusé';
-  document.getElementById('stage-text').textContent=bindings.verse||bindings.lyrics||bindings.announcement||bindings.timer||bindings.text||'—';
-  updateParts();
+  const hasBlob = typeof Blob !== 'undefined' && bindings[field] instanceof Blob; const result = materializeBlobs(bindings);
+  if (hasBlob && typeof result[field] === 'string') {
+    const index = ownedURLs.indexOf(result[field]); if (index >= 0) ownedURLs.splice(index, 1);
+    mediaAssetURLs.set(assetId, result[field]);
+    while (mediaAssetURLs.size > 3) { const [oldId, oldURL] = mediaAssetURLs.entries().next().value; mediaAssetURLs.delete(oldId); URL.revokeObjectURL(oldURL); }
+  }
+  return result;
+}
+window.addEventListener('beforeunload', () => { for (const url of mediaAssetURLs.values()) URL.revokeObjectURL(url); });
+function scale() { const width = wrap.clientWidth; const height = wrap.clientHeight; if (width && height) canvas.style.transform = `scale(${Math.min(width / 1920, height / 1080)})`; }
+function send(action) { channel.postMessage(action === 'clear' ? { action: 'remoteCommand', command: 'clear', scene: sceneKey } : { action: 'remoteCommand', command: action, scene: sceneKey }); }
+function sendNavigation(direction) { send(current?.scene?.kind === 'media' ? (direction > 0 ? 'next' : 'prev') : (direction > 0 ? 'part-next' : 'part-prev')); }
+function sendStageCommand(command, extra = {}) { stageChannel.postMessage({ action: 'stageCommand', command, ...extra }); }
+function formatDuration(milliseconds) {
+  const seconds = Math.max(0, Math.ceil(Number(milliseconds || 0) / 1000)); const hours = Math.floor(seconds / 3600); const minutes = Math.floor(seconds % 3600 / 60); const remainder = seconds % 60;
+  return hours ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}` : `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+}
+function renderTimer() {
+  const remaining = timerState.running ? Math.max(0, Number(timerState.endAt) - Date.now()) : Math.max(0, Number(timerState.remainingMs) || 0);
+  const value = byId('stage-timer-value'); value.textContent = formatDuration(remaining);
+  value.classList.toggle('warn', remaining > 60000 && remaining <= 300000); value.classList.toggle('crit', remaining <= 60000); value.classList.toggle('overtime', timerState.running && remaining <= 0);
+  byId('stage-timer-label').textContent = timerState.label || 'Prédication';
+  byId('stage-timer-status').textContent = timerState.running ? 'En cours' : remaining <= 0 ? 'Terminé' : 'En pause · prêt à démarrer';
+  const next = queue[0]; byId('stage-timer-next').textContent = next ? `Prochain : ${next.label || 'Sans titre'} · ${formatDuration(next.durationMs)}` : 'Aucun autre décompte dans la file.';
+  byId('stage-admin-queue').textContent = queue.length ? `${queue.length} décompte(s) en file · prochain : ${next.label || 'Sans titre'}` : 'File de décomptes gérée dans le Studio.';
+  if (document.activeElement !== byId('stage-admin-timer-label')) byId('stage-admin-timer-label').value = timerState.label || 'Prédication';
+  if (document.activeElement !== byId('stage-admin-timer-minutes')) byId('stage-admin-timer-minutes').value = String(Math.floor((Number(timerState.durationMs) || 600000) / 60000));
+  if (document.activeElement !== byId('stage-admin-timer-seconds')) byId('stage-admin-timer-seconds').value = String(Math.floor((Number(timerState.durationMs) || 600000) % 60000 / 1000));
+}
+function renderMessages() {
+  const currentMessage = messages[0]; const card = byId('stage-message-card');
+  card.dataset.tone = currentMessage?.tone || 'info';
+  byId('stage-message-current').textContent = currentMessage?.text || 'Aucun message reçu.';
+  byId('stage-message-meta').textContent = currentMessage ? `${currentMessage.author || 'Régie'} · ${new Date(currentMessage.createdAt || Date.now()).toLocaleTimeString()}` : '';
+  const history = byId('stage-message-history'); history.replaceChildren();
+  messages.slice(1, 7).forEach((message) => { const row = document.createElement('div'); row.textContent = `${message.author || 'Régie'} : ${message.text}`; history.appendChild(row); });
+}
+function updateClock() { byId('stage-clock').textContent = new Date().toLocaleTimeString([], { hour12: false }); renderTimer(); }
+function updateParts() {
+  if (!current) { byId('stage-current-part').textContent = '—'; byId('stage-next-part').textContent = '—'; return; }
+  const { bindings } = current; const parts = bindings.parts || []; const index = Number(bindings.partIndex || 0);
+  if (Number(bindings.mediaCount) > 1) {
+    byId('stage-current-part').textContent = `Diapositive ${(Number(bindings.mediaCursor) || 0) + 1}`;
+    byId('stage-next-part').textContent = `Diapositive ${Math.min(Number(bindings.mediaCount), (Number(bindings.mediaCursor) || 0) + 2)} / ${bindings.mediaCount}`;
+    return;
+  }
+  byId('stage-current-part').textContent = parts[index] || bindings.verse || bindings.lyrics || bindings.announcement || bindings.timer || bindings.mediaName || bindings.text || '—';
+  byId('stage-next-part').textContent = parts[index + 1] || '—';
+}
+function applyVideoControl(video, control = {}) {
+  if (!video) return;
+  if (control.seek !== undefined) { try { video.currentTime = Math.max(0, Number(control.seek) || 0); } catch {} }
+  if (control.muted !== undefined) video.muted = !!control.muted;
+  if (control.volume !== undefined) video.volume = Math.max(0, Math.min(1, Number(control.volume) || 0));
+  if (control.rate !== undefined) video.playbackRate = Math.max(.25, Math.min(4, Number(control.rate) || 1));
+  if (control.loop !== undefined) video.loop = !!control.loop;
+  if (control.play === true) video.play?.().catch?.(() => {});
+  if (control.play === false) video.pause?.();
+}
+channel.onmessage = (event) => {
+  const data = event.data || {};
+  if (data.action === 'mediaControl') { if (current?.bindings?.mediaItemId === data.mediaItemId) applyVideoControl(canvas.querySelector('video.scene-media-video'), data.control); return; }
+  if (data.action === 'hide') { hideCurrentScene(); return; }
+  if (data.action !== 'show' || !data.scene) return;
+  current = null; clearMediaURLs(); const scene = materializeBlobs(data.scene); const bindings = materializeMediaBindings(data.bindings || {});
+  byId('stage-empty').style.display = 'none'; scale();
+  const root = Engine.render(scene, canvas, bindings, { interactive: false, containerRect: () => ({ w: 1920, h: 1080 }) });
+  applySceneTransition(root, scene, 'in'); current = { scene, bindings };
+  byId('stage-state').classList.add('live'); byId('stage-state-label').textContent = 'EN DIRECT';
+  byId('stage-ref').textContent = bindings.ref || bindings.title || 'Contenu diffusé';
+  byId('stage-text').textContent = bindings.verse || bindings.lyrics || bindings.announcement || bindings.timer || bindings.mediaName || bindings.text || '—'; updateParts();
 };
-channel.postMessage({action:'ready',scene:sceneKey});
-window.addEventListener('resize',scale);document.getElementById('stage-prev').onclick=()=>send('part-prev');document.getElementById('stage-next').onclick=()=>send('part-next');document.getElementById('stage-blank').onclick=()=>send('clear');document.addEventListener('keydown',(event)=>{if(event.key==='ArrowLeft')send('part-prev');if(event.key==='ArrowRight')send('part-next');if(event.key==='Escape')send('clear');});setInterval(updateClock,250);updateClock();
+stageChannel.onmessage = (event) => {
+  const data = event.data || {}; if (data.action !== 'stageUpdate') return;
+  timerState = data.timer || timerState; queue = Array.isArray(data.queue) ? data.queue : []; messages = Array.isArray(data.messages) ? data.messages : [];
+  renderTimer(); renderMessages();
+};
+function startAdminTimer() {
+  const minutes = Math.max(0, Math.min(999, Number(byId('stage-admin-timer-minutes').value) || 0));
+  const seconds = Math.max(0, Math.min(59, Number(byId('stage-admin-timer-seconds').value) || 0)); const durationMs = (minutes * 60 + seconds) * 1000;
+  if (!durationMs) return;
+  sendStageCommand('timer-start', { durationMs, label: byId('stage-admin-timer-label').value.trim() || 'Prédication' });
+}
+byId('stage-admin-toggle').onclick = () => { const drawer = byId('stage-admin-drawer'); drawer.hidden = !drawer.hidden; };
+byId('stage-admin-start').onclick = startAdminTimer;
+byId('stage-admin-pause').onclick = () => sendStageCommand(timerState.running ? 'timer-pause' : 'timer-resume');
+byId('stage-admin-reset').onclick = () => sendStageCommand('timer-reset');
+byId('stage-admin-next').onclick = () => sendStageCommand('timer-next');
+byId('stage-admin-minus').onclick = () => sendStageCommand('timer-adjust', { deltaMs: -60000 });
+byId('stage-admin-plus').onclick = () => sendStageCommand('timer-adjust', { deltaMs: 60000 });
+byId('stage-admin-send').onclick = () => {
+  const text = byId('stage-admin-message').value.trim(); if (!text) return;
+  sendStageCommand('message-send', { text, tone: byId('stage-admin-tone').value, author: byId('stage-admin-author').value.trim() || 'Régie' }); byId('stage-admin-message').value = '';
+};
+byId('stage-admin-clear').onclick = () => sendStageCommand('message-clear');
+byId('stage-admin-message').addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); byId('stage-admin-send').click(); } });
+if (params.get('admin') === '1') byId('stage-admin-drawer').hidden = false;
+channel.postMessage({ action: 'ready', scene: sceneKey }); stageChannel.postMessage({ action: 'stageHello' });
+window.addEventListener('resize', scale); byId('stage-prev').onclick = () => sendNavigation(-1); byId('stage-next').onclick = () => sendNavigation(1); byId('stage-blank').onclick = () => send('clear');
+document.addEventListener('keydown', (event) => { if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return; if (event.key === 'ArrowLeft') sendNavigation(-1); if (event.key === 'ArrowRight') sendNavigation(1); if (event.key === 'Escape') send('clear'); });
+setInterval(updateClock, 250); updateClock(); renderMessages();
 </script></body></html>

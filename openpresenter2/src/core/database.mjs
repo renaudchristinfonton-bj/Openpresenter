@@ -1,11 +1,12 @@
 // IndexedDB persistence for the web-first application.
 // Binary assets remain Blobs in IDB; scenes only keep stable asset IDs.
 const DB_NAME = 'openpresenter2';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORES = {
   settings: { keyPath: 'key' },
   bibles: { keyPath: 'id' },
   songs: { keyPath: 'id' },
+  media: { keyPath: 'id' },
   announcements: { keyPath: 'id' },
   scenes: { keyPath: 'id' },
   assets: { keyPath: 'id' },
@@ -136,6 +137,10 @@ export class OpenPresenterDB {
 
   async saveSong(song) {
     return this.put('songs', { ...copy(song), updatedAt: Date.now() });
+  }
+
+  async saveMedia(item) {
+    return this.put('media', { ...copy(item), updatedAt: Date.now() });
   }
 
   async saveAsset(file, id = `asset_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`) {

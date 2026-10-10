@@ -12,6 +12,8 @@ test('database memory fallback handles settings, scenes, and library records', a
   assert.equal((await db.get('scenes', 'main.bible')).preset, 'full');
   await db.saveBible({ id: 'bible-1', name: 'Démo', books: [] });
   assert.equal((await db.all('bibles')).length, 1);
+  await db.saveMedia({ id: 'media-1', name: 'Eglise.jpg', type: 'image' });
+  assert.equal((await db.all('media')).length, 1);
   await db.delete('bibles', 'bible-1');
   assert.equal((await db.all('bibles')).length, 0);
 });

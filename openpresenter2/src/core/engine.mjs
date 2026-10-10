@@ -3,6 +3,7 @@
 // La même scène et le même renderer servent le contrôleur,
 // l'éditeur, la sortie OBS et les affichages de scène.
 // ============================================================
+import { sanitizeAnnotationHtml, splitAnnotationHtml } from '../modules/bible/annotations.mjs';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -49,7 +50,7 @@ function createLayer(type, options = {}) {
 }
 
 const FONTS = {
-  bible: 'Merriweather', songs: 'Poppins', announcements: 'Inter', timer: 'Inter',
+  bible: 'Merriweather', songs: 'Poppins', announcements: 'Inter', lowerthird: 'Inter', timer: 'Inter',
 };
 function textLayer(name, bind, x, y, w, h, style = {}, options = {}) {
   return createLayer('text', {
@@ -63,15 +64,17 @@ function textLayer(name, bind, x, y, w, h, style = {}, options = {}) {
 function defaultScene(preset = 'full', kind = 'bible') {
   const isSong = kind === 'songs';
   const isAnnouncement = kind === 'announcements';
+  const isLowerThird = kind === 'lowerthird';
   const isTimer = kind === 'timer';
-  const accent = isSong ? '#a78bfa' : isAnnouncement ? '#34d399' : isTimer ? '#fb7185' : '#f5b942';
+  const isMedia = kind === 'media';
+  const accent = isSong ? '#a78bfa' : isAnnouncement ? '#34d399' : isLowerThird ? '#f5b942' : isTimer ? '#fb7185' : isMedia ? '#38bdf8' : '#f5b942';
   const bodyFont = FONTS[kind] || 'Merriweather';
   const titleBind = kind === 'bible' ? 'ref' : 'title';
   const badgeBind = kind === 'bible' ? 'badge' : 'section';
-  const bodyBind = isSong ? 'lyrics' : isAnnouncement ? 'announcement' : isTimer ? 'timer' : 'verse';
+  const bodyBind = isSong ? 'lyrics' : isAnnouncement || isLowerThird ? 'announcement' : isTimer ? 'timer' : 'verse';
   const referenceLabel = kind === 'bible' ? 'Référence' : 'Titre';
   const badgeLabel = kind === 'bible' ? 'Version' : isTimer ? 'Mode' : 'Section';
-  const bodyLabel = kind === 'bible' ? 'Verset' : isSong ? 'Paroles' : isAnnouncement ? 'Message' : 'Minuteur';
+  const bodyLabel = kind === 'bible' ? 'Verset' : isSong ? 'Paroles' : isAnnouncement ? 'Message' : isLowerThird ? 'Sous-titre' : 'Minuteur';
   const scenes = {
     full: {
       name: 'Cinéma — plein écran', preset: 'full', kind, bgColor: '#090b12', accentColor: accent,
@@ -134,6 +137,37 @@ function defaultScene(preset = 'full', kind = 'bible') {
     },
   };
   const scene = clone(scenes[preset] || scenes.full);
+  scene.transitionIn ??= 'fade';
+  scene.transitionOut ??= 'fade';
+  scene.transitionDurationMs ??= 250;
+  if (isLowerThird) {
+    const logoLayouts = {
+      full: { x: 12, y: 50, w: 18, h: 42 },
+      screen80: { x: 15, y: 50, w: 16, h: 38 },
+      bottom: { x: 11, y: 86, w: 13, h: 19 },
+      'bottom-right': { x: 60, y: 86, w: 10, h: 18 },
+      lowerthird: { x: 4, y: 88, w: 5, h: 10 },
+    };
+    scene.layers.splice(Math.min(2, scene.layers.length), 0, createLayer('image', { name: 'Logo / média', bind: 'image', src: null, visible: true, fit: 'contain', ...logoLayouts[scene.preset] }));
+  }
+  if (isMedia) {
+    const placements = {
+      full: { x: 50, y: 50, w: 100, h: 100 },
+      screen80: { x: 50, y: 50, w: 80, h: 80 },
+      bottom: { x: 50, y: 76, w: 82, h: 42 },
+      'bottom-right': { x: 76, y: 76, w: 46, h: 42 },
+      lowerthird: { x: 30, y: 88, w: 54, h: 18 },
+    };
+    const placement = placements[scene.preset] || placements.full;
+    scene.name = 'Média'; scene.kind = 'media'; scene.accentColor = accent;
+    scene.transparent = scene.preset === 'bottom' || scene.preset === 'bottom-right' || scene.preset === 'lowerthird';
+    scene.bgColor = scene.transparent ? 'rgba(0,0,0,0)' : '#05070b';
+    scene.splitMode = 'none';
+    scene.layers = [
+      createLayer('background', { name: 'Fond média', visible: !scene.transparent, source: { kind: 'gradient', color1: '#05070b', color2: '#101a24', fit: 'cover' } }),
+      createLayer('image', { name: 'Média', bind: 'media', x: placement.x, y: placement.y, w: placement.w, h: placement.h, fit: 'contain' }),
+    ];
+  }
   if (isAnnouncement) {
     const imageLayouts = {
       full: { x: 50, y: 50, w: 100, h: 100, opacity: .34, fit: 'cover' },
@@ -254,12 +288,24 @@ function elementForLayer(layer, bindings, scene, options = {}) {
     element = document.createElement('div');
     element.className = `scene-layer layer-image${source ? '' : ' layer-image-empty'}`;
     if (!source) element.textContent = `＋ ${layer.name || 'Image'}`;
-    else {
+    else if ((layer.mediaType || (['media', 'image'].includes(layer.bind) ? bindings.mediaType : '')) === 'video') {
+      const video = document.createElement('video');
+      video.className = 'scene-media-video'; video.dataset.mediaItemId = bindings.mediaItemId || '';
+      video.playsInline = true; video.autoplay = bindings.mediaPaused !== true; video.controls = false;
+      video.loop = bindings.mediaLoop !== false; video.muted = bindings.mediaMuted !== false;
+      video.src = mediaURL(source); video.style.objectFit = (bindings.mediaFit || layer.fit) === 'cover' ? 'cover' : 'contain';
+      const startAt = Math.max(0, Number(bindings.mediaStartAt) || 0);
+      const startRate = Math.max(.25, Math.min(4, Number(bindings.mediaStartRate) || 1));
+      video.playbackRate = startRate;
+      if (startAt) video.addEventListener('loadedmetadata', () => { try { video.currentTime = Math.min(startAt, video.duration || startAt); } catch {} }, { once: true });
+      element.appendChild(video);
+      if (bindings.mediaPaused !== true) video.play?.().catch?.(() => {});
+    } else {
       const image = document.createElement('img');
       image.alt = layer.alt || layer.name || '';
       image.draggable = false;
       image.src = mediaURL(source);
-      image.style.objectFit = layer.fit === 'cover' ? 'cover' : 'contain';
+      image.style.objectFit = (bindings.mediaFit || layer.fit) === 'cover' ? 'cover' : 'contain';
       element.appendChild(image);
     }
   } else if (layer.type === 'text') {
@@ -271,8 +317,32 @@ function elementForLayer(layer, bindings, scene, options = {}) {
     if (bindings.parts?.length && layer.bind === 'verse' && Number.isInteger(bindings.partIndex)) {
       text = bindings.parts[clamp(bindings.partIndex, 0, bindings.parts.length - 1)] ?? text;
     }
-    element.textContent = String(text ?? '');
-    applyTextStyle(element, style);
+    const verseHtml = layer.bind === 'verse' && typeof bindings.verseHtml === 'string'
+      ? sanitizeAnnotationHtml(bindings.verseHtml) : null;
+    const parallelVersions = layer.bind === 'verse' && Array.isArray(bindings.parallelVersions)
+      ? bindings.parallelVersions.filter((version) => version && typeof version.verse === 'string') : [];
+    if (parallelVersions.length > 1) {
+      element.classList.add('layer-text-parallel');
+      applyTextStyle(element, style);
+      element.style.display = 'block'; element.style.padding = '0'; element.style.overflow = 'hidden';
+      const grid = document.createElement('div'); grid.className = 'parallel-version-grid';
+      grid.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:3%;width:100%;height:100%;box-sizing:border-box;padding:0 1%;';
+      parallelVersions.forEach((version, index) => {
+        const column = document.createElement('div'); column.className = 'parallel-version-column';
+        column.style.cssText = `display:flex;flex-direction:column;justify-content:center;align-items:stretch;min-width:0;min-height:0;overflow:hidden;text-align:${style.align || 'center'};${index ? 'border-left:1px solid rgba(255,255,255,.28);padding-left:4%;' : ''}`;
+        const label = document.createElement('div'); label.className = 'parallel-version-label';
+        label.textContent = version.name || `Version ${index + 1}`;
+        label.style.cssText = `flex:none;margin:0 0 .55em;color:${scene.accentColor || '#f5b942'};font:700 ${Math.min(24, Math.max(12, (Number(style.fontSize) || 48) * .28))}px Inter,system-ui,sans-serif;letter-spacing:.04em;line-height:1.2;`;
+        const copy = document.createElement('div'); copy.className = 'parallel-version-copy';
+        if (index === 0 && verseHtml) copy.innerHTML = verseHtml; else copy.textContent = version.verse;
+        copy.style.cssText = `min-width:0;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;font-family:${style.fontFamily || 'Merriweather'},serif;font-size:${Math.max(16, (Number(style.fontSize) || 48) * .76)}px;font-weight:${style.bold ? 700 : (style.weight || 400)};font-style:${style.italic ? 'italic' : 'normal'};line-height:${Number(style.lineHeight) || 1.35};color:${style.color || '#fff'};text-shadow:inherit;`;
+        column.append(label, copy); grid.appendChild(column);
+      });
+      element.appendChild(grid);
+    } else {
+      if (verseHtml) element.innerHTML = verseHtml; else element.textContent = String(text ?? '');
+      applyTextStyle(element, style);
+    }
   }
   if (!element) return null;
   element.dataset.layerId = layer.id;
@@ -450,6 +520,15 @@ function prepareBindingsForScene(scene, kind, bindings = {}, partIndex = 0) {
   output.parts = parts;
   output.partIndex = index;
   output[textBinding] = parts[index];
+  if (kind === 'bible' && typeof output.verseHtml === 'string') {
+    output.verseHtml = splitAnnotationHtml(output.verseHtml, text, parts)[index] ?? parts[index];
+  }
+  if (kind === 'bible' && Array.isArray(output.parallelVersions)) {
+    output.parallelVersions = output.parallelVersions.map((version) => {
+      const versionParts = splitSmart(version.verse, scene.splitChars || 220);
+      return versionParts.length > 1 ? { ...version, verse: versionParts[Math.min(index, versionParts.length - 1)] } : version;
+    });
+  }
   return output;
 }
 
@@ -464,7 +543,7 @@ if (typeof document !== 'undefined' && !document.getElementById('openpresenter-e
     .layer-overlay{overflow:hidden;}
     .layer-image{overflow:hidden;}
     .layer-image-empty{display:grid;place-items:center;background:rgba(20,22,29,.62);border:2px dashed rgba(255,255,255,.35);color:#fff;font:700 24px Inter,system-ui,sans-serif;text-shadow:0 1px 6px #000;}
-    .layer-image img{display:block;width:100%;height:100%;object-position:center;pointer-events:none;}
+    .layer-image img,.layer-image video{display:block;width:100%;height:100%;object-position:center;pointer-events:none;}
     .layer-text{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;}
     .scene-layer.selected{outline:2px solid #f5b942;outline-offset:2px;}
     .layer-handle{position:absolute;z-index:9999;width:12px;height:12px;padding:0;border:1px solid #161616;border-radius:3px;background:#f5b942;box-shadow:0 1px 4px #0008;}

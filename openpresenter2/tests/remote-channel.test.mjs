@@ -21,11 +21,12 @@ test('remote channel deduplicates one command delivered over BroadcastChannel an
         if (peer !== this) peer.onmessage?.({ data: structuredClone(data) });
       }
     }
-    close() { buses.get(this.name)?.delete(this); }
+    close() { this.closed = true; buses.get(this.name)?.delete(this); }
   }
   class FakeWebSocket {
-    constructor(url) { this.url = url; this.sent = []; sockets.push(this); }
+    constructor(url) { this.url = url; this.sent = []; this.closed = false; sockets.push(this); }
     send(data) { this.sent.push(data); }
+    close() { this.closed = true; this.onclose?.(); }
   }
   let id = 0;
   const context = {
@@ -67,5 +68,12 @@ test('remote channel deduplicates one command delivered over BroadcastChannel an
   receiverSocket.onmessage({ data: senderSocket.sent[1] });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(received.length, 2, 'a second intentional press has its own ID and is not discarded');
-  sender._bc.close(); receiver._bc.close();
+  sender.close();
+  assert.equal(sender._closed, true);
+  assert.equal(sender._bc.closed, true);
+  assert.equal(senderSocket.closed, true);
+  senderSocket.onclose?.();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(sockets.length, 2, 'a closed output channel never reconnects');
+  receiver.close();
 });

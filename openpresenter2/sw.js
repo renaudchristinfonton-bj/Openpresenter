@@ -1,11 +1,13 @@
-const CACHE = 'openpresenter2-shell-v1';
+const CACHE = 'openpresenter2-shell-v3';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './test-engine.html',
   './css/tokens.css', './css/components.css',
-  './src/core/engine.mjs', './src/core/database.mjs', './src/core/backup.mjs', './src/core/output.mjs', './src/core/themes.mjs',
-  './src/modules/bible/xml.mjs', './src/modules/songs/parser.mjs', './src/modules/songs/SongEditor.mjs', './src/components/SceneEditor.mjs',
+  './src/core/engine.mjs', './src/core/database.mjs', './src/core/backup.mjs', './src/core/themes.mjs',
+  './src/core/output-registry.mjs', './src/core/output-url.mjs', './src/core/viewport.mjs',
+  './src/modules/bible/xml.mjs', './src/modules/bible/annotations.mjs', './src/modules/songs/parser.mjs', './src/modules/songs/SongEditor.mjs',
+  './src/modules/media/library.mjs', './src/modules/media/pptx.mjs', './src/components/SceneEditor.mjs',
   './obs/output.html', './app/remote.html', './app/stage.html',
-  './js/remote-channel.js', './js/qrcode.js', './vendor/js/jszip.min.js', './vendor/fonts/fonts.css', './assets/op-icon.svg',
+  './js/remote-channel.js', './js/qrcode.js', './vendor/js/jszip.min.js', './vendor/js/pdf.min.js', './vendor/js/pdf.worker.min.js', './vendor/fonts/fonts.css', './assets/op-icon.svg',
 ];
 
 self.addEventListener('install', (event) => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Engine, { createLayer, defaultScene, splitSmart, hexToRgba, rgbToHex } from '../src/core/engine.mjs';
 
 const presets = ['full', 'screen80', 'bottom', 'bottom-right', 'lowerthird'];
-const kinds = ['bible', 'songs', 'announcements', 'timer'];
+const kinds = ['bible', 'songs', 'announcements', 'lowerthird', 'timer'];
 
 test('the engine is importable without a browser DOM', () => {
   assert.equal(typeof Engine.render, 'function');
@@ -32,6 +32,9 @@ test('announcement scenes contain a bound, editable media-image layer and timer 
   const announcement = defaultScene('full', 'announcements');
   assert.ok(announcement.layers.some((layer) => layer.type === 'image' && layer.bind === 'image'));
   assert.ok(announcement.layers.some((layer) => layer.type === 'text' && layer.bind === 'announcement'));
+  const lowerThird = defaultScene('lowerthird', 'lowerthird');
+  assert.ok(lowerThird.layers.some((layer) => layer.type === 'image' && layer.bind === 'image' && layer.visible));
+  assert.ok(lowerThird.layers.some((layer) => layer.type === 'text' && layer.bind === 'announcement'));
   const timer = defaultScene('full', 'timer');
   assert.ok(timer.layers.some((layer) => layer.type === 'text' && layer.bind === 'timer'));
 });
@@ -84,6 +87,27 @@ test('split bindings follow each output scene without mutating the full source c
   );
   assert.ok(announcement.parts.length > 1, 'announcement messages use the same output-specific splitting engine');
   assert.equal(announcement.announcement, announcement.parts[0]);
+});
+
+test('parallel Bible bindings keep both translations together through output-specific split navigation', () => {
+  const source = {
+    ref: 'Jean 3:16', verse: 'Verset principal assez long pour être divisé en plusieurs parties lisibles. '.repeat(2),
+    parallelVersions: [
+      { name: 'Version A', verse: 'Traduction principale assez longue pour suivre le découpage de la première version. '.repeat(2) },
+      { name: 'Version B', verse: 'Autre traduction assez longue pour être diffusée à côté, dans la même partie. '.repeat(2) },
+    ],
+  };
+  const originalFirstVerse = source.parallelVersions[0].verse;
+  const scene = { splitMode: 'auto', splitChars: 58 };
+  const first = Engine.prepareBindingsForScene(scene, 'bible', source, 0);
+  const second = Engine.prepareBindingsForScene(scene, 'bible', source, 1);
+  assert.ok(first.parts.length > 1);
+  assert.equal(first.parallelVersions[0].verse, splitSmart(source.parallelVersions[0].verse, 58)[0]);
+  assert.equal(second.parallelVersions[0].verse, splitSmart(source.parallelVersions[0].verse, 58)[1]);
+  assert.equal(second.parallelVersions[1].verse, splitSmart(source.parallelVersions[1].verse, 58)[1]);
+  assert.equal(source.parallelVersions[0].verse, originalFirstVerse, 'source bindings are not mutated by split rendering');
+  const full = Engine.prepareBindingsForScene({ splitMode: 'none' }, 'bible', source);
+  assert.equal(full.parallelVersions[1].verse, source.parallelVersions[1].verse, 'full-screen outputs keep both translations complete');
 });
 
 test('color helpers support short hex, full hex, alpha, and rgb conversion', () => {

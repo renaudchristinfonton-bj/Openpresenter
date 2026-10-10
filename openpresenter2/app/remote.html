@@ -33,7 +33,7 @@ const ref = document.getElementById('remote-reference');
 const content = document.getElementById('remote-content');
 const state = document.getElementById('remote-state');
 const stateLabel = document.getElementById('remote-state-label');
-const kinds = { bible: 'Bible', songs: 'Paroles', announcements: 'Annonce', timer: 'Minuteur' };
+const kinds = { bible: 'Bible', songs: 'Paroles', media: 'Média', announcements: 'Annonce', timer: 'Minuteur' };
 function send(command) { channel.postMessage({ action: 'remoteCommand', command, scene }); }
 document.querySelectorAll('[data-command]').forEach((button) => {
   button.addEventListener('click', () => { send(button.dataset.command); if (navigator.vibrate) navigator.vibrate(12); });
@@ -47,9 +47,9 @@ channel.onmessage = (event) => {
   state.classList.add('connected'); stateLabel.textContent = 'Synchronisé';
   const b = data.bindings;
   ref.textContent = b.ref || b.title || 'Contenu en direct';
-  content.textContent = b.verse || b.lyrics || b.announcement || b.text || b.timer || '—';
+  content.textContent = b.verse || b.lyrics || b.announcement || b.text || b.timer || b.mediaName || '—';
   document.getElementById('remote-kind').textContent = kinds[data.scene?.kind] || data.scene?.name || 'En direct';
-  document.getElementById('remote-parts').textContent = b.parts?.length > 1 ? `Partie ${(b.partIndex || 0) + 1} / ${b.parts.length}` : 'Texte complet';
+  document.getElementById('remote-parts').textContent = b.mediaCount > 1 ? `Diapositive ${(Number(b.mediaCursor) || 0) + 1} / ${b.mediaCount}` : b.parts?.length > 1 ? `Partie ${(b.partIndex || 0) + 1} / ${b.parts.length}` : 'Texte complet';
 };
 channel.postMessage({ action: 'remoteHello', scene });
 channel.postMessage({ action: 'ready', scene });

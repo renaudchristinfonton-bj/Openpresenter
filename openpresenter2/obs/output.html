@@ -7,46 +7,65 @@
 <link rel="stylesheet" href="../css/tokens.css">
 <link rel="stylesheet" href="../css/components.css">
 <style>
-html,body{margin:0;padding:0;overflow:hidden;background:transparent!important}body{position:relative;width:1920px;height:1080px}#stage{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}.res-scale #stage{width:1920px;height:1080px;top:50%;left:50%;inset:auto;position:absolute;transform:translate(-50%,-50%) scale(var(--sx,1),var(--sy,1));transform-origin:center center}.res-adapt #stage{width:100%;height:100%}.anim-in{animation:fadeIn .35s cubic-bezier(.16,1,.3,1) both}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.parts-hint{position:absolute;top:0;bottom:0;z-index:1000;display:flex;align-items:center;width:14%;color:#ffffff70;font:800 54px Inter,system-ui,sans-serif;opacity:0;transition:opacity .18s;pointer-events:none;text-shadow:0 2px 14px #000}.parts-hint-l{left:0;justify-content:flex-start;padding-left:4%}.parts-hint-r{right:0;justify-content:flex-end;padding-right:4%}.parts-active .parts-hint{opacity:.25}.parts-active:hover .parts-hint{opacity:.8}
+html,body{box-sizing:border-box;width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:transparent!important}
+body{position:fixed;inset:0}
+#stage{position:absolute;display:block;width:1920px;height:1080px;left:50%;top:50%;overflow:hidden;transform-origin:center center}
+.scene-enter-fade{animation:op-fade-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-fade{animation:op-fade-out var(--scene-transition-duration,250ms) ease both}.scene-enter-zoom{animation:op-zoom-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-zoom{animation:op-zoom-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-up{animation:op-slide-up-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-slide-up{animation:op-slide-up-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-down{animation:op-slide-down-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-slide-down{animation:op-slide-down-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-left{animation:op-slide-left-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-slide-left{animation:op-slide-left-out var(--scene-transition-duration,250ms) ease both}.scene-enter-slide-right{animation:op-slide-right-in var(--scene-transition-duration,250ms) cubic-bezier(.16,1,.3,1) both}.scene-exit-slide-right{animation:op-slide-right-out var(--scene-transition-duration,250ms) ease both}.scene-enter-wipe{animation:op-wipe-in var(--scene-transition-duration,250ms) ease both}.scene-exit-wipe{animation:op-wipe-out var(--scene-transition-duration,250ms) ease both}.scene-enter-blur{animation:op-blur-in var(--scene-transition-duration,250ms) ease both}.scene-exit-blur{animation:op-blur-out var(--scene-transition-duration,250ms) ease both}@keyframes op-fade-in{from{opacity:0}to{opacity:1}}@keyframes op-fade-out{to{opacity:0}}@keyframes op-zoom-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}@keyframes op-zoom-out{to{opacity:0;transform:scale(1.06)}}@keyframes op-slide-up-in{from{opacity:0;transform:translateY(4%)}to{opacity:1;transform:translateY(0)}}@keyframes op-slide-up-out{to{opacity:0;transform:translateY(4%)}}@keyframes op-slide-down-in{from{opacity:0;transform:translateY(-4%)}to{opacity:1;transform:translateY(0)}}@keyframes op-slide-down-out{to{opacity:0;transform:translateY(-4%)}}@keyframes op-slide-left-in{from{opacity:0;transform:translateX(4%)}to{opacity:1;transform:translateX(0)}}@keyframes op-slide-left-out{to{opacity:0;transform:translateX(-4%)}}@keyframes op-slide-right-in{from{opacity:0;transform:translateX(-4%)}to{opacity:1;transform:translateX(0)}}@keyframes op-slide-right-out{to{opacity:0;transform:translateX(4%)}}@keyframes op-wipe-in{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}@keyframes op-wipe-out{to{clip-path:inset(0 0 0 100%)}}@keyframes op-blur-in{from{opacity:0;filter:blur(18px)}to{opacity:1;filter:blur(0)}}@keyframes op-blur-out{to{opacity:0;filter:blur(18px)}}
+#viewport-debug{position:fixed;left:12px;top:12px;z-index:10000;max-width:90vw;padding:8px 10px;border:1px solid #f5b942;border-radius:6px;background:#111e;color:#fff;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;pointer-events:none}
+.parts-hint{position:absolute;top:0;bottom:0;z-index:1000;display:flex;align-items:center;width:14%;color:#ffffff70;font:800 54px Inter,system-ui,sans-serif;opacity:0;transition:opacity .12s;pointer-events:none;text-shadow:0 2px 14px #000}.parts-hint-l{left:0;justify-content:flex-start;padding-left:4%}.parts-hint-r{right:0;justify-content:flex-end;padding-right:4%}.parts-active .parts-hint{opacity:.25}.parts-active:hover .parts-hint{opacity:.8}
 </style>
 </head><body class="res-scale">
 <div id="stage"></div>
 <div class="parts-hint parts-hint-l" id="hint-l" aria-hidden="true">‹</div>
 <div class="parts-hint parts-hint-r" id="hint-r" aria-hidden="true">›</div>
+<div id="viewport-debug" hidden></div>
 <script src="../js/remote-channel.js"></script>
 <script type="module">
 import Engine from '../src/core/engine.mjs';
-import { applyLockedPreset } from '../src/core/output.mjs';
+import { applyViewport, resolveBrowserSourceViewport } from '../src/core/viewport.mjs';
 
 const params = new URLSearchParams(location.search);
 const sceneKey = params.get('scene') || 'main';
-const lockMode = params.get('lockMode');
+const outputFit = params.get('fit') || 'contain';
+const sourceResolution = (() => {
+  const match = String(params.get('res') || '').match(/^(\d{3,5})x(\d{3,5})$/i);
+  if (!match) return { width: 1920, height: 1080 };
+  const width = Number(match[1]); const height = Number(match[2]);
+  return width >= 320 && width <= 8192 && height >= 180 && height <= 8192 ? { width, height } : { width: 1920, height: 1080 };
+})();
 const stage = document.getElementById('stage');
 const leftHint = document.getElementById('hint-l');
 const rightHint = document.getElementById('hint-r');
 const channel = new window.RemoteChannel(`op_channel_${sceneKey}`);
 let current = null;
 let ownedURLs = [];
+const mediaAssetURLs = new Map();
 
-function setResolution() {
-  const value = params.get('res');
-  if (!value) return;
-  const [width, height] = value.toLowerCase().split('x').map(Number);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 320 || height < 180 || width > 8192 || height > 8192) return;
-  document.body.style.width = `${width}px`;
-  document.body.style.height = `${height}px`;
-  const fit = params.get('fit') || 'adapt';
-  const sx = width / 1920;
-  const sy = height / 1080;
-  let x = sx; let y = sy;
-  if (fit === 'stretch') { x = sx; y = sy; }
-  else if (fit === 'fill') x = y = Math.max(sx, sy);
-  else x = y = Math.min(sx, sy);
-  document.body.style.setProperty('--sx', x);
-  document.body.style.setProperty('--sy', y);
+function reportedBrowserViewport() {
+  return {
+    width: Math.max(1, window.innerWidth || document.documentElement.clientWidth || sourceResolution.width || 1920),
+    height: Math.max(1, window.innerHeight || document.documentElement.clientHeight || sourceResolution.height || 1080),
+  };
 }
-setResolution();
+function browserSourceViewport() {
+  const { width, height } = reportedBrowserViewport();
+  // The explicit OBS dimensions are a fallback only: stage geometry and CSS
+  // transforms must use the viewport in CSS pixels. Promoting a half-size
+  // high-DPI CEF viewport to physical pixels doubles the canvas and clips it.
+  return resolveBrowserSourceViewport(width, height, sourceResolution);
+}
+function sizeOutputCanvas() {
+  const reported = reportedBrowserViewport();
+  const effective = browserSourceViewport();
+  const geometry = applyViewport(stage, effective.width, effective.height, outputFit);
+  if (params.get('debug') === '1') {
+    const panel = document.getElementById('viewport-debug');
+    panel.hidden = false;
+    panel.textContent = `CEF viewport: ${reported.width}×${reported.height} CSS px · DPR ${Number(window.devicePixelRatio) || 1}\nOBS URL: ${sourceResolution.width}×${sourceResolution.height}\nApplied: ${effective.width}×${effective.height} · scale ${geometry.scaleX.toFixed(3)}×${geometry.scaleY.toFixed(3)} · offset ${geometry.offsetX.toFixed(1)},${geometry.offsetY.toFixed(1)}`;
+  }
+}
+sizeOutputCanvas();
+window.addEventListener('resize', sizeOutputCanvas, { passive: true });
 
 function makeBlobURLs(value) {
   if (typeof Blob !== 'undefined' && value instanceof Blob) {
@@ -60,6 +79,28 @@ function makeBlobURLs(value) {
   }
   return value;
 }
+function makeMediaBindingURLs(bindings = {}) {
+  const field = bindings.mediaAssetId ? 'media' : bindings.imageAssetId ? 'image' : null;
+  const assetId = field === 'media' ? bindings.mediaAssetId : field === 'image' ? bindings.imageAssetId : null;
+  if (!assetId || !field) return makeBlobURLs(bindings);
+  if (mediaAssetURLs.has(assetId)) {
+    const cachedURL = mediaAssetURLs.get(assetId); mediaAssetURLs.delete(assetId); mediaAssetURLs.set(assetId, cachedURL);
+    bindings[field] = cachedURL;
+    return makeBlobURLs(bindings);
+  }
+  const hasBlob = typeof Blob !== 'undefined' && bindings[field] instanceof Blob;
+  const result = makeBlobURLs(bindings);
+  if (hasBlob && typeof result[field] === 'string') {
+    const index = ownedURLs.indexOf(result[field]); if (index >= 0) ownedURLs.splice(index, 1);
+    mediaAssetURLs.set(assetId, result[field]);
+    while (mediaAssetURLs.size > 3) {
+      const [oldId, oldUrl] = mediaAssetURLs.entries().next().value;
+      mediaAssetURLs.delete(oldId); URL.revokeObjectURL(oldUrl);
+    }
+  }
+  return result;
+}
+window.addEventListener('beforeunload', () => { for (const url of mediaAssetURLs.values()) URL.revokeObjectURL(url); });
 function cleanStage() {
   stage.replaceChildren();
   for (const url of ownedURLs) URL.revokeObjectURL(url);
@@ -67,16 +108,47 @@ function cleanStage() {
   document.body.classList.remove('parts-active');
   leftHint.style.display = 'none'; rightHint.style.display = 'none';
 }
+const TRANSITIONS = new Set(['fade', 'zoom', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'wipe', 'blur']);
+function applySceneTransition(root, scene, direction) {
+  const setting = direction === 'in' ? scene?.transitionIn : scene?.transitionOut;
+  const mode = String(setting || 'fade');
+  if (!root || mode === 'none' || !TRANSITIONS.has(mode)) return 0;
+  const duration = Math.max(80, Math.min(2000, Number(scene?.transitionDurationMs) || 250));
+  root.style.setProperty('--scene-transition-duration', `${duration}ms`);
+  root.classList.add(`scene-${direction === 'in' ? 'enter' : 'exit'}-${mode}`);
+  return duration;
+}
+function hideCurrentScene() {
+  const previous = current; current = null;
+  const root = stage.querySelector('.scene-root');
+  const duration = applySceneTransition(root, previous?.scene, 'out');
+  if (!duration) { cleanStage(); return; }
+  setTimeout(() => { if (!current && stage.contains(root)) cleanStage(); }, duration + 40);
+}
 
+function applyVideoControl(video, control = {}) {
+  if (!video) return;
+  if (control.seek !== undefined) { try { video.currentTime = Math.max(0, Number(control.seek) || 0); } catch {} }
+  if (control.muted !== undefined) video.muted = !!control.muted;
+  if (control.volume !== undefined) video.volume = Math.max(0, Math.min(1, Number(control.volume) || 0));
+  if (control.rate !== undefined) video.playbackRate = Math.max(.25, Math.min(4, Number(control.rate) || 1));
+  if (control.loop !== undefined) video.loop = !!control.loop;
+  if (control.play === true) video.play?.().catch?.(() => {});
+  if (control.play === false) video.pause?.();
+}
 channel.onmessage = (event) => {
   const data = event.data || {};
-  if (data.action === 'hide') { current = null; cleanStage(); return; }
+  if (data.action === 'mediaControl') {
+    if (current?.bindings?.mediaItemId === data.mediaItemId) applyVideoControl(stage.querySelector('video.scene-media-video'), data.control);
+    return;
+  }
+  if (data.action === 'hide') { hideCurrentScene(); return; }
   if (data.action !== 'show' || !data.scene) return;
-  cleanStage();
-  const scene = makeBlobURLs(applyLockedPreset(data.scene, lockMode));
-  const bindings = makeBlobURLs(data.bindings || {});
+  current = null; cleanStage();
+  const scene = makeBlobURLs(data.scene);
+  const bindings = makeMediaBindingURLs(data.bindings || {});
   const root = Engine.render(scene, stage, bindings, { interactive: false, containerRect: () => ({ w: 1920, h: 1080 }) });
-  if (root) root.classList.add('anim-in');
+  applySceneTransition(root, scene, 'in');
   const hasParts = !!(bindings.parts?.length > 1 && scene.splitMode === 'auto');
   if (hasParts) {
     document.body.classList.add('parts-active');
@@ -91,8 +163,15 @@ channel.onmessage = (event) => {
 channel.postMessage({ action: 'ready', scene: sceneKey });
 
 document.addEventListener('click', (event) => {
-  if (!current?.bindings?.parts?.length) return;
   const side = event.clientX < window.innerWidth / 2 ? 'prev' : 'next';
+  if (current?.bindings?.mediaCount > 1) {
+    const index = Number(current.bindings.mediaCursor) || 0;
+    if (side === 'prev' && index <= 0) return;
+    if (side === 'next' && index >= current.bindings.mediaCount - 1) return;
+    channel.postMessage({ action: 'remoteCommand', command: side, scene: sceneKey });
+    return;
+  }
+  if (!current?.bindings?.parts?.length) return;
   if (side === 'prev' && Number(current.bindings.partIndex || 0) <= 0) return;
   if (side === 'next' && Number(current.bindings.partIndex || 0) >= current.bindings.parts.length - 1) return;
   channel.postMessage({ action: 'clickPart', side, scene: sceneKey });

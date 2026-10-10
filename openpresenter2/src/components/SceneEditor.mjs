@@ -10,15 +10,17 @@ const PRESETS = [
 const BINDINGS = [
   ['custom', 'Texte libre'], ['ref', 'Référence'], ['badge', 'Version / badge'],
   ['verse', 'Verset'], ['title', 'Titre'], ['section', 'Section'], ['lyrics', 'Paroles'],
-  ['announcement', 'Message d’annonce'], ['timer', 'Minuteur'], ['image', 'Image liée'],
+  ['announcement', 'Message d’annonce'], ['timer', 'Minuteur'], ['image', 'Image liée'], ['media', 'Média sélectionné'],
 ];
 
 function copy(value) { return JSON.parse(JSON.stringify(value)); }
 function safeText(value) { return String(value ?? ''); }
 
-export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, sampleBindings = {}, onAsset, onThemeChange } = {}) {
+export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, sampleBindings = {}, onAsset, onThemeChange, customLooks = [], onSaveLook = async () => null, onDeleteLook = async () => {}, onApplyLook = async () => {} } = {}) {
   let state = copy(scene || Engine.defaultScene('full', kind));
   state.kind = kind;
+  let customLookList = Array.isArray(customLooks) ? copy(customLooks) : [];
+  let selectedCustomLookId = '';
   let selectedId = null;
   let history = [copy(state)];
   let historyIndex = 0;
@@ -33,7 +35,7 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
   const layerList = $('#se-layer-list');
   const inspector = $('#se-inspector');
   const presetList = $('#se-presets');
-  const kindName = ({ songs: 'PAROLES', announcements: 'ANNONCES', timer: 'MINUTEUR' })[kind] || 'BIBLE';
+  const kindName = ({ songs: 'PAROLES', announcements: 'ANNONCES', lowerthird: 'LOWER THIRD', timer: 'MINUTEUR' })[kind] || 'BIBLE';
   $('#se-kind').textContent = kindName;
 
   function close() {
@@ -204,6 +206,83 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
     return input;
   }
 
+  function lookScene(look) {
+    return look?.scenes?.[kind] || (look?.kind === kind ? look.scene : null);
+  }
+
+  function renderReusableLooks() {
+    const section = makeSection('Looks personnalisés', 'Enregistrez cette composition complète — calques, couleurs, images et mise en page — pour la réutiliser.');
+    const available = customLookList.filter((look) => look && typeof look.id === 'string');
+    const items = [['', available.length ? 'Choisir un look…' : 'Aucun look enregistré']];
+    available.forEach((look) => items.push([look.id, look.name || 'Look sans nom']));
+    const select = makeSelect(items, selectedCustomLookId);
+    select.onchange = () => {
+      selectedCustomLookId = select.value;
+      renderGlobalInspector();
+    };
+    section.appendChild(makeField('Look', select));
+
+    const selected = available.find((look) => look.id === selectedCustomLookId);
+    const name = makeInput('text', selected?.name || state.name || 'Mon look');
+    name.maxLength = 80;
+    section.appendChild(makeField('Nom à enregistrer', name));
+
+    const actions = document.createElement('div');
+    actions.className = 'se-inspector-actions';
+    const apply = document.createElement('button');
+    apply.type = 'button'; apply.className = 'se-button secondary'; apply.textContent = 'Appliquer à cette sortie';
+    apply.disabled = !selected || !lookScene(selected);
+    apply.onclick = async () => {
+      const savedScene = lookScene(selected);
+      if (!savedScene) return;
+      state = copy(savedScene);
+      state.kind = kind;
+      selectedId = null;
+      checkpoint(); render();
+      onThemeChange?.(state.themeId || 'cinema');
+      await onSave(copy(state));
+    };
+    const save = document.createElement('button');
+    save.type = 'button'; save.className = 'se-button secondary';
+    save.textContent = selected ? 'Mettre à jour' : 'Enregistrer';
+    save.onclick = async () => {
+      const lookName = name.value.trim();
+      if (!lookName) { name.focus(); name.setCustomValidity('Saisissez un nom pour ce look.'); name.reportValidity(); return; }
+      name.setCustomValidity('');
+      const id = selected?.id || `look_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+      const scene = copy(state);
+      const stored = await onSaveLook({ id, name: lookName, kind, scene });
+      const record = stored || { ...(selected || {}), id, name: lookName, scenes: { ...(selected?.scenes || {}), [kind]: scene } };
+      record.scenes ||= {};
+      record.scenes[kind] = scene;
+      customLookList = [...customLookList.filter((look) => look.id !== id), record];
+      selectedCustomLookId = id;
+      renderGlobalInspector();
+    };
+    actions.append(apply, save);
+    if (selected?.scenes?.bible && selected?.scenes?.songs) {
+      const applyPair = document.createElement('button');
+      applyPair.type = 'button'; applyPair.className = 'se-button secondary';
+      applyPair.textContent = 'Appliquer Bible + Paroles';
+      applyPair.onclick = async () => { await onApplyLook(selected.id, kind); };
+      actions.appendChild(applyPair);
+    }
+    if (selected) {
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.className = 'se-button danger'; remove.textContent = 'Supprimer';
+      remove.onclick = async () => {
+        if (!confirm(`Supprimer le look « ${selected.name || 'sans nom'} » ?`)) return;
+        await onDeleteLook(selected.id);
+        customLookList = customLookList.filter((look) => look.id !== selected.id);
+        selectedCustomLookId = '';
+        renderGlobalInspector();
+      };
+      actions.appendChild(remove);
+    }
+    section.appendChild(actions);
+    inspector.appendChild(section);
+  }
+
   function renderGlobalInspector() {
     inspector.replaceChildren();
     const intro = makeSection('Scène', 'Choisissez un thème, puis ajustez les calques à votre goût.');
@@ -227,6 +306,7 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
     });
     intro.appendChild(makeField('Thèmes prêts', themeWrap));
     inspector.appendChild(intro);
+    renderReusableLooks();
 
     const output = makeSection('Affichage', 'Réglages propres à cette scène et à cette sortie.');
     const transparent = document.createElement('input'); transparent.type = 'checkbox'; transparent.checked = !!state.transparent;
@@ -237,6 +317,17 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
     output.appendChild(makeField('Versets / paroles longs', split));
     fieldRange(output, 'Caractères par partie', state.splitChars || 180, 60, 360, 10, (n) => { state.splitChars = n; }, ' car.');
     inspector.appendChild(output);
+
+    const motion = makeSection('Animations', 'Transitions d’entrée et de sortie de cette scène OBS.');
+    const transitions = [['none', 'Aucune'], ['fade', 'Fondu'], ['zoom', 'Zoom'], ['slide-up', 'Glissement vers le haut'], ['slide-down', 'Glissement vers le bas'], ['slide-left', 'Glissement vers la gauche'], ['slide-right', 'Glissement vers la droite'], ['wipe', 'Balayage'], ['blur', 'Fondu flou']];
+    const transitionIn = makeSelect(transitions, state.transitionIn || 'fade');
+    transitionIn.onchange = () => { state.transitionIn = transitionIn.value; checkpoint(); };
+    motion.appendChild(makeField('À l’affichage', transitionIn));
+    const transitionOut = makeSelect(transitions, state.transitionOut || 'fade');
+    transitionOut.onchange = () => { state.transitionOut = transitionOut.value; checkpoint(); };
+    motion.appendChild(makeField('Au masquage', transitionOut));
+    fieldNumber(motion, 'Durée (ms)', state.transitionDurationMs || 250, 80, 2000, 10, (n) => { state.transitionDurationMs = n; }, 'transitionDurationMs');
+    inspector.appendChild(motion);
 
     const bg = makeSection('Média de fond', 'Le fond est un vrai calque : sélectionnez-le à gauche pour le déplacer ou le redimensionner.');
     const picker = document.createElement('button'); picker.type = 'button'; picker.className = 'se-button secondary'; picker.textContent = '＋ Importer une image de fond';
@@ -284,6 +375,11 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
     const layer = state.layers.find((item) => item.id === selectedId);
     if (!layer) { renderGlobalInspector(); return; }
     inspector.replaceChildren();
+    const sceneSettings = document.createElement('button');
+    sceneSettings.type = 'button'; sceneSettings.className = 'se-button subtle';
+    sceneSettings.textContent = '← Scène & looks';
+    sceneSettings.onclick = () => { selectedId = null; renderLayerList(); renderInspector(); renderCanvas(); };
+    inspector.appendChild(sceneSettings);
     const general = makeSection(`${layer.type === 'text' ? 'Texte' : layer.type === 'image' ? 'Image' : layer.type === 'background' ? 'Fond' : 'Panneau'}`, 'Modifiez ce calque sans affecter les autres.');
     const name = makeInput('text', layer.name || layer.type);
     name.maxLength = 80;
@@ -397,7 +493,7 @@ export function openSceneEditor({ kind = 'bible', scene, onSave = () => {}, samp
 
   function renderImageInspector(layer) {
     const section = makeSection('Image');
-    const binding = makeSelect([['', 'Fichier du calque'], ['image', 'Image de la diapositive / annonce']], layer.bind || '');
+    const binding = makeSelect([['', 'Fichier du calque'], ['image', 'Image de la diapositive / annonce'], ['media', 'Média sélectionné']], layer.bind || '');
     binding.onchange = () => { layer.bind = binding.value || null; checkpoint(); renderCanvas(); };
     section.appendChild(makeField('Source', binding));
     const replace = document.createElement('button'); replace.type = 'button'; replace.className = 'se-button secondary'; replace.textContent = layer.src ? 'Remplacer l’image' : 'Choisir une image';

@@ -32,13 +32,20 @@ Le serveur V2 sert uniquement cette application et fournit le relais WebSocket u
 1. Dans **Bible**, chargez la Bible de démonstration ou importez une Bible XML standard / Zefania.
 2. Dans **Paroles**, créez un chant ou importez un fichier texte, ChordPro ou OpenSong.
 3. Créez une annonce texte/image ou configurez le minuteur.
-4. Le canevas **Aperçu** montre la sortie principale; **Diffuser** envoie le programme vers les sorties OBS configurées.
-5. Ouvrez **Studio de scène** pour choisir un thème, un preset et ajuster les calques. Les coordonnées restent normalisées au canevas 1920 × 1080.
+4. Le canevas **Aperçu** suit la sortie choisie dans l’en-tête. Cochez les sorties cibles, puis cliquez sur **Diffuser**; chaque sortie conserve son propre programme en direct.
+5. Dans **Sorties OBS**, créez, nommez, renommez, dupliquez ou supprimez des sorties; réglez leur résolution et leur cadrage indépendamment. **Modifier** ouvre les scènes WYSIWYG de cette sortie, où thèmes, fonds et calques restent propres à chaque sortie. Les coordonnées du canevas sont normalisées en 1920 × 1080.
 6. Utilisez **Sauvegarde** pour exporter ou restaurer un fichier `.openpresenter.zip` contenant bibliothèques, scènes, notes et médias.
+
+Dans **Bible**, vous pouvez importer plusieurs traductions, cocher **2 versions**, puis choisir la seconde version. Le même livre, chapitre et numéro de verset sont projetés côte à côte; les sorties en bandeau gardent aussi leur navigation de découpage. Sélectionnez un verset puis **Annoter** pour appliquer gras, italique, soulignement, couleur et surlignage au texte projeté, ou ajouter une note de régie non projetée.
+
+### Thèmes et looks réutilisables
+
+Le Studio de scène propose les cinq thèmes V2 et les six palettes historiques de V1 (Sobre, Festif, Carême, Noël, Aube, Mission). Dans l’inspecteur **Scène**, enregistrez un look personnalisé pour conserver la scène entière — couleurs, typographie, fonds, calques et géométrie — puis réappliquez-le à la sortie en cours. En enregistrant Bible et Paroles sous le même nom, **Appliquer Bible + Paroles** restaure les deux scènes sur la sortie sélectionnée. Les photos restent dans le stockage local et sont incluses dans la sauvegarde ZIP.
 
 ## OBS, stage et téléphone
 
-- Dans OBS, ajoutez une **Source navigateur** pour chaque lien proposé par le bouton **Liens OBS**. Réglez chaque source à **1920 × 1080**. Les canaux principal, annexe et lower third sont isolés.
+- Dans OBS, ajoutez une **Source navigateur** pour chaque lien proposé par **Liens OBS**. Réglez chaque source aux dimensions affichées à côté de sa sortie. Les noms, scènes, fonds, thèmes, cadrages et états live sont indépendants; les liens ne forcent aucun preset caché.
+- Si le cadrage semble réduit ou décalé, ajoutez temporairement `&debug=1` à l’URL de la source : un panneau affiche le viewport CEF, la résolution configurée et l’échelle réellement appliquée.
 - Le bouton **Stage** ouvre la vue pasteur. Elle reçoit le même programme et propose la navigation de parties.
 - Le bouton **Remote** affiche un QR code. Quand le studio est ouvert sur `localhost`, choisissez l’adresse Wi-Fi de l’ordinateur dans la liste, puis scannez depuis le téléphone sur le même réseau. Si plusieurs réseaux sont disponibles, choisissez l’interface effectivement utilisée par le téléphone.
 

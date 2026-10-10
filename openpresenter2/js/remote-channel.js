@@ -33,6 +33,7 @@
             this._statusListeners = [];
             this._seenPackets = new Map();
             this._messageSequence = 0;
+            this._closed = false;
 
             try {
                 this._bc = new BroadcastChannel(name);
@@ -51,7 +52,20 @@
         }
         _notifyStatus(state) { this._statusListeners.forEach(fn => { try { fn(state); } catch (e) { /* silencieux */ } }); }
 
+        close() {
+            if (this._closed) return;
+            this._closed = true;
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
+            try { this._bc?.close(); } catch (e) { /* déjà fermé */ }
+            try { this._ws?.close(1000, 'Output removed'); } catch (e) { /* déjà fermé */ }
+            this._wsReady = false;
+            this._statusListeners.length = 0;
+            this.onmessage = null;
+        }
+
         _connectWS() {
+            if (this._closed) return;
             try {
                 const proto = location.protocol === 'https:' ? 'wss' : 'ws';
                 const url = `${proto}://${location.host}/ws?channel=${encodeURIComponent(this.name)}`;
@@ -72,6 +86,7 @@
         }
 
         _scheduleReconnect() {
+            if (this._closed) return;
             clearTimeout(this._reconnectTimer);
             this._reconnectTimer = setTimeout(() => this._connectWS(), 3000);
         }

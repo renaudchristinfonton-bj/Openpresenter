@@ -9,7 +9,13 @@ test('backup exports and restores IndexedDB records and binary assets as an Open
   await source.setSetting('lastTheme', 'neon');
   await source.saveBible({ id: 'bible-demo', name: 'Démo', books: [{ name: 'Jean', chapters: [] }] });
   await source.saveScene('main.bible', { preset: 'full', layers: [] });
+  await source.setSetting('customSceneLooks', [{
+    id: 'look-demo', name: 'Habillage fête', scenes: { bible: {
+      kind: 'bible', preset: 'full', layers: [{ type: 'background', source: { assetId: 'asset-demo' } }],
+    } },
+  }]);
   await source.saveSong({ id: 'song-demo', title: 'Louange', sections: [] });
+  await source.saveMedia({ id: 'media-demo', name: 'Louange.mp4', type: 'video', assetId: 'asset-demo' });
   await source.put('notes', { id: 'note-demo', kind: 'annotation', text: 'À revoir' });
   await source.saveAsset(new Blob(['op-image-bytes'], { type: 'image/png' }), 'asset-demo');
 
@@ -26,7 +32,11 @@ test('backup exports and restores IndexedDB records and binary assets as an Open
   const result = await importBackupZip(archive, target, JSZip);
   assert.equal(result.imported.bibles, 1);
   assert.equal((await target.getSetting('lastTheme')), 'neon');
+  const restoredLooks = await target.getSetting('customSceneLooks');
+  assert.equal(restoredLooks[0].name, 'Habillage fête');
+  assert.equal(restoredLooks[0].scenes.bible.layers[0].source.assetId, 'asset-demo', 'custom looks keep references to their portable image assets');
   assert.equal((await target.get('songs', 'song-demo')).title, 'Louange');
+  assert.equal((await target.get('media', 'media-demo')).assetId, 'asset-demo');
   assert.equal((await target.get('assets', 'asset-demo')).blob.size, 'op-image-bytes'.length);
   assert.equal(await (await target.get('assets', 'asset-demo')).blob.text(), 'op-image-bytes');
 });

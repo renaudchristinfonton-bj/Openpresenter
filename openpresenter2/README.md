@@ -6,13 +6,24 @@ Studio de présentation web-first, local et hors-ligne : Bible, chants, annonces
 
 Prérequis : Node.js 20 ou plus récent.
 
+### Lancement en un clic
+
+Ouvrez le dossier `openpresenter2/`, puis double-cliquez sur le fichier correspondant à votre système :
+
+- **Windows :** `demarrer-windows.bat`
+- **macOS :** `demarrer-mac-linux.command` (si macOS le bloque, faites un clic droit puis **Ouvrir**)
+- **Linux :** ouvrez ce fichier dans un terminal, ou exécutez `./demarrer-mac-linux.command`.
+
+Le lanceur vérifie Node.js, démarre le serveur et affiche l’adresse à ouvrir : <http://localhost:8788/openpresenter2/>. Gardez la fenêtre du terminal ouverte pendant la présentation; **Ctrl+C** arrête le serveur. Si le port 8788 est déjà utilisé, vous pouvez en choisir un autre : `PORT=8789` sous macOS/Linux, ou `set PORT=8789` dans l’invite de commandes Windows avant de lancer le `.bat`.
+
+### Lancement manuel (alternative)
+
 ```sh
 cd openpresenter2
-npm ci
 npm start
 ```
 
-Ouvrez ensuite <http://localhost:8788/openpresenter2/>. Le serveur sert uniquement V2 et fournit le relais WebSocket utilisé par OBS et la télécommande. Il écoute sur les interfaces réseau de l’ordinateur pour permettre l’usage sur le même réseau local.
+Le serveur V2 sert uniquement cette application et fournit le relais WebSocket utilisé par OBS et la télécommande. Il écoute sur les interfaces réseau de l’ordinateur pour permettre l’usage sur le même réseau local. Aucun `npm ci` n’est nécessaire pour lancer l’application; il sert uniquement à installer les dépendances des tests.
 
 > **Réseau privé uniquement :** le relais ne comporte pas d’authentification. Ne transférez pas le port 8788 sur Internet. Utilisez un réseau de confiance.
 

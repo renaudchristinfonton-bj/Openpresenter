@@ -119,6 +119,14 @@ vague. Les statuts ✅ ne sont posés qu'**après** vérification de l'existence
 | 9 | Nettoyage des artefacts d'édition (caractères CJK résiduels) | ✅ fait |
 | 10 | Relevé de cohérence final (`trace:check` simulé) | ✅ fait — voir ci-dessous |
 
+## État d'implémentation
+
+La **phase 0** du [chapitre 21](21-plan-livraison.md) est livrée et vérifiée :
+socle disque, assets, export/restauration, migration V1, lanceur universel, diagnostic.
+Détail, tests couverts et dettes assumées : [`../PHASE-0-SOCLE.md`](../PHASE-0-SOCLE.md).
+
+---
+
 ## Relevé de cohérence final (21/10/2026)
 
 | Contrôle | Résultat |

@@ -1,5 +1,21 @@
-# Données utilisateur synchronisées par le serveur relais (créées à l'exécution)
-servergestionobs/data/
+# Données utilisateur : le projet vit hors du dépôt.
+project/
+runtime/
+node_modules/
 
-# Tests : dépendances npm locales (jouer « npm i » dans servergestionobs/tests)
-servergestionobs/tests/node_modules/
+# Journaux, caches et sauvegardes locales
+*.log
+cache/
+backups/
+session-state.json
+.lock
+
+# Systèmes de fichiers
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp

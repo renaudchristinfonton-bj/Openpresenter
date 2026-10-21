@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — état du socle</title>
+<style>
+  :root{
+    --bg:#0b0d12; --bg2:#11141c; --bg3:#171b25; --line:#252a36; --line2:#333a4a;
+    --txt:#e8eaf0; --txt2:#9aa3b5; --txt3:#6b7487; --accent:#f5b942;
+    --ok:#34d399; --warn:#f59e0b; --err:#ef5360; --info:#38bdf8;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#ed7958);display:grid;place-items:center;color:#17110a;font-size:11px;font-weight:900}
+  h1{font-size:18px;margin:0;letter-spacing:-.01em}
+  .sub{font-size:11px;color:var(--txt3)}
+  .spacer{flex:1}
+  .banner{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:8px;background:#f5b9420f;border:1px solid #f5b94240;color:#ffd07a;font-size:12px;margin-bottom:16px}
+  .banner b{color:#ffe0a3}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--bg3);color:var(--txt);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none}
+  .btn:hover{background:#1e2331}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#17110a;font-weight:800}
+  .btn.sm{padding:4px 9px;font-size:11px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .card h2{margin:0;padding:10px 14px;border-bottom:1px solid var(--line);background:#07080d;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);display:flex;align-items:center;gap:8px}
+  .card .body{padding:0}
+  .sum{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .sum .big{font-size:17px;font-weight:900;letter-spacing:-.02em}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;border:1px solid}
+  .pill.ok{background:#34d39918;color:#6ee7b7;border-color:#34d39944}
+  .pill.warn{background:#f59e0b18;color:#fbbf24;border-color:#f59e0b44}
+  .pill.err{background:#ef536018;color:#ff8e97;border-color:#ef536044}
+  .pill.na{background:#171b25;color:var(--txt3);border-color:var(--line2)}
+  .row{display:grid;grid-template-columns:18px 190px 1fr;gap:10px;padding:8px 14px;border-bottom:1px solid #1a1e28;font-size:12px;align-items:center}
+  .row:last-child{border-bottom:none}
+  .row .ico{font-weight:900;text-align:center}
+  .ico.ok{color:var(--ok)} .ico.warn{color:var(--warn)} .ico.err{color:var(--err)} .ico.na{color:var(--txt3)}
+  .row .nm{color:var(--txt2)}
+  .row .val{font-family:var(--mono);font-size:11px;color:var(--txt)}
+  .row.warnrow{background:#f59e0b0a}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 16px;padding:12px 14px;font-size:11px;color:var(--txt3);border-top:1px solid var(--line)}
+  .meta b{color:var(--txt2);font-weight:600}
+  .actions{display:flex;flex-wrap:wrap;gap:7px;padding:12px 14px}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;padding:12px 14px;font-size:11px}
+  .kv b{color:var(--txt3);font-weight:600}
+  .kv span{font-family:var(--mono);color:var(--txt2);word-break:break-all}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  th{text-align:left;padding:6px 10px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);border-bottom:1px solid var(--line2)}
+  td{padding:6px 10px;border-bottom:1px solid #1a1e28}
+  .lv{font-size:8px;font-weight:900;padding:1px 4px;border-radius:3px}
+  .lv.INFO{background:#38bdf822;color:#7dd3fc}
+  .lv.WARN{background:#f59e0b22;color:#fbbf24}
+  .lv.ERROR{background:#ef536022;color:#ff8e97}
+  .lv.DEBUG{background:#ffffff11;color:var(--txt3)}
+  .toast{position:fixed;right:16px;bottom:16px;max-width:360px;padding:10px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);box-shadow:0 12px 30px #000a;font-size:12px;opacity:0;transform:translateY(8px);transition:.18s;pointer-events:none}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12}
+  .muted{color:var(--txt3)}
+  .mono{font-family:var(--mono)}
+  .footer{margin-top:18px;font-size:11px;color:var(--txt3);display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="mark">OP</span>
+    <div>
+      <h1>OpenPresenter — état du socle</h1>
+      <div class="sub" id="sub">connexion au serveur local…</div>
+    </div>
+    <span class="spacer"></span>
+    <button class="btn sm" id="refresh">⟳ Revérifier</button>
+    <button class="btn sm primary" id="copy">⧉ Copier le rapport</button>
+  </header>
+
+  <div class="banner">
+    <span>ℹ</span>
+    <div>
+      <b>Phase 0 du plan de livraison.</b> Ce que vous voyez est le <b>socle</b> : dossier
+      <span class="mono">project/</span>, API disque, assets, sauvegarde/export, migration.
+      Le studio et les sorties arrivent en phase 1 — voir
+      <span class="mono">docs/spec/21-plan-livraison.md</span>.
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>Contrôles <span class="spacer"></span><span class="muted" id="age"></span></h2>
+      <div class="sum">
+        <span class="big" id="count">—</span>
+        <span id="pills"></span>
+        <span class="spacer"></span>
+        <span class="muted" id="ver"></span>
+      </div>
+      <div class="body" id="checks">
+        <div class="row"><span class="ico na">…</span><span class="nm">Vérification…</span><span class="val">chargement</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn sm" id="backup">💾 Sauvegarder maintenant</button>
+        <a class="btn sm" href="/api/export">📦 Exporter le projet</a>
+        <button class="btn sm" id="integrity">🧹 Intégrité</button>
+        <button class="btn sm" id="clearCache">🗑 Vider le cache</button>
+        <button class="btn sm" id="journal">📓 Journal</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Projet</h2>
+        <div class="kv">
+          <b>Nom</b><span id="prjName">—</span>
+          <b>Identifiant</b><span id="prjId">—</span>
+          <b>Format</b><span id="prjFormat">—</span>
+          <b>Dossier</b><span id="prjDir">—</span>
+          <b>Accès local</b><span id="local">—</span>
+          <b>Réseau</b><span id="lan">—</span>
+          <b>Runtime</b><span id="runtime">—</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Mémoire du projet</h2>
+        <div class="kv">
+          <b>Assets</b><span id="assets">—</span>
+          <b>Orphelins</b><span id="orphans">—</span>
+          <b>Savegarde</b><span id="backupState">—</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" id="logCard" style="margin-top:16px;display:none">
+    <h2>Journal récent <span class="spacer"></span><button class="btn sm" id="closeLog">✕</button></h2>
+    <div class="body" id="logBody"></div>
+  </div>
+
+  <div class="footer">
+    <span class="mono">OpenPresenter 3.0.0-dev</span>
+    <span>·</span>
+    <span>API : <span class="mono">/api/health</span>, <span class="mono">/api/diagnostic</span></span>
+    <span>·</span>
+    <span>Aucune requête ne quitte votre réseau.</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+let lastReport = null;
+
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = 'toast show ' + kind;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast ' + kind; }, 4000);
+}
+
+const ICON = { ok: '✔', warn: '⚠', err: '✕', na: '—' };
+
+function row(check, warnRow = false) {
+  const div = document.createElement('div');
+  div.className = 'row' + (warnRow || check.status === 'warn' ? ' warnrow' : '');
+  div.innerHTML = `
+    <span class="ico ${check.status}">${ICON[check.status] || '·'}</span>
+    <span class="nm">${escapeHtml(check.name)}</span>
+    <span class="val">${escapeHtml(String(check.value ?? ''))}</span>`;
+  return div;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function api(path, options) {
+  const res = await fetch(path, { headers: { 'content-type': 'application/json' }, ...options });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) throw Object.assign(new Error(data?.error?.message || res.statusText), { data });
+  return data;
+}
+
+async function refresh() {
+  $('#refresh').disabled = true;
+  try {
+    const [diag, health] = await Promise.all([api('/api/diagnostic'), api('/api/health')]);
+    lastReport = { diag, health };
+    render(diag, health);
+    $('#sub').textContent = `Connecté · ${health.projectName || 'projet'} · port ${health.port}`;
+  } catch (err) {
+    $('#sub').textContent = 'Serveur injoignable';
+    $('#checks').innerHTML = `<div class="row"><span class="ico err">✕</span><span class="nm">Serveur</span><span class="val">${escapeHtml(err.message)}</span></div>`;
+    toast('Serveur injoignable — relancez OpenPresenter.', 'err');
+  } finally {
+    $('#refresh').disabled = false;
+  }
+}
+
+function render(diag, health) {
+  const list = $('#checks');
+  list.innerHTML = '';
+  for (const check of diag.checks) list.append(row(check));
+  $('#count').textContent = `${diag.ok} sur ${diag.checks.length} contrôles réussis`;
+  const pills = [];
+  if (diag.warn) pills.push(`<span class="pill warn"><span>●</span> ${diag.warn} avertissement${diag.warn > 1 ? 's' : ''}</span>`);
+  if (diag.err) pills.push(`<span class="pill err"><span>●</span> ${diag.err} erreur${diag.err > 1 ? 's' : ''}</span>`);
+  if (!diag.warn && !diag.err) pills.push('<span class="pill ok"><span>●</span> tout est nominal</span>');
+  $('#pills').innerHTML = pills.join(' ');
+  $('#ver').textContent = `vérifié en ${diag.durationMs} ms`;
+  $('#age').textContent = new Date(diag.generatedAt).toLocaleTimeString('fr-FR');
+
+  $('#prjName').textContent = diag.project.name || '—';
+  $('#prjId').textContent = diag.project.id || '—';
+  $('#prjFormat').textContent = `format ${diag.project.formatVersion}`;
+  $('#prjDir').textContent = 'project/ (dossier du logiciel)';
+  $('#local').textContent = `http://127.0.0.1:${health.port}/`;
+  $('#lan').textContent = (health.lan || []).map((a) => `${a.address}:${health.port}`).join(', ') || 'aucune adresse privée';
+  $('#runtime').textContent = `Node ${health.runtime} · ${health.platform}`;
+
+  const integrity = diag.checks.find((c) => c.id === 'DIAG-10')?.detail;
+  $('#assets').textContent = integrity ? `${integrity.assets.total} fichier(s)` : '—';
+  $('#orphans').textContent = integrity ? `${integrity.assets.orphan.length}` : '—';
+  $('#backupState').textContent = diag.checks.find((c) => c.id === 'DIAG-11')?.value || '—';
+}
+
+async function copyReport() {
+  if (!lastReport) return;
+  const { diag, health } = lastReport;
+  const lines = [
+    'OpenPresenter — rapport de diagnostic',
+    `Généré le ${new Date(diag.generatedAt).toLocaleString('fr-FR')}`,
+    `Version ${health.version} · format ${health.formatVersion} · projet ${health.projectId}`,
+    `Système : ${health.platform} · Node ${health.runtime} · navigateur ${navigator.userAgent}`,
+    '',
+    ...diag.checks.map((c) => `${c.id.padEnd(9)} ${c.status.padEnd(4)} ${c.name} : ${c.value}`),
+    ''
+  ];
+  for (const e of diag.recentErrors || []) {
+    lines.push(`${new Date(e.ts).toLocaleTimeString('fr-FR')} ${e.level.toUpperCase().padEnd(5)} ${e.event} — ${e.msg}`);
+  }
+  lines.push('', 'Fin du rapport.');
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    toast('Rapport copié.');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = lines.join('\n');
+    document.body.append(ta);
+    ta.select();
+    toast('Copie automatique impossible — sélectionnez tout (Ctrl+A) et copiez.');
+  }
+}
+
+async function showJournal() {
+  const { entries } = await api('/api/logs?limit=60');
+  const rows = entries.slice().reverse().map((e) => `
+    <tr>
+      <td class="mono">${new Date(e.ts).toLocaleTimeString('fr-FR')}</td>
+      <td><span class="lv ${e.level.toUpperCase()}">${e.level.toUpperCase()}</span></td>
+      <td class="mono">${escapeHtml(e.event)}</td>
+      <td>${escapeHtml(e.msg)}</td>
+    </tr>`).join('');
+  $('#logBody').innerHTML = `<table><thead><tr><th>heure</th><th>niveau</th><th>évènement</th><th>message</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="muted">Journal vide.</td></tr>'}</tbody></table>`;
+  $('#logCard').style.display = 'block';
+  $('#logCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#refresh').onclick = refresh;
+$('#copy').onclick = copyReport;
+$('#journal').onclick = showJournal;
+$('#closeLog').onclick = () => { $('#logCard').style.display = 'none'; };
+
+$('#backup').onclick = async () => {
+  try {
+    const res = await api('/api/maintenance', { method: 'POST', body: JSON.stringify({ action: 'backup' }) });
+    toast(`Sauvegarde créée : ${res.file}`);
+    refresh();
+  } catch (err) { toast(err.message, 'err'); }
+};
+
+$('#integrity').onclick = async () => {
+  try {
+    const rep = await api('/api/integrity');
+    const orphans = rep.assets.orphan.length;
+    const missing = rep.assets.missing.length;
+    if (!orphans && !missing) return toast('Intégrité : aucun problème détecté.');
+    const msg = `${orphans} fichier(s) orphelin(s), ${missing} manquant(s).\n\nDéplacer les orphelins dans backups/orphelins-… ? (réversible 30 jours)`;
+    if (orphans && confirm(msg)) {
+      const res = await api('/api/maintenance', { method: 'POST', body: JSON.stringify({ action: 'purge-orphans' }) });
+      toast(`${res.moved.length} fichier(s) déplacé(s).`);
+    }
+    refresh();
+  } catch (err) { toast(err.message, 'err'); }
+};
+
+$('#clearCache').onclick = async () => {
+  if (!confirm('Vider le cache ? Les miniatures seront régénérées au besoin. Aucune donnée du projet n’est supprimée.')) return;
+  try {
+    const res = await api('/api/maintenance', { method: 'POST', body: JSON.stringify({ action: 'clear-cache' }) });
+    toast(`Cache vidé : ${(res.bytes / 1048576).toFixed(1)} Mo libérés.`);
+    refresh();
+  } catch (err) { toast(err.message, 'err'); }
+};
+
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 15000);
+</script>
+</body>
+</html>

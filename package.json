@@ -1,0 +1,19 @@
+{
+  "name": "openpresenter",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenPresenter — suite de régie live hors-ligne (Bible, chants, médias, sorties)",
+  "scripts": {
+    "start": "node app/launcher/launch.mjs",
+    "server": "node app/server.mjs",
+    "test": "node --test app/tests/*.test.mjs",
+    "test:api": "node --test app/tests/api.test.mjs",
+    "schema:check": "node app/tools/schema-check.mjs",
+    "trace:check": "node app/tools/trace-check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

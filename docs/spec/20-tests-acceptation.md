@@ -38,7 +38,7 @@
 | **A-02b** | sans Node + **sans** Internet | instructions exactes (03-lanceur.md § 3.4.3), aucune tentative d'installation, sortie code `20` |
 | **A-02c** | Node 16 présent | refus explicite avec la version minimale, code `30`, jamais de démarrage dégradé silencieux |
 | **A-02d** | serveur déjà lancé sur le même dossier | navigateur ouvert sur l'instance existante, **un seul** serveur (vérifié par `ps` et par `.lock`) |
-| **A-02e** | chemin avec accents et espaces (`/home/jean/L'Église du Plateau/`) | démarrage nominal, journal sans erreur d'encodage |
+| **A-02e** | chemin avec accents et espaces (`…/Clé USB/L'Église du Plateau/`) | démarrage nominal, journal sans erreur d'encodage |
 | **A-02f** | dossier en lecture seule | mode dégradé explicite, bandeau orange, aucune écriture tentée |
 | **Échec** | installation silencieuse, stack trace affichée, deux serveurs sur le même dossier |
 

@@ -7,6 +7,7 @@ OpenPresenter réunit tous les outils de projection dont une régie a besoin (Bi
 ## Sommaire
 
 - [Cahier des charges de la refonte](#cahier-des-charges-de-la-refonte)
+- [Phase 0 : le socle est en place](#phase-0--le-socle-est-en-place)
 - [Pourquoi ce projet](#pourquoi-ce-projet)
 - [Fonctionnalités](#fonctionnalités)
 - [Comment ça fonctionne](#comment-ça-fonctionne)
@@ -32,9 +33,31 @@ La refonte 2026 est spécifiée de bout en bout avant d'être codée. Le documen
 | [`docs/maquettes/`](docs/maquettes/) | 14 captures de référence — ouvrir `index.html`, aucun réseau requis |
 | [`docs/ETAT-DES-LIEUX-2026-10.md`](docs/ETAT-DES-LIEUX-2026-10.md) | audit vérifié du dépôt : 3 branches, V1/V2, ce qui marche, ce qui manque |
 
-La spécification est **terminée**. L'implémentation démarre par la phase 0
-([`docs/spec/21-plan-livraison.md`](docs/spec/21-plan-livraison.md)) : API disque `project/`,
-gestion d'assets, lanceur universel, migration V1/V2.
+La spécification est **terminée**. L'implémentation avance par phases
+([`docs/spec/21-plan-livraison.md`](docs/spec/21-plan-livraison.md)) ; la **phase 0** est livrée.
+
+---
+
+## Phase 0 : le socle est en place
+
+Le socle tourne réellement : dossier `project/` = projet transportable, écriture atomique,
+assets dédupliqués par empreinte, export/restauration ZIP, migration du dump V1,
+serveur local sans aucune dépendance npm, lanceur universel qui ouvre le navigateur.
+
+```bash
+./OpenPresenter.sh        # macOS : ./OpenPresenter.command   Windows : OpenPresenter.bat
+npm test                  # 62 tests — 0 échec
+npm run schema:check      # 16 schémas de l'annexe 24, validés sur un projet réel
+npm run trace:check       # cohérence du cahier des charges, T1 → T16
+```
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-0-SOCLE.md`](docs/PHASE-0-SOCLE.md) | ce qui fonctionne, comment le lancer, tests de recette couverts, dettes assumées |
+| `app/server.mjs` | API REST + WebSocket sur `node:http`, sans dépendance |
+| `app/src/core/` | écriture atomique, projet, assets, objets métier, export, journal, validateur |
+| `app/src/migration/v1.mjs` | migration idempotente de `openpresenter-sauvegarde-2026-08-09.json` |
+| `app/tests/` | A-01→A-05, A-13→A-13e, A-18→A-18k, lanceur, validateur |
 
 ---
 

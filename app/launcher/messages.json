@@ -1,0 +1,42 @@
+{
+  "fr": {
+    "projectDirError": "Impossible d'accéder au dossier du projet.\n     Vérifiez que le dossier n'a pas été déplacé ou supprimé, puis relancez.",
+    "runtimeTooOld": "OpenPresenter nécessite Node.js 20 ou plus récent.\n     Version détectée : {version}\n     Téléchargez la version « LTS » sur https://nodejs.org/fr, puis relancez.",
+    "portError": "Aucun port disponible entre {from} et {to}.\n     Fermez les applications qui occupent ces ports, ou lancez avec un port libre :\n       Windows  : set PORT=9000 && OpenPresenter.bat\n       Mac/Linux: PORT=9000 ./OpenPresenter.sh",
+    "serverError": "Le serveur n'a pas démarré.\n     Consultez le journal : project/logs/session-<date>.log",
+    "diskError": "Espace disque insuffisant : {free} Mo libres.\n     Libérez au moins 100 Mo avant de relancer OpenPresenter.",
+    "crash": "OpenPresenter s'est arrêté de façon inattendue.",
+    "noRuntime": "Node.js est introuvable sur cet ordinateur.\n\n   OpenPresenter a besoin de Node.js 20 ou plus récent pour fonctionner.\n   Il n'est pas nécessaire de connaître la programmation : suivez simplement\n   les étapes ci-dessous, une seule fois.\n\n   1. Ouvrez https://nodejs.org/fr dans un navigateur\n   2. Téléchargez la version « LTS »\n   3. Installez-la en laissant toutes les options par défaut\n   4. Relancez OpenPresenter\n\n   Si cet ordinateur n'a pas Internet, installez Node.js depuis une clé USB\n   préparée sur un autre poste.",
+    "exitCodes": {
+      "NORMAL": 0,
+      "PROJECT_DIR": 10,
+      "PORT": 20,
+      "SERVER": 30,
+      "DISK": 40,
+      "MOVED": 50,
+      "FORMAT": 60,
+      "RUNTIME_REFUSED": 70,
+      "DOWNLOAD": 80
+    }
+  },
+  "en": {
+    "projectDirError": "The project folder could not be opened.\n     Check that it has not been moved or deleted, then try again.",
+    "runtimeTooOld": "OpenPresenter requires Node.js 20 or newer.\n     Detected version: {version}\n     Download the LTS release from https://nodejs.org/en and try again.",
+    "portError": "No free port between {from} and {to}.\n     Close the applications using these ports, or start with a free port:\n       Windows  : set PORT=9000 && OpenPresenter.bat\n       Mac/Linux: PORT=9000 ./OpenPresenter.sh",
+    "serverError": "The server did not start.\n     See the log: project/logs/session-<date>.log",
+    "diskError": "Not enough disk space: {free} MB free.\n     Free at least 100 MB before starting OpenPresenter again.",
+    "crash": "OpenPresenter stopped unexpectedly.",
+    "noRuntime": "Node.js was not found on this computer.",
+    "exitCodes": {
+      "NORMAL": 0,
+      "PROJECT_DIR": 10,
+      "PORT": 20,
+      "SERVER": 30,
+      "DISK": 40,
+      "MOVED": 50,
+      "FORMAT": 60,
+      "RUNTIME_REFUSED": 70,
+      "DOWNLOAD": 80
+    }
+  }
+}

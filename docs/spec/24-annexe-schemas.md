@@ -166,6 +166,14 @@ existent toujours pour éviter un état indéfini après régénération.
         "ext": { "type": "string", "pattern": "^[a-z0-9]{1,8}$" },
         "bytes": { "type": "integer", "minimum": 0 },
         "originalName": { "type": "string", "maxLength": 255 },
+        "altNames": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "maxLength": 255 },
+          "description": "Autres noms d'origine d'un même contenu (A-05)"
+        },
+        "assetId": { "type": "string", "pattern": "^as_[a-f0-9]{12}$" },
+        "thumb": { "type": "string", "pattern": "^thumb/[a-f0-9]{8}\\.webp$" },
         "importedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
         "kind": { "enum": ["bible", "song", "media", "background", "logo", "font"] },
         "linked": { "type": "boolean", "default": false },

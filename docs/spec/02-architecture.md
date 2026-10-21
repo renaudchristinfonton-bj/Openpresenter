@@ -227,7 +227,7 @@ transférés.
 | ENF-15.2 | Les URLs sont **révoquées** au remplacement d'une scène ou à la fermeture |
 | ENF-15.3 | Un cache LRU de **20** URLs d'assets par page de sortie évite de recréer à chaque diffusion |
 | ENF-15.4 | Les vidéos sont `preload="metadata"` jusqu'à la diffusion, puis `auto` |
-| ENF-15.5 | Un test de fuite mesure `performance.memory` après 200 diffusions (A-16b) |
+| ENF-15.5 | Un test de fuite mesure `performance.memory` après 200 diffusions (P-09, A-18e) |
 
 ---
 

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-11 — Pages de sortie · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .unit { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .unit .uh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #07080d; border-bottom: 1px solid var(--line); font-size: 11px; }
+  .unit .uh .id { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+  .unit .uh .nm { font-weight: 800; letter-spacing: .02em; }
+  .unit .uh .sp { flex: 1; }
+  .unit .ub { padding: 12px; }
+
+  .urlbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; background: #0d1017; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 10px; color: var(--txt-3); margin-bottom: 9px; }
+  .urlbar b { color: var(--txt-2); font-weight: 600; }
+  .urlbar .kind { color: var(--accent); }
+  .urlbar .sp { flex: 1; }
+
+  .screen { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; border: 1px solid var(--line-2); }
+
+  /* 1 — plein écran */
+  .fullbg { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 15%, #241018 0%, #0c0910 55%, #05060a 100%); }
+  .fullbg .glow { position: absolute; left: 30%; top: 8%; width: 40%; height: 45%; background: radial-gradient(circle, #e8698f33, transparent 70%); filter: blur(8px); }
+  .full .ref { position: absolute; left: 50%; top: 15%; transform: translateX(-50%); font-size: 10px; letter-spacing: .16em; font-weight: 900; color: #f5b942; }
+  .full .badge { position: absolute; left: 50%; top: 21.5%; transform: translateX(-50%); font-size: 7px; letter-spacing: .18em; color: #ffffff66; }
+  .full .txt { position: absolute; left: 50%; top: 57%; transform: translate(-50%,-50%); width: 66%; text-align: center; color: #fff; font-size: 12px; line-height: 1.6; font-weight: 600; }
+  .full .part { position: absolute; right: 6%; bottom: 6%; font-family: var(--mono); font-size: 8px; color: #ffffff55; }
+
+  /* 2 — bas centré */
+  .bottom .panel { position: absolute; left: 6%; right: 6%; bottom: 6%; height: 30%; background: rgba(8,10,16,.92); border-left: 8px solid var(--accent); border-radius: 8px; }
+  .bottom .ref { position: absolute; left: 10.5%; bottom: 27.5%; font-size: 8px; font-weight: 900; letter-spacing: .12em; color: #f5b942; }
+  .bottom .txt { position: absolute; left: 10.5%; bottom: 9%; width: 62%; font-size: 10px; line-height: 1.55; color: #fff; }
+  .bottom .badge { position: absolute; right: 9%; bottom: 9%; font-size: 7px; letter-spacing: .16em; color: #ffffff55; }
+  .bottom .part { position: absolute; right: 9%; bottom: 20%; font-family: var(--mono); font-size: 8px; color: #ffffff55; }
+
+  /* 3 — lower third */
+  .lt .panel { position: absolute; left: 5%; bottom: 8%; width: 46%; height: 24%; background: rgba(8,10,16,.94); border-left: 6px solid var(--accent-2); border-radius: 6px; }
+  .lt .logo { position: absolute; left: 7%; bottom: 12%; width: 9%; height: 16%; border-radius: 5px; background: linear-gradient(135deg,#f5b942,#ed7958); display: grid; place-items: center; color: #17110a; font-weight: 900; font-size: 8px; }
+  .lt .n1 { position: absolute; left: 19%; bottom: 20%; font-size: 11px; font-weight: 800; color: #fff; }
+  .lt .n2 { position: absolute; left: 19%; bottom: 12%; font-size: 8px; color: #cbd5e1; }
+  .lt .cam { position: absolute; right: 6%; top: 6%; font-family: var(--mono); font-size: 8px; color: #ffffff44; }
+
+  /* 4 — absence de contenu / erreur */
+  .black { background: #000; display: grid; place-items: center; }
+  .black .none { color: #ffffff22; font-size: 10px; font-family: var(--mono); letter-spacing: .1em; }
+  .err { background: #0a0c11; display: grid; place-items: center; padding: 20px; text-align: center; }
+  .err .box { max-width: 70%; }
+  .err h4 { margin: 0 0 6px; font-size: 12px; }
+  .err p { margin: 0 0 10px; font-size: 10px; color: var(--txt-3); line-height: 1.5; }
+  .err .list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; text-align: left; }
+  .err .li { display: flex; align-items: center; gap: 7px; font-size: 10px; padding: 4px 7px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line); font-family: var(--mono); }
+  .err .li .sp { flex: 1; }
+
+  .meta { display: flex; gap: 10px; margin-top: 9px; font-size: 10px; color: var(--txt-3); flex-wrap: wrap; }
+  .meta b { color: var(--txt-2); font-weight: 600; }
+  .tagline { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; background: var(--bg-3); border: 1px solid var(--line-2); color: var(--txt-2); }
+
+  /* debug overlay */
+  .dbg { position: absolute; right: 6px; bottom: 6px; padding: 5px 7px; border-radius: 4px; background: #000000cc; border: 1px solid #ffffff22; font-family: var(--mono); font-size: 7px; line-height: 1.6; color: #9fe8b7; }
+  .dbg i { font-style: normal; color: #ffffff55; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html">10 Diag</a>
+  <a href="maq-11-sorties.html" class="on">11 Sorties</a>
+  <a href="maq-12-reglages.html">12 Réglages</a>
+  <a href="maq-13-catalogue.html">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://192.168.1.24:8788/o/&lt;outputId&gt;?kind=&lt;kind&gt;</span>
+    <span>MAQ-11 · pages de sortie</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> quatre pages de sortie ouvertes simultanément dans quatre clients (OBS, OBS, vMix, navigateur de test), avec leurs URL réelles et un panneau <code>debug=1</code> sur la première.</div>
+
+  <div class="wrap">
+    <div class="grid">
+
+      <!-- 1. Plein écran, opaque -->
+      <div class="unit">
+        <div class="uh">
+          <span class="dot ok"></span>
+          <span class="id">out_full</span>
+          <span class="nm">Plein écran — Salle</span>
+          <span class="sp"></span>
+          <span class="tagline">1920×1080 · contain · opaque</span>
+        </div>
+        <div class="ub">
+          <div class="urlbar">
+            <b>GET</b>
+            <span>/o/out_full?kind=<span class="kind">bible</span></span>
+            <span class="sp"></span>
+            <span>⧉</span>
+          </div>
+          <div class="screen full alpha">
+            <div class="fullbg">
+              <div class="glow"></div>
+            </div>
+            <div class="ref">JEAN 3:16</div>
+            <div class="badge">LOUIS SEGOND 1910</div>
+            <div class="txt">Car Dieu a tant aimé le monde<br>qu'il a donné son Fils unique</div>
+            <div class="part">partie 1 / 3</div>
+            <div class="dbg">
+              <i>viewport</i> 1920×1080 · dpr 1<br>
+              <i>fit</i> contain · <i>kind</i> bible<br>
+              <i>render</i> 3,1 ms · <i>ws</i> open
+            </div>
+          </div>
+          <div class="meta">
+            <span><b>Receives :</b> bible ✓ chants ✓ médias ✓ annonces ✓ habillage ✓ minuteur ✓</span>
+            <span>🔗 <b>12 connexions</b> depuis 08:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Bas centré, alpha -->
+      <div class="unit">
+        <div class="uh">
+          <span class="dot ok"></span>
+          <span class="id">out_bottom</span>
+          <span class="nm">Bas centré — Stream</span>
+          <span class="sp"></span>
+          <span class="tagline">1920×1080 · contain · alpha</span>
+        </div>
+        <div class="ub">
+          <div class="urlbar">
+            <b>GET</b>
+            <span>/o/out_bottom?kind=<span class="kind">songs</span></span>
+            <span class="sp"></span>
+            <span>⧉</span>
+          </div>
+          <div class="screen bottom alpha">
+            <div class="panel"></div>
+            <div class="ref">GRÂCE INFINIE · REFRAIN</div>
+            <div class="txt">Et la grâce qui m'a délivré de mes peurs,<br>j'étais perdu, mais je suis retrouvé.</div>
+            <div class="part">partie 2 / 2</div>
+            <div class="badge">BAS CENTRÉ · TRANSPARENT</div>
+          </div>
+          <div class="meta">
+            <span><b>Receives :</b> bible ✓ chants ✓ médias ✕ annonces ✓ habillage ✓ minuteur ✕</span>
+            <span class="tagline">Damier = alpha réel (EF-05.2c)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Lower third -->
+      <div class="unit">
+        <div class="uh">
+          <span class="dot ok"></span>
+          <span class="id">out_lt</span>
+          <span class="nm">Habillage — Incrustation</span>
+          <span class="sp"></span>
+          <span class="tagline">1920×1080 · contain · alpha</span>
+        </div>
+        <div class="ub">
+          <div class="urlbar">
+            <b>GET</b>
+            <span>/o/out_lt?kind=<span class="kind">lowerthird</span></span>
+            <span class="sp"></span>
+            <span>⧉</span>
+          </div>
+          <div class="screen lt alpha">
+            <div class="panel"></div>
+            <div class="logo">ICC</div>
+            <div class="n1">Pasteur Jean Dossou</div>
+            <div class="n2">Prédicateur · ICC Pahou</div>
+            <div class="cam">caméra 1 · live</div>
+          </div>
+          <div class="meta">
+            <span><b>Receives :</b> bible ✕ chants ✕ médias ✕ annonces ✕ habillage ✓ minuteur ✕</span>
+            <span>Preset <span class="mono">lowerthird</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. États -->
+      <div class="unit">
+        <div class="uh">
+          <span class="dot warn"></span>
+          <span class="id">out_old</span>
+          <span class="nm">États d'erreur d'une page de sortie</span>
+          <span class="sp"></span>
+          <span class="tagline">sortie supprimée · type non autorisé · rien à l'antenne</span>
+        </div>
+        <div class="ub">
+          <div class="urlbar">
+            <b>GET</b>
+            <span>/o/out_bottom?kind=<span class="kind">media</span></span>
+            <span class="sp"></span>
+            <span>⚙</span>
+          </div>
+          <div class="screen err">
+            <div class="box">
+              <h4>Cette sortie ne reçoit pas les médias.</h4>
+              <p>Le type demandé est désactivé pour « Bas centré — Stream ». Le lien direct ne contourne pas la matrice de liens (EF-08.9).</p>
+              <div class="list">
+                <div class="li"><span class="dot ok"></span> bible <span class="sp"></span> autorisé</div>
+                <div class="li"><span class="dot ok"></span> chants <span class="sp"></span> autorisé</div>
+                <div class="li"><span class="dot off"></span> médias <span class="sp"></span> refusé</div>
+              </div>
+              <button class="btn sm">Ouvrir le réglage de la sortie</button>
+            </div>
+          </div>
+          <div class="meta">
+            <span><b>Sortie introuvable :</b> « Cette sortie n'existe plus. » + liste des sorties actives (A-09d).</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="legend" style="margin-top:16px">
+      <h3>Règles de la maquette — chapitres <code>docs/spec/07-sorties-et-liens.md</code> et <code>08</code></h3>
+      <ul>
+        <li><b>Aucun élément d'interface</b> sur une page de sortie : ni bouton, ni barre, ni curseur (EF-27.8). Le panneau <code>debug=1</code> est la seule exception, et il n'apparaît qu'avec le paramètre.</li>
+        <li><b>Le fond transparent</b> est rendu par un damier dans les maquettes ; à l'antenne, la zone est réellement vide, ce qui permet l'incrustation OBS/vMix.</li>
+        <li><b>Une URL filtrée</b> ne peut pas diffuser un type exclu (EF-08.9, A-09) : la page explique le refus au lieu d'afficher un écran noir muet.</li>
+        <li><b>Le rendu est identique</b> à celui de l'éditeur : même fonction <code>render()</code>, même scène, même moteur (ENF-42, A-10).</li>
+        <li><b>Le panneau <code>debug=1</code></b> affiche viewport, cadrage, type et latence ; il ne s'affiche jamais sans le paramètre (EF-07.19).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

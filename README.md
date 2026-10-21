@@ -4,10 +4,9 @@
 
 OpenPresenter réunit tous les outils de projection dont une régie a besoin (Bible, paroles de chants, médias, habillages/lower thirds) dans une interface unifiée, avec sortie directe vers **OBS Studio**. Tout fonctionne en local sur le réseau de la salle, via un petit serveur Node.js — aucun compte à créer, aucun abonnement, aucune dépendance à un service cloud.
 
----
-
 ## Sommaire
 
+- [Cahier des charges de la refonte](#cahier-des-charges-de-la-refonte)
 - [Pourquoi ce projet](#pourquoi-ce-projet)
 - [Fonctionnalités](#fonctionnalités)
 - [Comment ça fonctionne](#comment-ça-fonctionne)
@@ -17,6 +16,25 @@ OpenPresenter réunit tous les outils de projection dont une régie a besoin (Bi
 - [Structure du projet](#structure-du-projet)
 - [Licence](#licence)
 - [Auteur & contact](#auteur--contact)
+
+---
+
+## Cahier des charges de la refonte
+
+La refonte 2026 est spécifiée de bout en bout avant d'être codée. Le document maître est
+**[`CAHIER-DES-CHARGES.md`](CAHIER-DES-CHARGES.md)** : 30 exigences fonctionnelles,
+21 exigences non fonctionnelles, 613 identifiants d'exigence, 115 tests d'acceptation,
+18 cas d'utilisation et les décisions d'architecture tranchées.
+
+| Où | Quoi |
+|---|---|
+| [`docs/spec/`](docs/spec/) | 29 chapitres : contrat écran par écran, module par module, schémas JSON, textes d'interface, traçabilité |
+| [`docs/maquettes/`](docs/maquettes/) | 14 captures de référence — ouvrir `index.html`, aucun réseau requis |
+| [`docs/ETAT-DES-LIEUX-2026-10.md`](docs/ETAT-DES-LIEUX-2026-10.md) | audit vérifié du dépôt : 3 branches, V1/V2, ce qui marche, ce qui manque |
+
+La spécification est **terminée**. L'implémentation démarre par la phase 0
+([`docs/spec/21-plan-livraison.md`](docs/spec/21-plan-livraison.md)) : API disque `project/`,
+gestion d'assets, lanceur universel, migration V1/V2.
 
 ---
 
@@ -135,6 +153,8 @@ Projet créé et maintenu par **Renaud Christin FONTON**.
 - 🌐 Site : [renaudfonton.netlify.app](https://renaudfonton.netlify.app)
 
 Suggestions, retours ou questions sont les bienvenus.
-#   O p e n p r e s e n t e r  
- #   O p e n p r e s e n t e r  
+#   O p e n p r e s e n t e r 
+ 
+ #   O p e n p r e s e n t e r 
+ 
  

@@ -183,7 +183,7 @@ accessible depuis la recherche unifiée du Studio et depuis la télécommande.
 | EF-12.6 | Ordre de pertinence : **1.** préfixe exact · **2.** préfixe d'un mot · **3.** inclusion · **4.** abréviation exacte · **5.** abréviation préfixe |
 | EF-12.7 | Au plus **8 livres** affichés, dans l'ordre canonique de la Bible à pertinence égale |
 | EF-12.8 | Le premier résultat est **toujours** en surbrillance |
-| EF-12.9 | `↑` / `↓` déplacent la surbrillance dans la liste (循环 : bas → haut) |
+| EF-12.9 | `↑` / `↓` déplacent la surbrillance dans la liste (circulaire : bas → haut) |
 | EF-12.10 | La liste est fermée par `Échap`, un clic ailleurs, ou une sélection |
 
 **Table d'abréviations** — livrée dans `app/data/book-abbr-fr.json`, **éditable** :

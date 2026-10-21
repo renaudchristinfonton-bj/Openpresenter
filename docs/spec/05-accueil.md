@@ -34,7 +34,7 @@ tiennent dans **100 vh** sur un écran 1366×768.
 │  Profil  [ICC Pahou — Culte du dimanche ▾]   Événement [Culte 26/10 ▾]    │
 │  ⏱ 00:42:18 depuis le début          ⌚ 18:04          📶 LAN 4F2K [QR]   │
 ├──────────────────────────────────────────────────────────────────────────┤
-│ ▌ZONE 3 — SORTIES (le reste de l'écran, grille自适应)                     │
+│ ▌ZONE 3 — SORTIES (le reste de l'écran, grille adaptative)                     │
 │  ┌───────────────────────┐ ┌───────────────────────┐ ┌────────────────┐  │
 │  │ ● PLEIN ÉCRAN — SALLE │ │ ● BAS CENTRÉ — STREAM │ │ ＋ AJOUTER     │  │
 │  │   1920×1080 · contain │ │   1920×1080 · alpha   │ │   UNE SORTIE   │  │

@@ -1,10 +1,14 @@
 # OpenPresenter — Cahier des charges fonctionnel et technique
 
-**Version :** 0.9 (proposition à valider)
+**Version :** 1.0 — spécification complète
 **Date :** 21 octobre 2026
 **Auteur du besoin :** Renaud Christin FONTON
-**Rédaction :** agent Arena.ai, à partir de l'audit du dépôt (voir `docs/ETAT-DES-LIEUX-2026-10.md`)
-**Statut :** document de travail — les points marqués **[D-nn]** sont des décisions à trancher (§ 14)
+**Rédaction :** agent Arena.ai, à partir de l'audit vérifié du dépôt (`docs/ETAT-DES-LIEUX-2026-10.md`)
+**Statut :** **spécification opposable**. Ce document est l'index et la synthèse ; le détail
+contractuel est dans `docs/spec/` (27 chapitres), les captures de référence dans
+`docs/maquettes/` (14 maquettes). Les décisions résiduelles (§ 14.2) ne bloquent aucune phase.
+**Volume :** 30 exigences fonctionnelles, 21 exigences non fonctionnelles, 613 identifiants
+`EF-nn.m` (+ 33 identifiants d'annexe `AN-nn.m`), 115 tests, 18 cas d'utilisation, 99 chaînes d'interface cataloguées, 16 schémas JSON.
 
 ---
 
@@ -24,8 +28,12 @@
 - [11. Critères d'acceptation](#11-critères-dacceptation)
 - [12. Risques](#12-risques)
 - [13. Hors périmètre](#13-hors-périmètre)
-- [14. Décisions à trancher](#14-décisions-à-trancher)
+- [14. Décisions](#14-décisions)
 - [15. Glossaire](#15-glossaire)
+- [16. Où lire quoi — carte documentaire](#16-où-lire-quoi--carte-documentaire)
+- [Annexe A — Comment lire ce document](#annexe-a--comment-lire-ce-document)
+- [Annexe B — Ce qui existe déjà et sera réutilisé](#annexe-b--ce-qui-existe-déjà-et-sera-réutilisé)
+- [Annexe C — Traçabilité et vérifications](#annexe-c--traçabilité-et-vérifications)
 
 ---
 
@@ -1026,6 +1034,21 @@ une fois la page chargée (PWA + service worker).
 
 ---
 
+### 5.17 Renvois vers la spécification détaillée
+
+Les sujets suivants sont spécifiés intégralement dans un chapitre dédié ; le présent
+document n'en donne que la synthèse.
+
+| Sujet | Chapitre | Ce qu'on y trouve |
+|---|---|---|
+| Journal, diagnostic, intégrité, mode secours | `23-journal-diagnostic.md` | 13 contrôles `DIAG-nn`, format du rapport, liste fermée des évènements, écran d'intégrité |
+| Schémas JSON machine-vérifiables | `24-annexe-schemas.md` | 16 schémas 2020-12, `$defs` communs, vecteurs `-ok` / `-ko` |
+| Chaînes d'interface | `25-annexe-textes.md` | 99 textes `TXT-nnn`, règles typographiques, codes d'erreur → messages |
+| Traçabilité | `26-annexe-tracabilite.md` | EF → chapitre → test → maquette, contrôles T1–T4 |
+| Atlas des écrans | `27-atlas-ecrans.md` | 36 écrans `SCR-nn`, routes, états obligatoires, couverture maquettes |
+
+---
+
 ## 6. Cas d'utilisation bout-en-bout
 
 Chaque cas doit être démontrable en test d'acceptation.
@@ -1202,81 +1225,47 @@ flèches déplacer de 1 % · `Maj + flèches` déplacer de 0,1 % ·
 
 ## 10. Plan de livraison
 
-Les phases sont ordonnées par dépendance, pas par taille. Chaque phase est
-**démontrable** à la fin.
+Le plan détaillé, avec dépendances et critères de sortie, est le chapitre
+`docs/spec/21-plan-livraison.md`. Synthèse opposable :
 
-### Phase 0 — Fondations (bloque tout le reste)
+| Phase | Objectif | Livrables | Recette | Critère de sortie |
+|---|---|---|---|---|
+| **0 — Fondations** | le produit existe et les données sont portables | consolidation `app/` · API disque `project/` · assets (SHA-256, déduplication, miniatures) · lanceur universel · migration V1/V2 · sauvegarde/export · suite de tests | A-01 → A-05, A-13 → A-13e, A-18 | copier le dossier sur un autre PC restitue tout ; le lanceur fonctionne sur les 3 OS |
+| **1 — Cœur de la régie** | conduire un culte complet avec deux sorties | sorties + matrice de liens · éditeur WYSIWYG · saisie Bible clavier · découpage + parties · accueil · studio · chants | A-06 → A-10, A-12, A-12b → A-12e | CU-01, CU-03, CU-04, CU-05 passent de bout en bout |
+| **2 — Organisation** | s'adapter à une église, préparer à l'avance | profils (3 livrés) · organisations/lieux · événements + plans · looks · médias complets | A-11, A-12f → A-12k, A-13f → A-13i, A-14f → A-14h | CU-02, CU-09, CU-10, CU-14, CU-15 passent |
+| **3 — Compléments** | confort de scène et dépannage | vue scène · télécommande · minuteurs · annonces · habillages · diagnostic/journal · intégrité | A-14, A-14b → A-14e, A-15 → A-15f, A-18b → A-18k | CU-06, CU-12, CU-13, CU-17, CU-18 passent |
+| **4 — Réseau et finitions** | ce qui exige une connexion ou une finition | catalogue · assistant OBS · vMix · accessibilité/i18n · documentation intégrée · jeton LAN | A-16, A-16b → A-16d, A-17, A-17b → A-17g | CU-08, CU-11, CU-16 passent ; P-01 → P-10 dans les seuils |
 
-| # | Livrable | EF |
-|---|---|---|
-| 0.1 | Consolidation sur le moteur V2, dépôt unique, suppression de la duplication V1/V2 **[D-03]** | — |
-| 0.2 | Persistance disque `project/` + API serveur (remplace IndexedDB comme source de vérité) | EF-01 |
-| 0.3 | Gestion d'assets avec déduplication et miniatures | EF-02 |
-| 0.4 | Lanceur universel + runtime embarqué | EF-03, EF-04 |
-| 0.5 | Migration des données V1/V2 existantes vers `project/` | EF-26 |
-
-### Phase 1 — Le cœur de la régie
-
-| # | Livrable | EF |
-|---|---|---|
-| 1.1 | Sorties multiples + **matrice de liens sortie × contenu** | EF-07, EF-08 |
-| 1.2 | Éditeur de scène WYSIWYG étendu (alignements, ombres, groupes, aimants) | EF-09 |
-| 1.3 | Bible : saisie clavier unifiée complète | EF-12 |
-| 1.4 | Bible : découpage en mots + navigation par parties | EF-13, EF-12.15+ |
-| 1.5 | Page d'accueil | EF-05 |
-
-### Phase 2 — Organisation
-
-| # | Livrable | EF |
-|---|---|---|
-| 2.1 | Profils + les 3 profils livrés | EF-20 |
-| 2.2 | Organisations, lieux, événements | EF-21, EF-22 |
-| 2.3 | Plan de déroulement relié à l'événement | EF-23 |
-| 2.4 | Looks | EF-10 |
-| 2.5 | Chants : arrangements réordonnables | EF-15 |
-
-### Phase 3 — Compléments
-
-| # | Livrable | EF |
-|---|---|---|
-| 3.1 | Vue scène enrichie, télécommande | EF-24, EF-25 |
-| 3.2 | Minuteurs, annonces, habillages | EF-17, EF-18, EF-19 |
-| 3.3 | Export / import complet du projet | EF-26 |
-| 3.4 | Diagnostic, journal | EF-28, EF-30 |
-
-### Phase 4 — Réseau et finitions
-
-| # | Livrable | EF |
-|---|---|---|
-| 4.1 | Catalogue en ligne | EF-27 |
-| 4.2 | Intégration OBS 1 clic + vMix | EF-08.5, EF-08.6 |
-| 4.3 | Accessibilité, i18n | EF-29 |
-| 4.4 | Documentation utilisateur intégrée | ENF-43 |
+**Règle** : aucune phase ne commence avant que la précédente ait produit son rapport de
+recette (chapitre 20 § 20.11). Une fonctionnalité qui dépend d'une fondation non livrée est
+reportée, jamais contournée.
 
 ---
 
 ## 11. Critères d'acceptation
 
-Chaque critère est **binaire** : il passe ou il ne passe pas.
+La grille complète (115 tests) est `docs/spec/20-tests-acceptation.md`. Elle est **binaire** :
+un test passe ou il ne passe pas ; « presque vert » vaut rouge.
+
+| Bloc | Domaine | Tests | Exigences |
+|---|---|---|---|
+| **A** | socle et hors-ligne | A-01 → A-05 | EF-01, EF-02, EF-03, EF-04 |
+| **B** | Bible | A-06 → A-08g | EF-11 → EF-14 |
+| **C** | sorties et éditeur | A-09 → A-10h | EF-07, EF-08, EF-09, EF-10 |
+| **D** | profils, studio, plan | A-11 → A-12k | EF-05, EF-06, EF-20, EF-23 |
+| **E** | contenus | A-13 → A-14h | EF-15 → EF-19, EF-26 |
+| **F** | résilience et interface | A-15 → A-17g | EF-24, EF-25, EF-27, EF-29 |
+| **G** | journal et diagnostic | A-18 → A-18k | EF-28, EF-30 |
+| **P** | performance | P-01 → P-10 | ENF-10 → ENF-15 |
+
+Les quatre tests historiques qui fondent la promesse produit :
 
 | ID | Test | Critère |
 |---|---|---|
-| **A-01** | **Hors-ligne absolu** | Débrancher le réseau avant le lancement → conduire un culte complet (bible, chant, média, plan). Aucune erreur, aucune requête sortante dans les journaux |
-| **A-02** | **Un double-clic** | Machine sans Node → double-clic → l'application s'ouvre, ou les instructions exactes s'affichent |
-| **A-03** | **Dossier = projet** | Copier le dossier sur une autre machine, vider tout cache navigateur → réouvrir → bibliothèque, looks, sorties, événements **identiques** |
-| **A-04** | **Copie à l'import** | Importer un fichier depuis `/tmp`, supprimer `/tmp/…` → le média s'affiche toujours ; le chemin d'origine est absent des fichiers du projet |
-| **A-05** | **Déduplication** | Importer deux fois le même fichier → un seul fichier dans `assets/` |
-| **A-06** | **Saisie Bible** | Taper `je` → `Entrée` → `3` → `Espace` → `16` → `Entrée` → Jean 3:16 est à l'écran, **sans souris** |
-| **A-07** | **Découpage** | Un verset de 120 mots en bandeau → ≥ 3 parties, aucune coupure de mot, aucune partie de moins de 3 mots, annotations reportées |
-| **A-08** | **Navigation** | `→` traverse toutes les parties puis passe au verset suivant ; `Maj+→` saute directement au verset suivant |
-| **A-09** | **Matrice de liens** | Une sortie avec `media: false` ne montre jamais un média, y compris via son URL directe `?kind=media` |
-| **A-10** | **Éditeur WYSIWYG** | Créer un fond image + un texte lié au verset, aligné en bas, justifié → le rendu de l'éditeur et celui de la sortie OBS sont **pixel-identiques** |
-| **A-11** | **Profils** | Passer du profil `Église` au profil `Stream live` → les sorties, looks et liens changent en une action |
-| **A-12** | **Événement** | Créer, dupliquer, supprimer un événement ; le plan suit |
-| **A-13** | **Export** | `Exporter le projet` → décompresser ailleurs → tout fonctionne |
-| **A-14** | **Résilience** | Supprimer un fichier média pendant la diffusion → placeholder, pas de freeze |
-| **A-15** | **Reprise** | Tuer le serveur pendant la diffusion → relancer → l'état est restauré |
-| **A-16** | **Tests** | `npm test` passe : unitaires sans navigateur + intégration des parcours P0 |
+| **A-01** | **Hors-ligne absolu** | réseau coupé → culte complet conduit ; capture réseau = 0 requête sortante |
+| **A-02** | **Un double-clic** | machine sans Node → installation assistée ou instructions exactes ; navigateur ouvert |
+| **A-03** | **Dossier = projet** | copie sur une autre machine + cache navigateur vidé → tout est identique |
+| **A-10** | **Rendu identique** | éditeur et page de sortie pixel-identiques (même `render()`) |
 
 ---
 
@@ -1312,29 +1301,34 @@ Explicitement **non** prévu dans cette version, pour protéger le périmètre :
 
 ---
 
-## 14. Décisions à trancher
+## 14. Décisions
 
-### 14.1 Décisions **tranchées** (21/10/2026)
+### 14.1 Décisions **tranchées**
 
-| ID | Question | **Décision retenue** | Conséquence sur le cahier des charges |
+| ID | Question | **Décision retenue** | Conséquence |
 |---|---|---|---|
-| **D-03** | Que fait-on des deux bases de code ? | ✅ **Consolidation « best of both »** : on tire les meilleures parties de V1 **et** de V2 dans un dossier unique | Voir § 4.7 (table de provenance composant par composant) et Annexe B. Aucun composant n'est conservé par habitude : chacun doit justifier sa place. |
-| **D-01** | Comment le logiciel est-il exécuté ? | ✅ **Runtime détecté**, avec **installation automatique si possible** et **instructions explicites sinon** | Le dépôt reste léger. Le lanceur (§ 5.1) devient un **véritable assistant d'installation** : détection → proposition d'installation avec accord → exécution → vérification → repli sur des instructions lisibles. Un runtime embarqué reste possible en **distribution optionnelle** (`OpenPresenter-complet.zip`), sans devenir la norme. |
-| **D-02** | Où vivent les données ? | ✅ **Disque = source de vérité**, IndexedDB = cache de lecture | `project/` est le seul endroit où l'on écrit (§ 4.3, § 7). Copier le dossier suffit à tout emporter (A-03). Un outil de migration V1/V2 → `project/` est **obligatoire** en phase 0.5. |
+| **D-01** | Comment le logiciel est-il exécuté ? | ✅ **Runtime détecté** + installation automatique si possible, instructions explicites sinon | Lanceur assistant (ch. 03) ; runtime embarqué seulement en distribution optionnelle |
+| **D-02** | Où vivent les données ? | ✅ **Disque = source de vérité**, IndexedDB = cache de lecture | `project/` seul lieu d'écriture (ch. 04) ; migration V1/V2 obligatoire en phase 0 |
+| **D-03** | Que fait-on des deux bases de code ? | ✅ **Consolidation « best of both »** | § 4.7 et Annexe B ; aucun composant conservé par habitude |
+| **D-04** | Copie-t-on tous les médias ? | ✅ **Toujours copier**, avec **avertissement au-delà de 500 Mo** et option `linked` explicitement signalée comme non portable | EF-02.6 → EF-02.8 ; seuil réglable dans `project.json` |
+| **D-05** | Le relais LAN exige-t-il un jeton ? | ✅ **Oui** : jeton de 4 caractères, obligatoire hors `localhost` | ENF-32 ; QR code sur l'accueil |
+| **D-06** | Jusqu'où aller avec vMix ? | ✅ **Liste d'URLs à coller** ; génération `.vmix` hors périmètre | EF-08.22 ; § 13 |
+| **D-07** | Un look est-il partagé ou copié entre profils ? | ✅ **Référence partagée**, avec action « Détacher » qui crée une copie | EF-20.11 ; ch. 13 |
+| **D-08** | Scènes en fichiers séparés ou incluses ? | ✅ **Fichiers séparés** (`scenes/<id>.json`) | ch. 04 § 4.2 ; débloque la phase 0 |
 
 ### 14.2 Décisions **encore ouvertes**
 
-| ID | Question | Options | Recommandation |
-|---|---|---|---|
-| **D-04** | Copie-t-on **tous** les médias, même très gros ? | A. toujours · B. toujours + seuil d'avertissement · C. option par fichier | **B** (seuil 500 Mo) |
-| **D-05** | Le relais LAN exige-t-il un jeton ? | A. non (comme aujourd'hui) · B. oui, code court affiché au lancement | **B** |
-| **D-06** | Jusqu'où aller avec vMix ? | A. liste d'URLs à coller · B. générer un fichier de scène `.vmix` | **A** d'abord, B ensuite |
-| **D-07** | Un look est-il partagé ou copié entre profils ? | A. référence partagée · B. copie indépendante | **A** avec « détacher » |
-| **D-08** | Les scènes sont-elles des fichiers séparés ou incluses dans `outputs.json` ? | A. fichiers séparés · B. incluses | **A** (partage et export faciles) |
-| **D-09** | Nom du produit et du dossier cible | `OpenPresenter` · `OpenPresenter 2` · autre | à confirmer |
-| **D-10** | Licence du projet | MIT · GPL-3.0 · autre | **MIT** (cohérent avec le README actuel) |
-| **D-11** | Faut-il un mode « kiosque » (l'application ouvre sa propre fenêtre) ? | A. non, navigateur · B. oui, en option | **B** en phase 4 seulement |
-| **D-12** | Langues à livrer | FR seul · FR + EN | **FR** livré, architecture i18n prête |
+Aucune ne bloque une phase de livraison.
+
+| ID | Question | Recommandation | Échéance | Impact si non tranchée |
+|---|---|---|---|---|
+| **D-09** | Nom définitif du produit et du dossier | `OpenPresenter` | avant publication | cosmétique : libellés, nom du dossier |
+| **D-10** | Licence du projet | MIT | avant publication | aucune incidence technique |
+| **D-11** | Mode kiosque (fenêtre dédiée) | phase 4, optionnel | avant phase 4 | aucune : le navigateur suffit |
+| **D-12** | Langues livrées | FR livré, EN préparé | avant phase 4 | aucune : les chaînes sont déjà externalisées (ch. 25) |
+
+**Règle** : une décision ouverte ne peut jamais être contournée par une implémentation
+temporaire. Si elle devient bloquante, elle est tranchée et reportée dans 14.1.
 
 ---
 
@@ -1356,6 +1350,42 @@ Explicitement **non** prévu dans cette version, pour protéger le périmètre :
 | **Projet** | Le dossier complet contenant logiciel, données et médias. |
 | **Asset** | Fichier binaire du projet, adressé par son empreinte SHA-256. |
 | **Relais** | Serveur WebSocket local qui synchronise régie, sorties et télécommande. |
+
+---
+
+## 16. Où lire quoi — carte documentaire
+
+| Document | Rôle | Volume |
+|---|---|---|
+| `CAHIER-DES-CHARGES.md` (ce fichier) | index, synthèse, décisions, plan, glossaire | ~1 400 lignes |
+| `docs/ETAT-DES-LIEUX-2026-10.md` | audit vérifié du dépôt : 3 branches, V1/V2, ce qui marche, ce qui manque | 232 lignes |
+| `docs/spec/01` → `22` | spécification contractuelle écran par écran, module par module | ~7 000 lignes |
+| `docs/spec/23-journal-diagnostic.md` | journal, diagnostic, intégrité, mode secours | 407 lignes |
+| `docs/spec/24-annexe-schemas.md` | 16 schémas JSON Schema 2020-12 + vecteurs de test | 1 240 lignes |
+| `docs/spec/25-annexe-textes.md` | catalogue des 99 chaînes d'interface (`TXT-001` → `TXT-099`) | 978 lignes |
+| `docs/spec/26-annexe-tracabilite.md` | EF → chapitre → test → maquette ; contrôles automatiques | 220 lignes |
+| `docs/spec/27-atlas-ecrans.md` | 36 écrans (`SCR-01` → `SCR-36`), routes, états, maquettes | 200 lignes |
+| `docs/spec/99-glossaire.md` | 40+ termes normalisés | 239 lignes |
+| `docs/maquettes/` | 14 captures de référence contractuelles | ~4 500 lignes |
+
+### 16.1 Ordre de lecture recommandé
+
+| Lecteur | Parcours |
+|---|---|
+| **Décideur** | § 0 → § 2 → § 10 → § 12 → § 14 |
+| **Développeur** | § 4 → `02-architecture` → `24-annexe-schemas` → `27-atlas-ecrans` → chapitres de son module |
+| **Designer / intégrateur** | `01-vision-personas` → `docs/maquettes/` → chapitres 05 à 15 → `25-annexe-textes` |
+| **Testeur** | `20-tests-acceptation` → `26-annexe-tracabilite` → `19-cas-utilisation` |
+| **Utilisateur final** | `LISEZ-MOI.txt` (livré avec le logiciel), pas ce document |
+
+### 16.2 Ce qui n'est **pas** dans ce document
+
+| Sujet | Où il est |
+|---|---|
+| Manuels utilisateur pas à pas | `LISEZ-MOI.txt` livré (ENF-43), à rédiger en phase 4 |
+| Documentation de l'API pour intégrateurs | `02-architecture` § 2.3 (contrat) ; publication OpenAPI prévue en phase 4 |
+| Journal des modifications | `CHANGELOG.md` (à créer en phase 0) |
+| Guide de contribution | `CONTRIBUTING.md` (à créer avant publication) |
 
 ---
 
@@ -1390,3 +1420,22 @@ Explicitement **non** prévu dans cette version, pour protéger le périmètre :
 | Installation OBS 1 clic | `servergestionobs/sync-relay-server.js` (obs-websocket v5) | porté en V2 |
 | Recherche unifiée | V1 `studio_unifie.html`, V2 `index.html` | conservée |
 | Suite de tests | `openpresenter2/tests/` (17 fichiers), `servergestionobs/tests/` | fusionnée |
+
+## Annexe C — Traçabilité et vérifications
+
+| Vérification | Où | Critère |
+|---|---|---|
+| Chaque chapitre est indexé | `26-annexe-tracabilite.md` T1 | 0 fichier non indexé |
+| Chaque EF est couverte | T2 | 0 EF orpheline (30 domaines, 569 identifiants) |
+| Chaque test est défini une fois | T3 | 0 test orphelin (115 identifiants) |
+| Chaque maquette citée existe | T4 | 0 maquette manquante (14 fichiers) |
+| Chaque écran est répertorié | `27-atlas-ecrans.md` | 36 écrans, 0 route sauvage |
+| Chaque chaîne est cataloguée | `25-annexe-textes.md` | 99 chaînes, 0 littéral codé en dur |
+| Chaque objet a un schéma | `24-annexe-schemas.md` | 16 schémas, vecteurs `-ok` / `-ko` |
+| Aucune dépendance réseau | `ETAT-DES-LIEUX` + A-01 | 0 CDN, 0 requête sortante hors catalogue |
+
+**Commande unique** : `npm run trace:check` (spécifiée en 26.7). Le cahier des charges n'est
+publié que si elle sort avec le code 0.
+
+---
+

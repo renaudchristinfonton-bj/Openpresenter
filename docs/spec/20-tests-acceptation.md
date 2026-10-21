@@ -32,10 +32,14 @@
 
 ### A-02 — Un double-clic
 
-| Élément | Détail |
-|---|---|
-| **Scénarios** | (a) sans Node + Internet · (b) sans Node + sans Internet · (c) Node 16 présent · (d) serveur déjà lancé · (e) chemin avec accents et espaces · (f) lecture seule |
-| **Attendu** | (a) installation proposée puis application ouverte · (b) instructions exactes · (c) refus explicite · (d) navigateur ouvert, un seul serveur · (e) démarrage nominal · (f) mode dégradé + bandeau |
+| Sous-test | Environnement | Attendu |
+|---|---|---|
+| **A-02** | sans Node + Internet | installation proposée, acceptée, application ouverte |
+| **A-02b** | sans Node + **sans** Internet | instructions exactes (03-lanceur.md § 3.4.3), aucune tentative d'installation, sortie code `20` |
+| **A-02c** | Node 16 présent | refus explicite avec la version minimale, code `30`, jamais de démarrage dégradé silencieux |
+| **A-02d** | serveur déjà lancé sur le même dossier | navigateur ouvert sur l'instance existante, **un seul** serveur (vérifié par `ps` et par `.lock`) |
+| **A-02e** | chemin avec accents et espaces (`/home/jean/L'Église du Plateau/`) | démarrage nominal, journal sans erreur d'encodage |
+| **A-02f** | dossier en lecture seule | mode dégradé explicite, bandeau orange, aucune écriture tentée |
 | **Échec** | installation silencieuse, stack trace affichée, deux serveurs sur le même dossier |
 
 ### A-03 — Dossier = projet
@@ -150,6 +154,10 @@
 | Sous-test | Scénario | Attendu |
 |---|---|---|
 | A-11 | passer de « Église » à « Stream live » | sorties, looks, liens changent en une action |
+| A-11b | diffuser puis revenir à l'accueil | l'aperçu montre le contenu en moins de 200 ms |
+| A-11c | « Tout couper » depuis l'accueil | toutes les sorties vides en < 100 ms |
+| A-11d | écran 1366×768 | les 4 zones de l'accueil visibles sans défilement |
+| A-11e | navigation clavier depuis l'accueil | « Ouvrir le Studio » atteint en ≤ 5 tabulations |
 | A-11f | profil référençant une scène supprimée | rapport, aucune erreur bloquante |
 | A-11g | modifier une copie de profil | l'original intact |
 | A-11h | export avec médias → import dans un projet vierge | tout fonctionne |
@@ -224,7 +232,28 @@
 
 ---
 
-## 20.8 Tests de performance
+## 20.8 Bloc G — Journal, diagnostic et intégrité
+
+> Détail contractuel : `23-journal-diagnostic.md`. Ces tests sont **manuels** sauf A-18h,
+> qui est automatisé (analyse du rapport produit).
+
+| Test | Scénario | Attendu |
+|---|---|---|
+| A-18 | diagnostic complet, tout nominal | 13 lignes vertes, rapport conforme à EF-30.17 |
+| A-18b | débrancher une sortie | `DIAG-06` orange en < 10 s, sortie nommée, `Copier le lien` fonctionnel |
+| A-18c | rendre `project.json` illisible | mode secours, `503 LOCKED` sur toute écriture, restauration proposée |
+| A-18d | supprimer `cache/` puis ouvrir le diagnostic | `DIAG-12` orange, reconstruction < 3 s, retour au vert |
+| A-18e | 200 diffusions puis `DIAG-09` | pas de fuite de sockets, latence < 50 ms |
+| A-18f | rechercher un mot dans 30 jours de journal | résultat en < 3 s |
+| A-18g | purger les entrées de plus de 7 jours | confirmation chiffrée, fichier du jour intact |
+| A-18h | analyse du rapport de diagnostic | aucun chemin absolu, aucun jeton, aucune adresse MAC |
+| A-18i | couper le serveur pendant l'affichage | lignes grises `Inconnu`, page conservée, reprise automatique |
+| A-18j | `Ctrl+Maj+D` depuis le studio | diagnostic ouvert en < 300 ms |
+| A-18k | 3 assets orphelins puis `Supprimer` | confirmation chiffrée, fichiers déplacés dans `backups/orphelins-<date>/` |
+
+---
+
+## 20.9 Tests de performance
 
 | Test | Mesure | Seuil |
 |---|---|---|
@@ -241,7 +270,7 @@
 
 ---
 
-## 20.9 Couverture minimale exigée
+## 20.10 Couverture minimale exigée
 
 | Module | Couverture |
 |---|---|
@@ -255,7 +284,7 @@
 
 ---
 
-## 20.10 Rapport de recette
+## 20.11 Rapport de recette
 
 À la fin de chaque phase, produire :
 

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-10 — Diagnostic · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { height: 780px; display: grid; grid-template-rows: 56px 52px 1fr 40px; background: var(--bg-2); }
+
+  .dh { display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .dh .back { font-size: 11px; color: var(--txt-2); }
+  .dh h1 { margin: 0; font-size: 14px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+  .dh .proj { font-size: 11px; color: var(--txt-3); }
+  .dh .sp { flex: 1; }
+
+  .sum { display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--bg-3); border-bottom: 1px solid var(--line); }
+  .sum .big { font-size: 20px; font-weight: 900; letter-spacing: -.02em; }
+  .sum .big em { font-style: normal; color: var(--ok); }
+  .sum .age { font-size: 10px; color: var(--txt-3); margin-left: auto; }
+
+  .scroll { overflow: auto; padding: 12px 16px 20px; }
+  .grp { margin-bottom: 14px; }
+  .grp h3 { margin: 0 0 6px; font-size: 9px; letter-spacing: .09em; text-transform: uppercase; color: var(--txt-3); font-weight: 800; }
+  .line { display: grid; grid-template-columns: 18px 210px 1fr auto; gap: 10px; align-items: center; padding: 7px 9px; border-radius: 6px; border: 1px solid transparent; font-size: 12px; }
+  .line:hover { background: #ffffff06; border-color: var(--line); }
+  .line .ico { font-weight: 900; text-align: center; }
+  .line .ico.ok { color: var(--ok); }
+  .line .ico.warn { color: var(--warn); }
+  .line .ico.na { color: var(--txt-3); }
+  .line .nm { color: var(--txt-2); }
+  .line .val { color: var(--txt); font-family: var(--mono); font-size: 11px; }
+  .line .val b { font-family: var(--sans); font-weight: 700; }
+  .line .act { display: flex; gap: 5px; }
+  .line.warnrow { background: #f59e0b0d; border-color: #f59e0b33; }
+  .line.warnrow .nm { color: #ffcf80; }
+  .line.na { opacity: .65; }
+  .sub { grid-column: 3 / 5; padding: 6px 0 2px; font-size: 11px; color: var(--txt-2); }
+  .sub .list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+  .sub .srow { display: flex; align-items: center; gap: 8px; padding: 4px 7px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line); }
+  .sub .srow .sn { flex: 1; }
+  .sub .srow .st { font-family: var(--mono); font-size: 10px; color: var(--txt-3); }
+
+  .foot { display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #1a1508; border-top: 1px solid #2e2610; font-size: 10px; color: var(--accent); }
+
+  .legend2 { max-width: 1440px; margin: 16px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .legend2 .legend { margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html" class="on">10 Diag</a>
+  <a href="maq-11-sorties.html">11 Sorties</a>
+  <a href="maq-12-reglages.html">12 Réglages</a>
+  <a href="maq-13-catalogue.html">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/diagnostic.html</span>
+    <span>MAQ-10 · diagnostic</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> 12 contrôles verts sur 13 lignes, 1 avertissement (une sortie sans client). Cet état est aussi celui du test A-18b après débranchement de « Bas centré ».</div>
+
+  <div class="app">
+
+    <div class="dh">
+      <span class="back">← Accueil</span>
+      <h1>Diagnostic</h1>
+      <span class="proj">Projet : ICC Pahou · 3 bibles · 84 chants</span>
+      <span class="sp"></span>
+      <button class="btn sm">⟳ Revérifier</button>
+      <button class="btn sm primary">⧉ Copier le rapport</button>
+      <button class="btn sm">⤓ Enregistrer</button>
+    </div>
+
+    <div class="sum">
+      <span class="big"><em>✔ 12</em> contrôles sur 13 réussis</span>
+      <span class="pill warn"><span class="dot warn"></span> 1 avertissement</span>
+      <span class="pill ok"><span class="dot ok"></span> Aucune erreur</span>
+      <span class="age">Vérifié il y a 2 s · rafraîchissement automatique dans 8 s</span>
+    </div>
+
+    <div class="scroll">
+
+      <!-- SERVEUR -->
+      <div class="grp">
+        <h3>Serveur</h3>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Serveur local</span>
+          <span class="val">en marche · port 8788 · 41 min</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Port disponible</span>
+          <span class="val">8788 libre pour la prochaine session</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Dossier du projet</span>
+          <span class="val">inscriptible · 128,4 Go libres</span>
+          <span class="act"><button class="btn sm">Ouvrir le dossier</button><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Version du format</span>
+          <span class="val">3 · à jour</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Runtime Node.js</span>
+          <span class="val">v22.11.0</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+      </div>
+
+      <!-- DIFFUSION -->
+      <div class="grp">
+        <h3>Diffusion</h3>
+
+        <div class="line warnrow">
+          <span class="ico warn">⚠</span>
+          <span class="nm">Sorties connectées</span>
+          <span class="val"><b>1 sur 3</b> — « Bas centré » n'a aucun client</span>
+          <span class="act"><button class="btn sm">Copier les 3 liens</button><button class="btn sm">▸</button></span>
+          <div class="sub">
+            <div class="list">
+              <div class="srow">
+                <span class="dot ok"></span><span class="sn">Plein écran — Salle</span>
+                <span class="st">connectée · 41 min</span>
+                <button class="btn sm ghost">Ouvrir</button>
+                <button class="btn sm ghost">Copier</button>
+              </div>
+              <div class="srow">
+                <span class="dot off"></span><span class="sn">Bas centré — Stream</span>
+                <span class="st">aucun client · dernière connexion il y a 12 min</span>
+                <button class="btn sm ghost">Ouvrir</button>
+                <button class="btn sm ghost">Copier</button>
+              </div>
+              <div class="srow">
+                <span class="dot off"></span><span class="sn">Retour scène</span>
+                <span class="st">sortie désactivée</span>
+                <button class="btn sm ghost" disabled>Ouvrir</button>
+                <button class="btn sm ghost" disabled>Copier</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Contenu à l'antenne</span>
+          <span class="val">Jean 3:16 · 2 sorties</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Horloge système</span>
+          <span class="val">écart 0,2 s</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">WebSocket</span>
+          <span class="val">latence médiane 3 ms · 2 canaux ouverts</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+      </div>
+
+      <!-- DONNÉES -->
+      <div class="grp">
+        <h3>Données</h3>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Intégrité du projet</span>
+          <span class="val">0 orphelin · 0 manquant · 12 miniatures absentes</span>
+          <span class="act"><button class="btn sm">Ouvrir l'outil d'intégrité</button><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Dernière sauvegarde</span>
+          <span class="val">aujourd'hui à 17:02 · auto-2026-10-21-1702.zip · 2,4 Mo</span>
+          <span class="act"><button class="btn sm">Sauvegarder maintenant</button><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Index de recherche</span>
+          <span class="val">à jour · 31 102 versets · 84 chants · 213 médias</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+      </div>
+
+      <!-- ENVIRONNEMENT -->
+      <div class="grp">
+        <h3>Environnement</h3>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Navigateur</span>
+          <span class="val">Chrome 141 · pris en charge</span>
+          <span class="act"><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line">
+          <span class="ico ok">✔</span>
+          <span class="nm">Réseau local</span>
+          <span class="val">192.168.1.24:8788 · jeton 4F2K</span>
+          <span class="act"><button class="btn sm">QR</button><button class="btn sm ghost">▸</button></span>
+        </div>
+
+        <div class="line na">
+          <span class="ico na">—</span>
+          <span class="nm">Accès Internet</span>
+          <span class="val">désactivé par réglage (catalogue)</span>
+          <span class="act"><button class="btn sm ghost" disabled>Activer</button></span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="foot">
+      <span>⚠</span>
+      <span>N'exposez jamais ce port sur Internet. Ce logiciel est conçu pour un réseau local de confiance.</span>
+      <span class="spacer"></span>
+      <span class="tiny">Ctrl+Maj+D</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend2">
+  <div class="legend">
+    <h3>Règles de la maquette — chapitre <code>docs/spec/23-journal-diagnostic.md</code></h3>
+    <ul>
+      <li><b>Une ligne par contrôle</b> : symbole, nom, valeur (EF-30.4) ; le détail est derrière <code>▸</code>.</li>
+      <li><b>Ordre fixe</b> : Serveur, Diffusion, Données, Environnement (EF-30.5).</li>
+      <li><b>Une sortie sans client est nommée</b>, avec <code>Ouvrir</code> et <code>Copier</code> (EF-30.8).</li>
+      <li><b>Accès Internet</b> est grisé par défaut : aucune sonde réseau sans clic (EF-30.13).</li>
+      <li><b>Le bandeau sécurité</b> est permanent (ENF-33, SEC-5).</li>
+    </ul>
+  </div>
+  <div class="legend">
+    <h3>États non représentés sur cette capture</h3>
+    <ul>
+      <li><b>Serveur injoignable :</b> toutes les lignes passent en gris <code>Inconnu — serveur injoignable</code>, la page reste ouverte (EF-30.14, A-18i).</li>
+      <li><b>Projet illisible :</b> bandeau rouge + bouton <code>Mode secours</code>, aucune écriture possible (EF-30.22, A-18c).</li>
+      <li><b>Version du format trop récente :</b> ligne rouge, diagnostic en lecture seule.</li>
+      <li><b>Rapport copié :</b> le bouton affiche <code>Copié</code> pendant 2 s (EF-30.20).</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

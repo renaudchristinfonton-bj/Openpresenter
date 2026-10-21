@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-04 — Studio, module Chants · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-rows: 52px 1fr 88px; height: 820px; }
+
+  .head { display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .mark { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #ed7958); display: grid; place-items: center; color: #17110a; font-size: 9px; font-weight: 900; }
+  .search { flex: 1; max-width: 520px; display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 7px; background: #0d1017; border: 1px solid var(--line-2); font-size: 12px; color: var(--txt-3); }
+
+  .body { display: grid; grid-template-columns: 200px 1fr 320px; min-height: 0; }
+
+  .nav { background: #0a0c11; border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+  .nav a { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 6px; font-size: 12px; color: var(--txt-2); text-decoration: none; }
+  .nav a:hover { background: #141822; color: var(--txt); }
+  .nav a.on { background: #f5b9421c; color: var(--accent); font-weight: 700; }
+  .nav .sep { height: 1px; background: var(--line); margin: 7px 4px; }
+  .nav .kbd { margin-left: auto; font-size: 9px; color: var(--txt-3); font-family: var(--mono); }
+
+  .content { display: grid; grid-template-columns: 268px 1fr; min-height: 0; min-width: 0; }
+
+  .lib { border-right: 1px solid var(--line); padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+  .sect-t { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; }
+  .sect-t .n { margin-left: auto; font-family: var(--mono); }
+  .folders { display: flex; flex-wrap: wrap; gap: 4px; }
+  .fchip { padding: 3px 8px; border-radius: 999px; font-size: 10px; background: #0d1017; border: 1px solid var(--line-2); color: var(--txt-2); }
+  .fchip.on { background: #f5b9421c; border-color: #f5b94266; color: var(--accent); font-weight: 700; }
+  .song { display: flex; gap: 8px; padding: 7px 8px; border-radius: 6px; border: 1px solid transparent; }
+  .song:hover { background: #12161f; }
+  .song.on { background: #f5b94214; border-color: #f5b94255; }
+  .song .t { font-size: 12px; font-weight: 600; }
+  .song .m { font-size: 10px; color: var(--txt-3); }
+  .song .k { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--accent); }
+
+  .main { padding: 12px 14px; overflow: auto; min-width: 0; }
+  .songhead { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .songhead h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+  .songhead .sub { font-size: 10px; color: var(--txt-3); margin-top: 3px; }
+  .songhead .acts { margin-left: auto; display: flex; gap: 6px; }
+
+  .split2 { display: grid; grid-template-columns: 1fr 250px; gap: 12px; min-width: 0; }
+  .panel { background: #0d1017; border: 1px solid var(--line); border-radius: 8px; }
+  .panel .ph { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--line); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-3); font-weight: 700; }
+  .panel .pb { padding: 10px; }
+
+  .sec { display: flex; gap: 9px; padding: 8px 9px; border-radius: 6px; border: 1px solid transparent; font-size: 12px; line-height: 1.55; }
+  .sec:hover { background: #12161f; }
+  .sec.on { background: #f5b94214; border-color: #f5b94255; }
+  .sec .tag { flex: none; width: 62px; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-3); font-weight: 700; padding-top: 2px; }
+  .sec.on .tag { color: var(--accent); }
+  .sec .l { flex: 1; color: var(--txt-2); }
+  .sec.on .l { color: var(--txt); }
+  .sec .part { font-family: var(--mono); font-size: 9px; color: var(--txt-3); align-self: flex-start; }
+
+  .arr { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .arr .chip { padding: 4px 9px; border-radius: 5px; background: #0d1017; border: 1px solid var(--line-2); font-size: 10px; color: var(--txt-2); }
+  .arr .chip.on { background: var(--accent); border-color: var(--accent); color: #17110a; font-weight: 800; }
+  .arr .chip.cur { box-shadow: 0 0 0 2px #f5b94255; }
+  .arr .arw { color: var(--txt-3); font-size: 10px; }
+
+  .parts { display: flex; align-items: center; gap: 5px; margin-top: 9px; }
+  .parts .pchip { flex: 1; height: 24px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 10px; color: var(--txt-3); }
+  .parts .pchip.on { background: var(--accent); color: #17110a; font-weight: 800; border-color: var(--accent); }
+  .parts .arr2 { width: 24px; height: 24px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 10px; color: var(--txt-2); }
+
+  .insp { background: #0a0c11; border-left: 1px solid var(--line); padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+  .targets { display: flex; flex-direction: column; gap: 5px; }
+  .tgt { display: flex; align-items: center; gap: 7px; font-size: 11px; padding: 5px 7px; border-radius: 5px; background: #0d1017; border: 1px solid var(--line); }
+  .cb { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 9px; color: #17110a; flex: none; }
+  .cb.on { background: var(--accent); border-color: var(--accent); font-weight: 900; }
+  .cb.dis { opacity: .35; }
+  .tgt .why { margin-left: auto; font-size: 9px; color: var(--txt-3); }
+
+  .seg { display: flex; gap: 3px; }
+  .seg .s { flex: 1; text-align: center; padding: 5px 0; font-size: 10px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line-2); color: var(--txt-2); }
+  .seg .s.on { background: #f5b94222; border-color: #f5b94266; color: var(--accent); font-weight: 700; }
+
+  .row2 { display: flex; align-items: center; gap: 8px; }
+  .row2 .lbl2 { font-size: 10px; color: var(--txt-3); width: 74px; flex: none; }
+  .num { font-family: var(--mono); font-size: 12px; padding: 5px 8px; background: #0d1017; border: 1px solid var(--line-2); border-radius: 5px; }
+
+  .pvwrap { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; border: 1px solid var(--line-2); }
+  .pvwrap .bg { position: absolute; inset: 0; background: linear-gradient(135deg,#05060a,#19131a 70%,#241018); }
+  .pvwrap .panelbg { position: absolute; left: 5%; right: 5%; bottom: 4%; height: 31%; background: rgba(8,10,16,.93); border-left: 6px solid var(--accent); border-radius: 6px; }
+  .pvwrap .reftxt { position: absolute; left: 12%; bottom: 28.5%; font-size: 7px; letter-spacing: .1em; color: #cbd5e1; font-weight: 800; }
+  .pvwrap .lyr { position: absolute; left: 11%; bottom: 9%; width: 58%; font-size: 8px; line-height: 1.5; color: #fff; }
+  .pvwrap .part { position: absolute; right: 8%; bottom: 8%; font-size: 7px; color: #ffffff80; font-family: var(--mono); }
+  .pvwrap .hint { position: absolute; bottom: 3px; left: 7px; font-size: 7px; color: #ffffff55; font-family: var(--mono); }
+
+  /* Barre de plan */
+  .plan { display: grid; grid-template-columns: 300px 1fr 300px; gap: 12px; align-items: center; padding: 0 14px; background: #07080d; border-top: 1px solid var(--line); }
+  .cue { display: flex; align-items: center; gap: 7px; font-size: 11px; }
+  .cue .idx { font-family: var(--mono); font-size: 9px; color: var(--txt-3); }
+  .cue .now { font-weight: 800; color: var(--txt); }
+  .cue .nx { color: var(--txt-3); }
+  .pbtn { width: 28px; height: 26px; border-radius: 5px; background: #0d1017; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 11px; color: var(--txt-2); }
+  .dh { margin-left: auto; font-size: 10px; color: var(--txt-3); }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html" class="on">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html">10 Diag</a>
+  <a href="maq-11-sorties.html">11 Sorties</a>
+  <a href="maq-12-reglages.html">12 Réglages</a>
+  <a href="maq-13-catalogue.html">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#songs</span>
+    <span>MAQ-04 · module Chants</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> chant « Grâce infinie » sélectionné, arrangement « Culte » en cours, 3ᵉ étape (refrain) à l'antenne sur les deux sorties, découpage à 30 mots.</div>
+
+  <div class="app">
+
+    <div class="head">
+      <div class="mark">OP</div>
+      <div class="search">🔍 <span>Rechercher un chant, un verset, un média…</span><span class="spacer"></span><span class="tiny dim">Ctrl K</span></div>
+      <div class="spacer"></div>
+      <span class="pill ok"><span class="dot ok"></span> 2 sorties</span>
+      <span class="pill accent">EN DIRECT · Refrain</span>
+      <button class="btn sm danger">⏹ Couper</button>
+    </div>
+
+    <div class="body">
+
+      <!-- Navigation -->
+      <div class="nav">
+        <a href="#"><span>📋</span> Plan <span class="kbd">Alt 1</span></a>
+        <a href="#"><span>📖</span> Bible <span class="kbd">Alt 2</span></a>
+        <a href="#" class="on"><span>🎤</span> Chants <span class="kbd">Alt 3</span></a>
+        <a href="#"><span>🖼️</span> Médias <span class="kbd">Alt 4</span></a>
+        <a href="#"><span>📢</span> Annonces <span class="kbd">Alt 5</span></a>
+        <a href="#"><span>⏱</span> Minuteur <span class="kbd">Alt 6</span></a>
+        <a href="#"><span>🏷️</span> Habillages <span class="kbd">Alt 7</span></a>
+        <div class="sep"></div>
+        <a href="#"><span>🖥️</span> Sorties <span class="kbd">Alt 8</span></a>
+        <a href="#"><span>🎚️</span> Profils <span class="kbd">Alt 9</span></a>
+        <a href="#"><span>📅</span> Événements</a>
+        <a href="#"><span>📚</span> Bibliothèque</a>
+        <a href="#"><span>🧹</span> Intégrité</a>
+        <a href="#"><span>⚙</span> Réglages</a>
+      </div>
+
+      <!-- Bibliothèque + chant -->
+      <div class="content">
+
+        <div class="lib">
+          <div>
+            <div class="sect-t">DOSSIERS <span class="n">84</span></div>
+            <div class="folders">
+              <span class="fchip on">Tous</span>
+              <span class="fchip">Louange</span>
+              <span class="fchip">Adoration</span>
+              <span class="fchip">Noël</span>
+              <span class="fchip">2026</span>
+            </div>
+          </div>
+          <div>
+            <div class="sect-t">CHANTS <span class="n">84</span></div>
+            <div class="song on">
+              <div><div class="t">Grâce infinie</div><div class="m">Traditionnel · 6 sections</div></div>
+              <div class="k">G</div>
+            </div>
+            <div class="song">
+              <div><div class="t">Que ma bouche chante</div><div class="m">ICC Pahou · 4 sections</div></div>
+              <div class="k">D</div>
+            </div>
+            <div class="song">
+              <div><div class="t">Saint, saint, saint</div><div class="m">Traditionnel · 3 sections</div></div>
+              <div class="k">A</div>
+            </div>
+            <div class="song">
+              <div><div class="t">Amazing Grace</div><div class="m">John Newton · 6 sections</div></div>
+              <div class="k">G</div>
+            </div>
+            <div class="song">
+              <div><div class="t">Tu es fidèle</div><div class="m">ICC Pahou · 5 sections</div></div>
+              <div class="k">E</div>
+            </div>
+            <div class="song">
+              <div><div class="t">Ô viens, Emmanuel</div><div class="m">Traditionnel · 4 sections</div></div>
+              <div class="k">Em</div>
+            </div>
+          </div>
+          <div class="tiny dim">↑↓ parcourir · Entrée sélectionner<br>Maj+Entrée aperçu sans diffuser</div>
+          <button class="btn sm">＋ Importer un chant</button>
+        </div>
+
+        <!-- Chant -->
+        <div class="main">
+          <div class="songhead">
+            <div>
+              <h2>Grâce infinie</h2>
+              <div class="sub">Traditionnel · John Newton · Domaine public · Sol · 3/4 · 4 min</div>
+            </div>
+            <div class="acts">
+              <button class="btn sm">✎ Éditer</button>
+              <button class="btn sm">◫ Arrangements</button>
+              <button class="btn sm">⧉ Copier</button>
+            </div>
+          </div>
+
+          <div class="split2">
+
+            <div>
+              <div class="panel" style="margin-bottom:10px">
+                <div class="ph">ARRANGEMENT « CULTE » <span class="spacer"></span><span class="tiny">6 étapes · 3ᵉ en cours</span></div>
+                <div class="pb">
+                  <div class="arr">
+                    <span class="chip">Couplet 1</span><span class="arw">›</span>
+                    <span class="chip">Refrain</span><span class="arw">›</span>
+                    <span class="chip on cur">Couplet 2</span><span class="arw">›</span>
+                    <span class="chip">Refrain</span><span class="arw">›</span>
+                    <span class="chip">Refrain</span><span class="arw">›</span>
+                    <span class="chip">Refrain</span>
+                  </div>
+                  <div class="row" style="margin-top:9px">
+                    <button class="btn sm">↻ Répéter</button>
+                    <button class="btn sm">⤼ Sauter</button>
+                    <button class="btn sm">＋ Refrain à la fin</button>
+                    <span class="spacer"></span>
+                    <span class="tiny dim">Alt+→ / Alt+←</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="ph">PAROLES <span class="spacer"></span><span class="tiny">glisser pour réordonner</span><span class="tiny">⚙ accords affichés</span></div>
+                <div class="pb" style="padding:6px">
+                  <div class="sec">
+                    <span class="tag">Couplet 1</span>
+                    <span class="l">Grâce infinie, quel doux son<br>Qui sauva un misérable comme moi</span>
+                    <span class="part">1/2</span>
+                  </div>
+                  <div class="sec">
+                    <span class="tag">Refrain</span>
+                    <span class="l">J'étais perdu, mais je suis retrouvé<br>J'étais aveugle, mais maintenant je vois</span>
+                    <span class="part">1/2</span>
+                  </div>
+                  <div class="sec on">
+                    <span class="tag">Couplet 2</span>
+                    <span class="l">C'est la grâce qui m'a enseigné la crainte<br>Et la grâce qui m'a délivré de mes peurs</span>
+                    <span class="part">2/2</span>
+                  </div>
+                  <div class="sec">
+                    <span class="tag">Refrain</span>
+                    <span class="l">J'étais perdu, mais je suis retrouvé<br>J'étais aveugle, mais maintenant je vois</span>
+                    <span class="part">1/2</span>
+                  </div>
+                  <div class="sec">
+                    <span class="tag">Couplet 3</span>
+                    <span class="l">Combien de dangers et de peines ai-je traversés<br>Mais la grâce m'a conduit jusqu'ici</span>
+                    <span class="part">1/2</span>
+                  </div>
+                  <div class="sec">
+                    <span class="tag">Refrain</span>
+                    <span class="l">J'étais perdu, mais je suis retrouvé<br>J'étais aveugle, mais maintenant je vois</span>
+                    <span class="part">1/2</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:10px">
+                <div class="ph">PARTIES DE LA SECTION COURANTE <span class="spacer"></span><span class="tiny">→ pour avancer · 2/2</span></div>
+                <div class="pb">
+                  <div class="parts">
+                    <span class="pchip">1 · C'est la grâce qui m'a enseigné la crainte</span>
+                    <span class="pchip on">2 · Et la grâce qui m'a délivré de mes peurs</span>
+                    <span class="arr2">→</span>
+                  </div>
+                  <div class="tiny dim" style="margin-top:7px">Découpage à 30 mots — la partie 2 compte 9 mots, elle n'est pas coupée (minWordsPerPart = 3).</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Colonne droite interne : aperçu + options -->
+            <div>
+              <div class="panel" style="margin-bottom:10px">
+                <div class="ph">APERÇU · BAS CENTRÉ</div>
+                <div class="pb" style="padding:7px">
+                  <div class="pvwrap alpha">
+                    <div class="panelbg"></div>
+                    <div class="reftxt">GRÂCE INFINIE · REFRAIN</div>
+                    <div class="lyr">Et la grâce qui m'a délivré<br>de mes peurs</div>
+                    <div class="part">2/2</div>
+                    <span class="hint">alpha · 1920×1080</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="ph">RÉGLAGES DU MODULE</div>
+                <div class="pb" style="display:flex;flex-direction:column;gap:9px">
+                  <div>
+                    <div class="lbl">Afficher</div>
+                    <div class="seg">
+                      <span class="s">Paroles</span>
+                      <span class="s on">Paroles + accords</span>
+                      <span class="s">Accords</span>
+                    </div>
+                  </div>
+                  <div class="row2">
+                    <span class="lbl2">Découpage</span>
+                    <span class="num">30</span>
+                    <span class="tiny dim">mots max</span>
+                  </div>
+                  <div class="row2">
+                    <span class="lbl2">Police</span>
+                    <span class="field" style="font-size:11px;padding:5px 8px">Merriweather · 40</span>
+                  </div>
+                  <div class="row2">
+                    <span class="lbl2">Alignement</span>
+                    <span class="tiny" style="letter-spacing:2px">⤒ ⇤ ⇥</span>
+                    <span class="tiny dim" style="margin-left:auto">centré</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Inspecteur -->
+        <div class="insp">
+          <div>
+            <div class="sect-t">SORTIES CIBLES</div>
+            <div class="targets">
+              <div class="tgt"><span class="cb on">✓</span> Plein écran — Salle <span class="why">connectée</span></div>
+              <div class="tgt"><span class="cb on">✓</span> Bas centré — Stream <span class="why">connectée</span></div>
+              <div class="tgt"><span class="cb dis"></span> Retour scène <span class="why">désactivée</span></div>
+            </div>
+            <div class="tiny dim" style="margin-top:6px">Seules les sorties dont <code>receives.songs = true</code> sont proposées.</div>
+          </div>
+
+          <div>
+            <div class="sect-t">CONTENU À L'ANTENNE</div>
+            <div class="card" style="padding:9px">
+              <div class="tiny dim">CHANT</div>
+              <div style="font-weight:700;font-size:12px;margin:2px 0 4px">Grâce infinie</div>
+              <div class="tiny dim">SECTION</div>
+              <div style="font-size:12px;margin-bottom:4px">Couplet 2</div>
+              <div class="tiny dim">PARTIE</div>
+              <div style="font-size:12px">2 / 2</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sect-t">ARRANGEMENTS ENREGISTRÉS</div>
+            <div class="col" style="gap:5px">
+              <div class="tgt" style="justify-content:space-between"><span>● Culte</span><span class="tiny dim">en cours</span></div>
+              <div class="tgt" style="justify-content:space-between"><span>Répétition</span><span class="tiny dim">6 étapes</span></div>
+              <div class="tgt" style="justify-content:space-between"><span>Concert</span><span class="tiny dim">9 étapes</span></div>
+            </div>
+            <button class="btn sm" style="width:100%;margin-top:6px">＋ Nouvel arrangement</button>
+          </div>
+
+          <div>
+            <div class="sect-t">RACCOURCIS</div>
+            <table class="tbl" style="font-size:10px">
+              <tr><td style="padding:3px 0">Partie suivante</td><td style="text-align:right" class="mono">→</td></tr>
+              <tr><td style="padding:3px 0">Section suivante</td><td style="text-align:right" class="mono">Alt+→</td></tr>
+              <tr><td style="padding:3px 0">Section précédente</td><td style="text-align:right" class="mono">Alt+←</td></tr>
+              <tr><td style="padding:3px 0">Couper</td><td style="text-align:right" class="mono">Échap</td></tr>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Barre de plan -->
+    <div class="plan">
+      <div class="cue">
+        <span class="idx">‹ 3</span>
+        <span class="now">Grâce infinie · Couplet 2</span>
+      </div>
+      <div class="row" style="justify-content:center">
+        <span class="pbtn">⏮</span>
+        <span class="tiny" style="margin:0 8px">En cours <b>Grâce infinie</b> · Suivant <span class="dim">Prédication (35 min)</span></span>
+        <span class="pbtn">⏭</span>
+        <span class="pbtn">■</span>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <span class="dh">⏱ 00:42:18</span>
+        <span class="pill">Espace avancer</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/10-chants.md</code></h3>
+  <ul>
+    <li><b>Une section à la fois</b> est mise en avant ; le découpage en parties est visible sous les paroles (EF-15.20).</li>
+    <li><b>L'arrangement</b> est une suite réordonnable, modifiable pendant la diffusion ; l'étape courante est entourée (EF-15.12).</li>
+    <li><b>Les accords</b> ne s'affichent qu'en vue scène et seulement si le profil l'autorise (EF-15.24).</li>
+    <li><b>Les cibles</b> ne listent que les sorties qui reçoivent les chants : la contrainte <code>receives</code> est appliquée ici aussi (EF-08).</li>
+    <li><b>Le découpage par défaut</b> est de 30 mots pour les chants, contre 25 pour la Bible (EF-13.2).</li>
+    <li><b>Rien ne coupe</b> la diffusion en changeant de section ou d'arrangement (EF-06.7).</li>
+  </ul>
+</div>
+
+</body>
+</html>

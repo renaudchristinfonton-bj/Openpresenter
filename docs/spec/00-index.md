@@ -4,7 +4,7 @@ Ce dossier contient la **spécification exhaustive** d'OpenPresenter.
 Le document `CAHIER-DES-CHARGES.md` à la racine du dépôt en est l'**index et la synthèse** ;
 les chapitres ci-dessous en sont le **détail contractuel**.
 
-**État au 21 octobre 2026 — version 1.0 :** 29 fichiers, **9 711 lignes**,
+**État au 21 octobre 2026 — version 1.0 :** 29 fichiers, **9 774 lignes**,
 613 identifiants `EF-nn.m`, 33 identifiants d'annexe `AN-nn.m`, 115 tests, 99 chaînes cataloguées, 16 schémas JSON.
 Les captures de référence sont dans `docs/maquettes/` (14 maquettes, 4 332 lignes).
 

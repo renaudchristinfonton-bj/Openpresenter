@@ -941,7 +941,8 @@ Copie automatique impossible — sélectionnez tout (Ctrl+A) et copiez.`
 ## 25.4 Messages d'erreur normalisés (API → interface)
 
 Le serveur renvoie un `code` ; l'interface affiche le texte ci-dessous, sans exception.
-Un code inconnu affiche `TXT-ERR` générique et journalise l'évènement `ui.error`.
+Un code inconnu affiche le message générique de la dernière ligne du tableau et journalise
+l'évènement `ui.error`.
 
 | `code` | Texte affiché | Action proposée |
 |---|---|---|

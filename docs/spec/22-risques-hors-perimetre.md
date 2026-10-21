@@ -70,17 +70,19 @@ Chaque exclusion est **assumée** et justifiée : ce n'est pas un oubli.
 
 ## 22.4 Décisions encore ouvertes
 
-| ID | Question | Échéance |
-|---|---|---|
-| **D-04** | Copie-t-on tous les médias, même très gros ? (recommandation : seuil 500 Mo) | avant phase 0.3 |
-| **D-08** | Scènes en fichiers séparés ou incluses dans `outputs.json` ? (recommandation : séparés) | avant phase 0.2 |
-| **D-09** | Nom définitif du produit et du dossier | avant phase 0.1 |
-| **D-10** | Licence du projet (recommandation : MIT) | avant publication |
-| **D-11** | Mode kiosque en phase 4 ? | avant phase 4 |
-| **D-12** | Langues livrées (recommandation : FR, i18n prêt pour EN) | avant phase 4 |
+Depuis la version 1.0 du cahier des charges, **D-04** (seuil de 500 Mo, option `linked`
+signalée) et **D-08** (scènes en fichiers séparés) sont tranchées : elles ne figurent plus
+ici mais dans le CDC § 14.1. Les décisions restantes ne bloquent **aucune** phase.
 
-**Règle** : aucune décision ouverte ne bloque la phase 0 **sauf D-08**, qui conditionne le
-schéma de données.
+| ID | Question | Recommandation | Échéance | Impact |
+|---|---|---|---|---|
+| **D-09** | Nom définitif du produit et du dossier | `OpenPresenter` | avant publication | cosmétique |
+| **D-10** | Licence du projet | MIT | avant publication | aucune incidence technique |
+| **D-11** | Mode kiosque en phase 4 ? | optionnel | avant phase 4 | aucune : le navigateur suffit |
+| **D-12** | Langues livrées | FR livré, EN préparé | avant phase 4 | aucune : chaînes externalisées (ch. 25) |
+
+**Règle** : aucune décision ouverte ne bloque la phase 0. Une décision qui deviendrait
+bloquante est tranchée immédiatement et déplacée au § 14.1 du cahier des charges.
 
 ---
 

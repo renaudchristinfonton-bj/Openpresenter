@@ -85,6 +85,20 @@ j e Entrée 3 Espace 1 6 Entrée   →   Jean 3:16   →   2 parties   →   sor
 Les modules purs sont servis **tels quels** au navigateur (`/shared/…`) : la logique testée
 côté Node est exactement celle qui tourne à l'écran.
 
+### Scènes : un seul rendu pour l'éditeur et la sortie
+
+Une scène est un fichier JSON (`project/scenes/…`) fait de calques positionnés en
+pourcentage d'un canevas 1920×1080. `renderScene()` produit le HTML, `SCENE_CSS` la feuille
+de style : l'aperçu du studio, l'éditeur `/scene.html` et la page `/o/<id>` utilisent
+**exactement** le même code, donc la même image.
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-1-SCENE.md`](docs/PHASE-1-SCENE.md) | moteur, contrats, tests A-10→A-10h, ce qui reste |
+| `app/src/core/scene.mjs` | modèle, presets, bornes de géométrie, opérations de calques |
+| `app/src/core/render/engine.mjs` | `renderScene()`, `mountScene()`, `SCENE_CSS` |
+| `app/web/scene.html` | éditeur WYSIWYG (glisser, redimensionner, historique, contraste) |
+
 ---
 
 ## Pourquoi ce projet

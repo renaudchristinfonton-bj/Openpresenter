@@ -101,14 +101,12 @@
     display:flex;align-items:center;justify-content:center;
     padding:4% 6%;
   }
-  .screen .txt{
-    text-align:center;color:#fff;font-weight:600;line-height:1.18;
-    white-space:pre-line;text-wrap:balance;max-width:100%;
-    text-shadow:0 3px 18px #0008;
-    font-size:clamp(14px,2.4vw,42px);
-  }
-  .screen .refmark{position:absolute;right:4%;bottom:4%;font-size:clamp(8px,.95vw,13px);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.62;font-weight:700}
-  .screen.idle .txt{color:#2b3040;font-weight:600}
+  /* Aperçu : la scène est rendue à 1920×1080 puis réduite. Aucun style de
+     contenu ici — l'éditeur et la sortie partagent `SCENE_CSS` (ENF-42). */
+  .screen{position:relative;overflow:hidden;padding:0}
+  .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
+  .stage-idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#2b3040;font-weight:600;font-size:15px}
+  .screen.idle .op-stage{display:none}
 
   .strip{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);background:#07080d;overflow:auto;flex:0 0 auto;flex-wrap:wrap}
   .out{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:6px;border:1px solid var(--line2);background:var(--bg2);font-size:11px;cursor:pointer;user-select:none}
@@ -132,6 +130,7 @@
   </div>
   <span class="spacer"></span>
   <span class="chip" id="ws"><span class="dot"></span> <span id="wsText">connexion</span></span>
+  <a class="chip" href="/scene.html" title="Éditeur de scène (WYSIWYG)">Scène</a>
   <a class="chip" href="/socle.html" title="État du socle et diagnostic">Socle</a>
 </header>
 
@@ -177,8 +176,8 @@
 
     <div class="stage">
       <div class="screen idle" id="screen">
-        <div class="txt" id="preview">Aucun contenu à l’antenne</div>
-        <div class="refmark" id="previewRef"></div>
+        <div class="op-stage" id="stage"></div>
+        <div class="stage-idle" id="preview">Aucun contenu à l’antenne</div>
       </div>
     </div>
 
@@ -191,6 +190,17 @@
 <script type="module">
 import { createEntry, STATE } from '/shared/bible/reference.mjs';
 import { navigate, currentItem, actionForKey, isTypingTarget, positionLabel } from '/shared/bible/navigation.mjs';
+// Le même moteur que la page de sortie : l'aperçu est la sortie (A-10).
+import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
+import { contentFromPayload } from '/shared/render/content.mjs';
+import { sceneFromPreset } from '/shared/scene.mjs';
+
+{
+  const style = document.createElement('style');
+  style.id = 'op-scene-css';
+  style.textContent = SCENE_CSS;
+  document.head.append(style);
+}
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -292,9 +302,68 @@ function paintParts() {
   $('#counter').textContent = `${cur + 1} / ${selection.items.length} · ${positionLabel(selection)}`;
   const active = box.querySelector('.part.cur');
   active?.scrollIntoView({ block: 'nearest' });
-  $('#preview').textContent = item?.text || '';
-  $('#preview').classList.remove('idle');
-  $('#previewRef').textContent = selection.label;
+  paintPreview(item);
+}
+
+// ---------------------------------------------------------------------------
+// Aperçu WYSIWYG : la scène de la sortie, rendue par le moteur partagé
+// ---------------------------------------------------------------------------
+const sceneCache = new Map();
+
+function scaleStage() {
+  const stage = $('#stage');
+  const screen = $('#screen');
+  if (!stage || !screen) return;
+  const scale = screen.clientWidth / 1920;
+  stage.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', scaleStage);
+
+async function sceneFor(kind) {
+  if (sceneCache.has(kind)) return sceneCache.get(kind);
+  const outputId = outputs.find((o) => targets.has(o.id))?.id || outputs[0]?.id || 'out_full';
+  const output = outputs.find((o) => o.id === outputId);
+  const sceneId = output?.scenesByKind?.[kind] || null;
+  let scene = null;
+  if (sceneId) {
+    try {
+      const res = await fetch(`/api/scenes/${encodeURIComponent(sceneId)}`, { cache: 'no-store' });
+      if (res.ok) scene = await res.json();
+    } catch { /* repli */ }
+  }
+  if (!scene) {
+    scene = sceneFromPreset({
+      id: `scn_preview_${kind}`,
+      name: `Aperçu — ${kind}`,
+      kind,
+      preset: output?.preset || 'full',
+      transparent: Boolean(output?.transparent)
+    });
+  }
+  sceneCache.set(kind, scene);
+  return scene;
+}
+
+async function paintPreview(item) {
+  const screen = $('#screen');
+  if (!item?.text) {
+    screen.classList.add('idle');
+    $('#stage').replaceChildren();
+    $('#preview').textContent = 'Aucun contenu à l’antenne';
+    return;
+  }
+  const scene = await sceneFor('bible');
+  const content = contentFromPayload({
+    text: item.text,
+    reference: selection?.label,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    badge: selection?.bibleId === 'bible_sample_fr' ? 'LSG' : ''
+  }, 'bible');
+  mountScene($('#stage'), { scene, content, editing: false });
+  screen.classList.remove('idle');
+  scaleStage();
 }
 
 function paintOutputs() {
@@ -395,9 +464,9 @@ async function clearOutputs() {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ targets: [...targets] })
   });
+  $('#stage').replaceChildren();
   $('#preview').textContent = 'Aucun contenu à l’antenne';
-  $('#preview').classList.add('idle');
-  $('#previewRef').textContent = '';
+  $('#screen').classList.add('idle');
   toast('Sorties coupées.');
 }
 
@@ -509,6 +578,7 @@ async function boot() {
     bibleId = versions.versions?.[0]?.id || null;
 
     outputs = outs.outputs || [];
+    sceneCache.clear();
     targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
     paintOutputs();
     paintAll();

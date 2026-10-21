@@ -32,7 +32,7 @@ export async function ensureProject({ name } = {}) {
     await writeJson(path.join(dir, 'project.json'), project);
     await log('info', 'project.open', 'project.json créé', { projectId: project.id });
   }
-  await seedDefaultOutputs();
+  await seedDefaultScenes();
   return { created, project };
 }
 
@@ -111,6 +111,57 @@ export async function seedDefaultOutputs() {
   if (existing) return false;
   await writeJson(file, { rev: 1, outputs: structuredClone(DEFAULT_OUTPUTS) });
   return true;
+}
+
+/**
+ * Scènes livrées avec un projet : une par sortie et par type courant, câblées
+ * dans `outputs.scenesByKind`. Un projet existant n'est jamais écrasé.
+ */
+export async function seedDefaultScenes() {
+  const { defaultScenes } = await import('./scene.mjs');
+  const entries = defaultScenes();
+  const scenDir = path.join(projectDir(), 'scenes');
+  await fs.mkdir(scenDir, { recursive: true });
+
+  let written = 0;
+  for (const entry of entries) {
+    const file = path.join(scenDir, `${entry.scene.id}.json`);
+    if (await exists(file)) continue;
+    await writeJson(file, entry.scene);
+    written++;
+  }
+
+  const outputsFile = path.join(projectDir(), 'outputs', 'outputs.json');
+  const existing = await readJson(outputsFile, null);
+
+  if (!existing) {
+    // Création : les sorties naissent **déjà** câblées vers leurs scènes, en une
+    // seule écriture. Deux écritures successives feraient avancer `rev` et
+    // provoqueraient un faux conflit au premier enregistrement du studio.
+    const outputs = structuredClone(DEFAULT_OUTPUTS);
+    for (const entry of entries) {
+      const output = outputs.find((o) => o.id === entry.outputId);
+      if (output) output.scenesByKind = { ...(output.scenesByKind || {}), [entry.kind]: entry.scene.id };
+    }
+    await writeJson(outputsFile, { rev: 1, outputs });
+    return written > 0;
+  }
+
+  // Projet existant : on ne complète que les câblages manquants.
+  let patched = false;
+  for (const entry of entries) {
+    const output = existing.outputs?.find((o) => o.id === entry.outputId);
+    if (!output) continue;
+    output.scenesByKind = output.scenesByKind || {};
+    if (output.scenesByKind[entry.kind]) continue;
+    output.scenesByKind[entry.kind] = entry.scene.id;
+    patched = true;
+  }
+  if (patched) {
+    existing.rev = Math.max(existing.rev || 1, 1) + 1;
+    await writeJson(outputsFile, existing);
+  }
+  return written > 0 || patched;
 }
 
 export function randomToken() {

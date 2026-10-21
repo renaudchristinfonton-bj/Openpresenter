@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de scène — OpenPresenter</title>
+<style>
+  :root{
+    --bg:#07080d; --bg2:#0d1017; --bg3:#121722; --line:#1c2230; --line2:#28303f;
+    --txt:#e8eaf0; --txt2:#a3abbd; --txt3:#6e7789;
+    --accent:#f5b942; --ok:#34d399; --err:#ef5360;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font:13px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:grid; grid-template-rows:auto 1fr auto; height:100vh; overflow:hidden;
+  }
+
+  header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--bg2)}
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#e08a12);display:grid;place-items:center;font-weight:800;color:#1a1206;font-size:12px}
+  h1{font-size:13px;margin:0;font-weight:700;letter-spacing:.01em}
+  .sub{font-size:11px;color:var(--txt3)}
+  .spacer{flex:1}
+  select,input[type=text],input[type=number],input[type=color]{
+    background:var(--bg3);border:1px solid var(--line2);color:var(--txt);
+    border-radius:6px;padding:5px 7px;font-size:12px;font-family:inherit;
+  }
+  input[type=color]{padding:2px;width:34px;height:26px}
+  .btn{
+    background:var(--bg3);border:1px solid var(--line2);color:var(--txt);
+    border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  .btn:hover{border-color:#3a4454}
+  .btn.primary{background:#2b2210;border-color:#6a5320;color:#ffd479}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.4;cursor:default}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);font-size:11px;color:var(--txt2);text-decoration:none}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--err)}
+  .dot.on{background:var(--ok)}
+  .dot.warn{background:var(--accent)}
+
+  main{display:grid;grid-template-columns:210px 1fr 268px;min-height:0;overflow:hidden}
+  .col{display:flex;flex-direction:column;min-height:0;overflow:auto}
+  .col.left{border-right:1px solid var(--line);background:var(--bg2)}
+  .col.right{border-left:1px solid var(--line);background:var(--bg2)}
+  .col.center{background:#04050a;align-items:center;justify-content:center;padding:14px}
+
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--txt3);margin:12px 12px 6px;font-weight:700}
+  .group{padding:0 10px 8px;display:flex;flex-wrap:wrap;gap:6px}
+
+  .layers{list-style:none;margin:0;padding:0 8px 8px}
+  .layers li{
+    display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:6px;
+    border:1px solid transparent;cursor:pointer;font-size:12px;
+  }
+  .layers li:hover{background:var(--bg3)}
+  .layers li.sel{background:#f5b94214;border-color:#f5b94255}
+  .layers .ty{font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase}
+  .layers .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .layers .eye{opacity:.5;font-size:11px}
+
+  /* Scène : 1920×1080 réduite à la place disponible. */
+  .canvas{position:relative;overflow:hidden;border-radius:8px;box-shadow:0 24px 60px #000b,0 0 0 1px var(--line)}
+  .canvas .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
+  .canvas .op-layer{outline:1px solid transparent}
+  .canvas .op-layer:hover{outline:1px dashed #f5b94266}
+  .canvas .op-layer.sel{outline:2px solid var(--accent)}
+  .handle{
+    position:absolute;width:14px;height:14px;right:-7px;bottom:-7px;border-radius:3px;
+    background:var(--accent);border:2px solid #1a1206;cursor:nwse-resize;display:none;
+  }
+  .op-layer.sel .handle{display:block}
+  .safe{
+    position:absolute;inset:5%;border:1px dashed #ffffff22;pointer-events:none;display:none;
+  }
+  body.safe-on .safe{display:block}
+  .guides{position:absolute;inset:0;pointer-events:none}
+  .guides i{position:absolute;background:#f5b94299;display:none}
+  .guides i.v{top:0;bottom:0;width:1px;left:50%}
+  .guides i.h{left:0;right:0;height:1px;top:50%}
+  .guides.on i{display:block}
+
+  .field{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 12px}
+  .field label{font-size:11px;color:var(--txt2)}
+  .field input,.field select{width:112px}
+  .field input[type=color]{width:40px}
+  .field input[type=range]{width:112px}
+  .grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 12px 8px}
+  .grid9 button{
+    height:24px;border-radius:5px;border:1px solid var(--line2);background:var(--bg3);
+    color:var(--txt2);cursor:pointer;font-size:11px;
+  }
+  .grid9 button.on{border-color:var(--accent);color:var(--accent);background:#f5b94210}
+  .empty{padding:18px 12px;color:var(--txt3);font-size:12px;text-align:center}
+
+  footer{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line);background:var(--bg2);font-size:11px;color:var(--txt3)}
+  .toast{position:fixed;right:14px;bottom:44px;padding:8px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:360px;z-index:20}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">OP</span>
+  <div>
+    <h1>Éditeur de scène</h1>
+    <div class="sub" id="crumb">chargement…</div>
+  </div>
+  <span class="spacer"></span>
+  <select id="output" aria-label="Sortie"></select>
+  <select id="kind" aria-label="Type de contenu"></select>
+  <select id="preset" aria-label="Disposition de départ"></select>
+  <select id="variant" aria-label="Exemple affiché">
+    <option value="normal">Exemple normal</option>
+    <option value="short">Exemple court</option>
+    <option value="long">Exemple long</option>
+  </select>
+  <span class="chip" id="contrast" title="Contraste mesuré (WCAG AA : 4,5:1)">contraste —</span>
+  <span class="chip" id="dirty">enregistré</span>
+  <button class="btn primary" id="save" title="Enregistrer (Ctrl+S)">Enregistrer</button>
+  <a class="chip" href="/" title="Retour au studio">Studio</a>
+</header>
+
+<main>
+  <section class="col left">
+    <h2>Calques</h2>
+    <ul class="layers" id="layerList"></ul>
+    <div class="group">
+      <button class="btn ghost" id="addText">+ Texte</button>
+      <button class="btn ghost" id="addOverlay">+ Bandeau</button>
+      <button class="btn ghost" id="addImage">+ Image</button>
+      <button class="btn ghost" id="addBackground">+ Fond</button>
+    </div>
+    <h2>Ordre</h2>
+    <div class="group">
+      <button class="btn ghost" id="front" title="Mettre au premier plan">⤒ Avant</button>
+      <button class="btn ghost" id="back" title="Mettre à l’arrière">⤓ Arrière</button>
+      <button class="btn ghost" id="dup" title="Dupliquer (Ctrl+D)">Dupliquer</button>
+      <button class="btn ghost" id="del" title="Supprimer (Suppr)">Supprimer</button>
+    </div>
+    <h2>Historique</h2>
+    <div class="group">
+      <button class="btn ghost" id="undo" title="Annuler (Ctrl+Z)">↶ Annuler</button>
+      <button class="btn ghost" id="redo" title="Rétablir (Ctrl+Maj+Z)">↷ Rétablir</button>
+    </div>
+    <h2>Repères</h2>
+    <div class="group">
+      <label class="chip"><input type="checkbox" id="safeOn"> zone sûre</label>
+    </div>
+  </section>
+
+  <section class="col center">
+    <div class="canvas" id="canvas">
+      <div class="op-stage" id="stage"></div>
+      <div class="safe"></div>
+      <div class="guides" id="guides"><i class="v"></i><i class="h"></i></div>
+    </div>
+  </section>
+
+  <section class="col right" id="props">
+    <div class="empty">Sélectionnez un calque sur la scène.</div>
+  </section>
+</main>
+
+<footer>
+  <span id="status">prêt</span>
+  <span class="spacer"></span>
+  <span>glisser pour déplacer · poignée pour redimensionner · <kbd>flèches</kbd> 1 % · <kbd>Maj</kbd>+flèches 10 % · <kbd>Alt</kbd> aimantation libre</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
+import { sampleFor } from '/shared/render/content.mjs';
+import { checkSceneContrast } from '/shared/render/contrast.mjs';
+import {
+  KINDS, PRESETS, normalizeScene, validateScene,
+  addLayer, removeLayer, duplicateLayer, moveLayer, sendToEdge, updateLayer,
+  textLayer, overlayLayer, imageLayer, backgroundLayer, sceneFromPreset
+} from '/shared/scene.mjs';
+import { createHistory } from '/shared/history.mjs';
+
+{
+  const style = document.createElement('style');
+  style.id = 'op-scene-css';
+  style.textContent = SCENE_CSS;
+  document.head.append(style);
+}
+
+const $ = (s) => document.querySelector(s);
+const KIND_LABELS = {
+  bible: 'Bible', songs: 'Chants', media: 'Médias', announcements: 'Annonces',
+  lowerthird: 'Bandeau nom', timer: 'Minuteur', plan: 'Plan'
+};
+const PRESET_LABELS = {
+  full: 'Plein écran', screen80: 'Écran 80 %', bottom: 'Bas centré',
+  'bottom-right': 'Bas droite', lowerthird: 'Bandeau nom', custom: 'Personnalisé'
+};
+
+let scene = null;
+let selectedId = null;
+let dirty = false;
+let outputs = [];
+let sceneId = null;
+let loading = false;
+const history = createHistory({ limit: 200 });
+
+// ---------------------------------------------------------------------------
+// Utilitaires
+// ---------------------------------------------------------------------------
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = `toast show ${kind}`;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.className = 'toast'; }, 2600);
+}
+
+function setDirty(value) {
+  dirty = value;
+  const chip = $('#dirty');
+  chip.textContent = value ? 'non enregistré' : 'enregistré';
+  chip.style.color = value ? 'var(--accent)' : 'var(--txt3)';
+}
+
+function markChanged(action, { commit = true } = {}) {
+  setDirty(true);
+  if (commit) history.push(structuredClone(scene), action);
+  paintAll();
+}
+
+/** Applique une fonction de transformation à la scène, puis repeint. */
+function edit(action, transform, { commit = true } = {}) {
+  const next = transform(structuredClone(scene));
+  if (!next) return;
+  scene = next;
+  markChanged(action, { commit });
+}
+
+// ---------------------------------------------------------------------------
+// Chargement
+// ---------------------------------------------------------------------------
+async function loadProject() {
+  const [outs, kinds] = await Promise.all([
+    fetch('/api/outputs', { cache: 'no-store' }).then((r) => r.json()),
+    Promise.resolve(KINDS)
+  ]);
+  outputs = outs.outputs || [];
+  $('#output').innerHTML = outputs.map((o) => `<option value="${o.id}">${o.name}</option>`).join('');
+  $('#kind').innerHTML = kinds.map((k) => `<option value="${k}">${KIND_LABELS[k] || k}</option>`).join('');
+  $('#preset').innerHTML = PRESETS.map((p) => `<option value="${p}">${PRESET_LABELS[p] || p}</option>`).join('');
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('output')) $('#output').value = params.get('output');
+  if (params.get('kind')) $('#kind').value = params.get('kind');
+}
+
+function currentOutput() {
+  return outputs.find((o) => o.id === $('#output').value) || outputs[0] || null;
+}
+
+async function loadScene() {
+  const output = currentOutput();
+  const kind = $('#kind').value;
+  if (!output) return;
+  loading = true;
+  sceneId = output.scenesByKind?.[kind] || null;
+  let loaded = null;
+  if (sceneId) {
+    try {
+      const res = await fetch(`/api/scenes/${encodeURIComponent(sceneId)}`, { cache: 'no-store' });
+      if (res.ok) loaded = await res.json();
+    } catch { /* repli sur un preset */ }
+  }
+  if (!loaded) {
+    loaded = sceneFromPreset({
+      id: `scn_${kind}_${output.id.replace(/^out_/, '')}`,
+      name: `${output.name} — ${KIND_LABELS[kind] || kind}`,
+      kind,
+      preset: output.preset || 'full',
+      transparent: Boolean(output.transparent)
+    });
+    toast('Aucune scène pour ce type : un preset est proposé, enregistrez-le.', '');
+  }
+  scene = normalizeScene(loaded);
+  selectedId = null;
+  history.reset(structuredClone(scene));
+  setDirty(false);
+  $('#preset').value = PRESETS.includes(scene.preset) ? scene.preset : 'custom';
+  $('#crumb').textContent = `${output.name} · ${KIND_LABELS[kind] || kind} · ${scene.id}`;
+  loading = false;
+  paintAll();
+}
+
+// ---------------------------------------------------------------------------
+// Rendu de la scène (le même que la sortie)
+// ---------------------------------------------------------------------------
+function scaleCanvas() {
+  const canvas = $('#canvas');
+  const stage = $('#stage');
+  const availW = canvas.parentElement.clientWidth - 28;
+  const availH = canvas.parentElement.clientHeight - 28;
+  const scale = Math.max(0.12, Math.min(availW / 1920, availH / 1080));
+  canvas.style.width = `${Math.round(1920 * scale)}px`;
+  canvas.style.height = `${Math.round(1080 * scale)}px`;
+  stage.style.transform = `scale(${scale})`;
+  canvas.dataset.scale = String(scale);
+}
+
+function contentForPreview() {
+  return sampleFor($('#kind').value, $('#variant').value);
+}
+
+function paintAll() {
+  if (!scene) return;
+  scaleCanvas();
+  mountScene($('#stage'), {
+    scene,
+    content: contentForPreview(),
+    // L'éditeur affiche les emplacements vides (EF-09.35) ; la sortie, non.
+    editing: true,
+    transparent: false
+  });
+  paintSelection();
+  paintLayers();
+  paintProps();
+  paintContrast();
+  $('#undo').disabled = !history.canUndo;
+  $('#redo').disabled = !history.canRedo;
+  $('#status').textContent = `${scene.layers.length} calque(s) · annulations possibles : ${history.depth()}`;
+}
+
+function paintSelection() {
+  for (const el of $('#stage').querySelectorAll('.op-layer')) {
+    el.classList.toggle('sel', el.dataset.layerId === selectedId);
+    if (el.dataset.layerId === selectedId && !el.querySelector('.handle')) {
+      const handle = document.createElement('div');
+      handle.className = 'handle';
+      handle.dataset.handle = 'se';
+      el.append(handle);
+    }
+  }
+}
+
+function paintLayers() {
+  const list = $('#layerList');
+  list.innerHTML = scene.layers.map((layer) => `
+    <li data-id="${layer.id}" class="${layer.id === selectedId ? 'sel' : ''}">
+      <span class="ty">${layer.type.slice(0, 3)}</span>
+      <span class="nm">${escapeHtml(layer.name || layer.type)}</span>
+      <span class="eye">${layer.visible === false ? '◌' : '●'}</span>
+    </li>`).join('');
+  list.querySelectorAll('li').forEach((el) => {
+    el.addEventListener('click', () => { selectedId = el.dataset.id; paintAll(); });
+  });
+}
+
+function paintContrast() {
+  const chip = $('#contrast');
+  const report = checkSceneContrast(scene, { min: 4.5 });
+  const low = report.results.filter((r) => r.status === 'low');
+  const unknown = report.results.filter((r) => r.status === 'unknown');
+  if (!report.results.length) {
+    chip.textContent = 'contraste —';
+    chip.style.color = 'var(--txt3)';
+    return;
+  }
+  const worst = Math.min(...report.results.filter((r) => r.ratio).map((r) => r.ratio));
+  chip.textContent = `contraste ${Number.isFinite(worst) ? worst.toFixed(1) : '—'}:1`;
+  chip.style.color = low.length ? 'var(--err)' : unknown.length ? 'var(--accent)' : 'var(--ok)';
+  chip.title = low.length
+    ? `Trop faible pour : ${low.map((r) => r.name).join(', ')} (minimum 4,5:1)`
+    : 'Lisible (WCAG AA)';
+}
+
+// ---------------------------------------------------------------------------
+// Panneau de propriétés
+// ---------------------------------------------------------------------------
+function paintProps() {
+  const box = $('#props');
+  const layer = scene.layers.find((l) => l.id === selectedId);
+  if (!layer) {
+    box.innerHTML = '<div class="empty">Sélectionnez un calque sur la scène.</div>';
+    return;
+  }
+  const text = layer.type === 'text';
+  const bindOptions = ['verse', 'ref', 'badge', 'custom', 'title', 'section', 'lyrics', 'announcement', 'timer', 'clock', 'planLabel']
+    .map((b) => `<option value="${b}" ${b === layer.bind ? 'selected' : ''}>${b}</option>`).join('');
+
+  box.innerHTML = `
+    <h2>Calque</h2>
+    <div class="field"><label for="pName">Nom</label><input id="pName" type="text" value="${escapeHtml(layer.name || '')}"></div>
+    <div class="field"><label for="pVisible">Visible</label><input id="pVisible" type="checkbox" ${layer.visible === false ? '' : 'checked'}></div>
+    <div class="field"><label for="pOpacity">Opacité</label><input id="pOpacity" type="range" min="0" max="1" step="0.05" value="${layer.opacity ?? 1}"></div>
+    <div class="field"><label for="pX">X (%)</label><input id="pX" type="number" step="0.5" value="${round(layer.x)}"></div>
+    <div class="field"><label for="pY">Y (%)</label><input id="pY" type="number" step="0.5" value="${round(layer.y)}"></div>
+    <div class="field"><label for="pW">Largeur (%)</label><input id="pW" type="number" step="0.5" min="2" max="300" value="${round(layer.w)}"></div>
+    <div class="field"><label for="pH">Hauteur (%)</label><input id="pH" type="number" step="0.5" min="2" max="300" value="${layer.h ?? ''}" placeholder="auto"></div>
+    <div class="field"><label for="pRotate">Rotation (°)</label><input id="pRotate" type="number" step="1" min="-180" max="180" value="${round(layer.rotate)}"></div>
+    ${text ? `
+      <h2>Texte</h2>
+      <div class="field"><label for="pBind">Liaison</label><select id="pBind">${bindOptions}</select></div>
+      ${layer.bind === 'custom' ? `<div class="field"><label for="pCustom">Contenu</label><input id="pCustom" type="text" value="${escapeHtml(layer.customText || '')}"></div>` : ''}
+      <div class="field"><label for="pFont">Police</label><input id="pFont" type="text" value="${escapeHtml(layer.style.fontFamily || 'Inter')}"></div>
+      <div class="field"><label for="pSize">Taille (px)</label><input id="pSize" type="number" min="8" max="400" value="${round(layer.style.fontSize)}"></div>
+      <div class="field"><label for="pWeight">Graisse</label><input id="pWeight" type="number" min="100" max="900" step="100" value="${round(layer.style.weight)}"></div>
+      <div class="field"><label for="pColor">Couleur</label><input id="pColor" type="color" value="${toHex(layer.style.color)}"></div>
+      <div class="field"><label for="pLine">Interligne</label><input id="pLine" type="number" min="0.8" max="2.4" step="0.05" value="${layer.style.lineHeight}"></div>
+      <div class="field"><label for="pSpacing">Interlettre (px)</label><input id="pSpacing" type="number" min="-10" max="40" step="0.5" value="${round(layer.style.letterSpacing)}"></div>
+      <div class="field"><label for="pCase">Casse</label>
+        <select id="pCase">
+          ${['none', 'uppercase', 'lowercase', 'capitalize', 'smallcaps'].map((c) => `<option value="${c}" ${c === layer.style.textCase ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label for="pAlignLast">Dernière ligne</label>
+        <select id="pAlignLast">
+          ${['auto', 'left', 'center', 'right', 'justify'].map((c) => `<option value="${c}" ${c === (layer.style.alignLast || 'auto') ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <h2>Alignement</h2>
+      <div class="grid9" id="alignGrid">
+        ${['left', 'center', 'right'].flatMap((h) => ['top', 'center', 'bottom'].map((v) => `
+          <button data-h="${h}" data-v="${v}" class="${layer.style.align === h && layer.style.verticalAlign === v ? 'on' : ''}"
+            title="${h} / ${v}">${({ left: '◧', center: '▣', right: '◨' })[h]}${({ top: '▲', center: '●', bottom: '▼' })[v]}</button>`)).join('')}
+      </div>
+      <div class="field"><label for="pJustify"><span style="color:var(--txt3)">Justifié</span></label>
+        <input id="pJustify" type="checkbox" ${layer.style.align === 'justify' ? 'checked' : ''}></div>
+      <h2>Auto-ajustement</h2>
+      <div class="field"><label for="pFit">Actif</label><input id="pFit" type="checkbox" ${layer.autoFit?.enabled === false ? '' : 'checked'}></div>
+      <div class="field"><label for="pFitMin">Minimum</label><input id="pFitMin" type="number" min="8" max="200" value="${round(layer.autoFit?.min ?? 16)}"></div>
+      <div class="field"><label for="pFitMax">Maximum</label><input id="pFitMax" type="number" min="8" max="400" value="${round(layer.autoFit?.max ?? 120)}"></div>
+      <div class="field"><label for="pFitUp">Agrandir</label><input id="pFitUp" type="checkbox" ${layer.autoFit?.scaleUp ? 'checked' : ''}></div>
+    ` : ''}
+    ${layer.type === 'overlay' ? `
+      <h2>Bandeau</h2>
+      <div class="field"><label for="oBg">Fond</label><input id="oBg" type="color" value="${toHex(layer.bg)}"></div>
+      <div class="field"><label for="oRadius">Arrondi (px)</label><input id="oRadius" type="number" min="0" max="120" value="${round(layer.radius)}"></div>
+      <div class="field"><label for="oBorder">Bord (px)</label><input id="oBorder" type="number" min="0" max="40" value="${round(layer.border?.width)}"></div>
+      <div class="field"><label for="oBorderColor">Couleur bord</label><input id="oBorderColor" type="color" value="${toHex(layer.border?.color || '#ffffff')}"></div>
+      <div class="field"><label for="oShape">Forme</label>
+        <select id="oShape">
+          ${['rect', 'round', 'line', 'ellipse'].map((s) => `<option value="${s}" ${s === (layer.shape || 'round') ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    ` : ''}
+    ${layer.type === 'image' ? `
+      <h2>Image</h2>
+      <div class="field"><label for="iFit">Cadrage</label>
+        <select id="iFit">
+          ${['contain', 'cover', 'stretch'].map((s) => `<option value="${s}" ${s === (layer.fit || 'contain') ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label for="iRadius">Arrondi (px)</label><input id="iRadius" type="number" min="0" max="400" value="${round(layer.radius)}"></div>
+      <div class="field"><label for="iScale">Échelle (%)</label><input id="iScale" type="number" min="10" max="400" value="${round(layer.scale ?? 100)}"></div>
+    ` : ''}
+  `;
+
+  bindInputs(layer);
+}
+
+function bindInputs(layer) {
+  const on = (id, event, fn) => {
+    const el = box(id);
+    if (el) el.addEventListener(event, fn);
+  };
+  const box = (id) => $('#props').querySelector(`#${id}`);
+  const setLayer = (patch, commit) => edit('propriété', (s) => updateLayer(s, layer.id, patch), { commit });
+  const setStyle = (patch, commit) => edit('style', (s) => updateLayer(s, layer.id, { style: { ...layer.style, ...patch } }), { commit });
+  const setAuto = (patch, commit) => edit('auto-ajustement', (s) => updateLayer(s, layer.id, { autoFit: { ...layer.autoFit, ...patch } }), { commit });
+
+  // Les champs numériques et de texte valident à la fin du geste (`change`),
+  // pour ne pas empiler un état d'historique par frappe (EF-09.47).
+  on('pName', 'change', (e) => setLayer({ name: e.target.value }, true));
+  on('pVisible', 'change', (e) => setLayer({ visible: e.target.checked }, true));
+  on('pOpacity', 'input', (e) => setLayer({ opacity: Number(e.target.value) }, false));
+  on('pOpacity', 'change', (e) => setLayer({ opacity: Number(e.target.value) }, true));
+  on('pX', 'change', (e) => setLayer({ x: Number(e.target.value) }, true));
+  on('pY', 'change', (e) => setLayer({ y: Number(e.target.value) }, true));
+  on('pW', 'change', (e) => setLayer({ w: Number(e.target.value) }, true));
+  on('pH', 'change', (e) => setLayer({ h: e.target.value === '' ? null : Number(e.target.value) }, true));
+  on('pRotate', 'change', (e) => setLayer({ rotate: Number(e.target.value) }, true));
+
+  if (layer.type === 'text') {
+    on('pBind', 'change', (e) => setLayer({ bind: e.target.value }, true));
+    on('pCustom', 'change', (e) => setLayer({ customText: e.target.value }, true));
+    on('pFont', 'change', (e) => setStyle({ fontFamily: e.target.value }, true));
+    on('pSize', 'change', (e) => setStyle({ fontSize: Number(e.target.value) }, true));
+    on('pWeight', 'change', (e) => setStyle({ weight: Number(e.target.value) }, true));
+    on('pColor', 'change', (e) => setStyle({ color: e.target.value }, true));
+    on('pLine', 'change', (e) => setStyle({ lineHeight: Number(e.target.value) }, true));
+    on('pSpacing', 'change', (e) => setStyle({ letterSpacing: Number(e.target.value) }, true));
+    on('pCase', 'change', (e) => setStyle({ textCase: e.target.value }, true));
+    on('pAlignLast', 'change', (e) => setStyle({ alignLast: e.target.value }, true));
+    on('pJustify', 'change', (e) => setStyle({ align: e.target.checked ? 'justify' : 'left' }, true));
+    on('pFit', 'change', (e) => setAuto({ enabled: e.target.checked }, true));
+    on('pFitMin', 'change', (e) => setAuto({ min: Number(e.target.value) }, true));
+    on('pFitMax', 'change', (e) => setAuto({ max: Number(e.target.value) }, true));
+    on('pFitUp', 'change', (e) => setAuto({ scaleUp: e.target.checked }, true));
+
+    $('#props').querySelectorAll('#alignGrid button').forEach((button) => {
+      button.addEventListener('click', () => {
+        setStyle({ align: button.dataset.h, verticalAlign: button.dataset.v }, true);
+      });
+    });
+  }
+
+  if (layer.type === 'overlay') {
+    on('oBg', 'change', (e) => setLayer({ bg: hexToRgba(e.target.value, 0.84) }, true));
+    on('oRadius', 'change', (e) => setLayer({ radius: Number(e.target.value) }, true));
+    on('oBorder', 'change', (e) => setLayer({ border: { ...layer.border, width: Number(e.target.value) } }, true));
+    on('oBorderColor', 'change', (e) => setLayer({ border: { ...layer.border, color: e.target.value } }, true));
+    on('oShape', 'change', (e) => setLayer({ shape: e.target.value }, true));
+  }
+
+  if (layer.type === 'image') {
+    on('iFit', 'change', (e) => setLayer({ fit: e.target.value }, true));
+    on('iRadius', 'change', (e) => setLayer({ radius: Number(e.target.value) }, true));
+    on('iScale', 'change', (e) => setLayer({ scale: Number(e.target.value) }, true));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manipulation directe (ch. 08 § 8.5)
+// ---------------------------------------------------------------------------
+let drag = null;
+
+$('#stage').addEventListener('pointerdown', (event) => {
+  const layerEl = event.target.closest('.op-layer');
+  if (!layerEl) { selectedId = null; paintAll(); return; }
+  const layer = scene.layers.find((l) => l.id === layerEl.dataset.layerId);
+  if (!layer) return;
+  selectedId = layer.id;
+  paintSelection();
+  paintProps();
+  paintLayers();
+
+  const scale = Number($('#canvas').dataset.scale) || 1;
+  drag = {
+    mode: event.target.dataset.handle === 'se' ? 'resize' : 'move',
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { x: layer.x, y: layer.y, w: layer.w, h: layer.h ?? 20 },
+    commit: false
+  };
+  event.target.setPointerCapture?.(event.pointerId);
+  $('#guides').classList.add('on');
+});
+
+window.addEventListener('pointermove', (event) => {
+  if (!drag || !selectedId) return;
+  const scale = Number($('#canvas').dataset.scale) || 1;
+  const dx = ((event.clientX - drag.startX) / scale) / 1920 * 100;
+  const dy = ((event.clientY - drag.startY) / scale) / 1080 * 100;
+  const snap = !event.altKey;
+
+  scene = updateLayer(scene, selectedId, drag.mode === 'move'
+    ? {
+      x: snapTo(drag.origin.x + dx, snap, 50),
+      y: snapTo(drag.origin.y + dy, snap, 50)
+    }
+    : {
+      w: Math.max(2, Math.round((drag.origin.w + dx) * 10) / 10),
+      h: Math.max(2, Math.round((drag.origin.h + dy) * 10) / 10)
+    });
+  drag.commit = true;
+  paintAll();
+});
+
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  $('#guides').classList.remove('on');
+  if (drag.commit) {
+    // Un seul point d'historique par geste, pas un par pixel (EF-09.47).
+    history.push(structuredClone(scene), drag.mode === 'move' ? 'déplacement' : 'redimensionnement');
+    setDirty(true);
+  }
+  drag = null;
+  paintAll();
+});
+
+function snapTo(value, active, center) {
+  const rounded = Math.round(value * 10) / 10;
+  if (!active) return rounded;
+  if (Math.abs(rounded - center) <= 1.5) return center;
+  return rounded;
+}
+
+// ---------------------------------------------------------------------------
+// Commandes
+// ---------------------------------------------------------------------------
+function addAndSelect(layer) {
+  edit('ajout de calque', (s) => addLayer(s, layer), { commit: true });
+  selectedId = scene.layers.at(-1).id;
+  paintAll();
+}
+
+$('#addText').addEventListener('click', () => addAndSelect(textLayer({
+  name: 'Nouveau texte', bind: 'custom', customText: 'Votre texte',
+  x: 50, y: 50, w: 60, h: 14
+})));
+$('#addOverlay').addEventListener('click', () => addAndSelect(overlayLayer({ name: 'Bandeau', x: 50, y: 50, w: 70, h: 20 })));
+$('#addImage').addEventListener('click', () => addAndSelect(imageLayer({ name: 'Image', x: 50, y: 50, w: 24, h: 18 })));
+$('#addBackground').addEventListener('click', () => addAndSelect(backgroundLayer({ name: 'Fond', x: 50, y: 50, w: 100, h: 100 })));
+
+$('#del').addEventListener('click', () => {
+  if (!selectedId) return;
+  edit('suppression', (s) => removeLayer(s, selectedId));
+  selectedId = null;
+  paintAll();
+});
+
+$('#dup').addEventListener('click', () => {
+  if (!selectedId) return;
+  edit('duplication', (s) => duplicateLayer(s, selectedId));
+  selectedId = scene.layers.at(-1).id;
+  paintAll();
+});
+
+$('#front').addEventListener('click', () => {
+  if (!selectedId) return;
+  edit('ordre', (s) => sendToEdge(s, selectedId, 'front'));
+});
+$('#back').addEventListener('click', () => {
+  if (!selectedId) return;
+  edit('ordre', (s) => sendToEdge(s, selectedId, 'back'));
+});
+
+$('#undo').addEventListener('click', undo);
+$('#redo').addEventListener('click', redo);
+
+function undo() {
+  if (!history.canUndo) return;
+  scene = normalizeScene(history.undo());
+  setDirty(true);
+  paintAll();
+}
+function redo() {
+  if (!history.canRedo) return;
+  scene = normalizeScene(history.redo());
+  setDirty(true);
+  paintAll();
+}
+
+$('#safeOn').addEventListener('change', (e) => document.body.classList.toggle('safe-on', e.target.checked));
+
+$('#preset').addEventListener('change', () => {
+  const preset = $('#preset').value;
+  edit('disposition', () => sceneFromPreset({
+    id: scene.id,
+    name: scene.name,
+    kind: $('#kind').value,
+    preset,
+    transparent: currentOutput()?.transparent
+  }));
+});
+
+$('#output').addEventListener('change', loadScene);
+$('#kind').addEventListener('change', loadScene);
+$('#variant').addEventListener('change', paintAll);
+
+$('#save').addEventListener('click', save);
+
+async function save() {
+  if (!scene) return;
+  const report = validateScene(scene);
+  if (!report.ok) {
+    toast(`Scène incomplète : ${report.errors[0].message}`, 'err');
+    return;
+  }
+  $('#status').textContent = 'enregistrement…';
+  try {
+    const res = await fetch(`/api/scenes/${encodeURIComponent(scene.id)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(scene)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error?.message || 'Enregistrement refusé.');
+    scene = normalizeScene(data.id ? data : scene);
+    // La scène doit être rattachée à la sortie courante, sinon elle n'est
+    // jamais affichée : on complète `scenesByKind` sans écraser les autres.
+    const output = currentOutput();
+    const kind = $('#kind').value;
+    if (output && output.scenesByKind?.[kind] !== scene.id) {
+      output.scenesByKind = { ...(output.scenesByKind || {}), [kind]: scene.id };
+      const outs = await fetch('/api/outputs', { cache: 'no-store' }).then((r) => r.json());
+      await fetch('/api/outputs', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          rev: outs.rev,
+          outputs: outs.outputs.map((o) => (o.id === output.id ? { ...o, scenesByKind: { ...(o.scenesByKind || {}), [kind]: scene.id } } : o))
+        })
+      });
+    }
+    setDirty(false);
+    history.reset(structuredClone(scene));
+    paintAll();
+    toast('Scène enregistrée.');
+  } catch (err) {
+    $('#status').textContent = 'échec de l’enregistrement';
+    toast(err.message, 'err');
+  }
+}
+
+// Raccourcis clavier (ch. 08 § 8.6)
+window.addEventListener('keydown', (event) => {
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName) || event.target.isContentEditable;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    save();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+    event.preventDefault();
+    event.shiftKey ? redo() : undo();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+    event.preventDefault();
+    $('#dup').click();
+    return;
+  }
+  if (typing) return;
+
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    event.preventDefault();
+    $('#del').click();
+    return;
+  }
+  if (event.key === 'Escape') { selectedId = null; paintAll(); return; }
+
+  const layer = scene?.layers.find((l) => l.id === selectedId);
+  if (!layer) return;
+  const step = event.shiftKey ? 10 : 1;
+  const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+  const move = moves[event.key];
+  if (!move) return;
+  event.preventDefault();
+  edit('déplacement', (s) => updateLayer(s, selectedId, { x: layer.x + move[0], y: layer.y + move[1] }));
+});
+
+// ---------------------------------------------------------------------------
+// Helpers d'affichage
+// ---------------------------------------------------------------------------
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function round(value) {
+  return Number.isFinite(Number(value)) ? Math.round(Number(value) * 10) / 10 : 0;
+}
+function toHex(color) {
+  const value = String(color || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+  if (/^#[0-9a-f]{3}$/i.test(value)) return '#' + [...value.slice(1)].map((c) => c + c).join('');
+  const rgba = /^rgba?\(([^)]+)\)$/.exec(value);
+  if (rgba) {
+    const [r, g, b] = rgba[1].split(/[,/\s]+/).filter(Boolean).map(Number);
+    return '#' + [r, g, b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('');
+  }
+  return '#ffffff';
+}
+function hexToRgba(hex, alpha = 0.84) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(m[1].slice(0, 2), 16);
+  const g = parseInt(m[1].slice(2, 4), 16);
+  const b = parseInt(m[1].slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+window.addEventListener('resize', () => { if (scene) paintAll(); });
+
+// ---------------------------------------------------------------------------
+// Démarrage
+// ---------------------------------------------------------------------------
+(async () => {
+  await loadProject();
+  await loadScene();
+  window.addEventListener('beforeunload', (event) => {
+    if (!dirty) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+})();
+</script>
+</body>
+</html>

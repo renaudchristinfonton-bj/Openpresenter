@@ -13,60 +13,22 @@
   html,body{height:100%;margin:0;background:var(--bg);overflow:hidden}
   body{font-family:var(--font);color:var(--fg)}
 
-  /* Scène : 1920×1080 mise à l'échelle, quel que soit l'écran (ch. 08). */
+  /* La scène fait 1920×1080 et est mise à l'échelle de l'écran.
+     Aucun style de contenu ici : tout vient de `SCENE_CSS` (ENF-42). */
   #stage{
     position:absolute; left:50%; top:50%;
-    width:1920px; height:1080px;
     transform-origin:center center;
-    background:#000;
     overflow:hidden;
   }
-  .layer{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    padding:60px 90px;
-  }
-  .text{
-    text-align:center;
-    line-height:1.18;
-    font-weight:600;
-    letter-spacing:-.01em;
-    text-wrap:balance;
-    max-width:100%;
-    white-space:pre-line;
-    text-shadow:0 4px 24px rgba(0,0,0,.55);
-  }
-  .ref{
-    position:absolute; right:90px; bottom:56px;
-    font-size:34px; font-weight:700; letter-spacing:.06em;
-    text-transform:uppercase; opacity:.72;
-  }
-  .empty{display:none}
-
-  /* Bandeau (preset « Bas centré ») : la scène est transparente. */
-  body.preset-bottom #stage,
-  body.preset-lowerthird #stage,
-  body.preset-bottom-right #stage.stage-transparent{background:transparent}
-  body.preset-bottom #stage .layer{
-    align-items:flex-end; padding:0 120px 70px;
-  }
-  body.preset-bottom #stage .box,
-  body.preset-lowerthird #stage .box{
-    background:rgba(0,0,0,.55);
-    border-radius:18px; padding:26px 34px;
-    backdrop-filter:blur(6px);
-  }
-  .box{display:inline-block; max-width:100%}
 
   /* État hors ligne / en attente. */
   #wait{
-    position:fixed; inset:0; display:none;
+    position:fixed; inset:0; display:none; z-index:5;
     align-items:center; justify-content:center; flex-direction:column; gap:14px;
     background:#05060a; color:#8b93a5; font-size:22px; text-align:center; padding:40px;
   }
   #wait.show{display:flex}
   #wait b{color:#e8eaf0; font-size:30px; font-weight:800; letter-spacing:-.01em}
-  #wait code{font-family:ui-monospace,Menlo,monospace; font-size:16px; background:#11141c; padding:6px 10px; border-radius:6px; color:#f5b942}
   .dot{width:10px;height:10px;border-radius:50%;background:#ef5360;display:inline-block}
   .dot.on{background:#34d399}
 
@@ -79,17 +41,14 @@
   }
   body.debug #debug{display:block}
   .progress{
-    position:fixed; left:0; right:0; bottom:0; height:3px; background:#ffffff12;
+    position:fixed; left:0; right:0; bottom:0; height:3px; background:#ffffff12; z-index:6;
   }
   .progress i{display:block; height:100%; background:var(--accent); width:0; transition:width .18s}
   body.hide-progress .progress{display:none}
 </style>
 </head>
 <body>
-<div id="stage" aria-live="polite" aria-atomic="true">
-  <div class="layer"><div class="box"><div class="text" id="text"></div></div></div>
-  <div class="ref" id="ref"></div>
-</div>
+<div id="stage" aria-live="polite" aria-atomic="true"></div>
 
 <div id="wait">
   <div><span class="dot" id="dot"></span> <span id="waitText">Connexion à OpenPresenter…</span></div>
@@ -100,23 +59,38 @@
 <div class="progress"><i id="bar"></i></div>
 
 <script type="module">
+// Un seul moteur de rendu pour l'éditeur et la sortie (A-10 / ENF-42).
+import { mountScene, applyAutoFit, SCENE_CSS, STAGE_WIDTH, STAGE_HEIGHT } from '/shared/render/engine.mjs';
+import { contentFromPayload } from '/shared/render/content.mjs';
+import { sceneFromPreset } from '/shared/scene.mjs';
+
 (() => {
   const params = new URLSearchParams(location.search);
   const outputId = location.pathname.split('/')[2] || params.get('output') || 'out_full';
-  const kindFilter = params.get('kind') || null;
+  const queryKind = params.get('kind') || null;
   const debug = params.get('debug') === '1';
+  const token = params.get('t') || '';
   if (debug) document.body.classList.add('debug');
 
   const $ = (s) => document.querySelector(s);
-  const textEl = $('#text');
-  const refEl = $('#ref');
   const stage = $('#stage');
   const bar = $('#bar');
   const wait = $('#wait');
   const dot = $('#dot');
 
+  // Feuille de style de la scène : identique à celle de l'éditeur, servie par
+  // le même module, donc aucune divergence de rendu possible.
+  const styleEl = document.createElement('style');
+  styleEl.id = 'op-scene-css';
+  styleEl.textContent = SCENE_CSS;
+  document.head.append(styleEl);
+  // Résolution de l'URL pour les assets locaux (`?t=` porte le jeton réseau).
+  const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : url);
+
   let output = null;
-  let current = null;   // message `show` courant
+  let current = null;     // dernier message `show`
+  let currentKind = null;
+  let scenes = new Map(); // kind → scène
   let socket = null;
   let retry = 0;
   let connected = false;
@@ -125,8 +99,16 @@
   // Mise à l'échelle de la scène
   // ---------------------------------------------------------------------
   function fitStage() {
-    const w = output?.width || 1920;
-    const h = output?.height || 1080;
+    const w = output?.width || STAGE_WIDTH;
+    const h = output?.height || STAGE_HEIGHT;
+    const ratio = w / STAGE_WIDTH;
+    const scene = stage.querySelector('.op-scene');
+    if (scene) {
+      // Le canevas reste 1920×1080 et la scène entière est réduite : les
+      // proportions ne dépendent jamais de la taille de la fenêtre.
+      scene.style.transform = `scale(${ratio})`;
+      scene.style.transformOrigin = 'top left';
+    }
     stage.style.width = w + 'px';
     stage.style.height = h + 'px';
     const scale = Math.min(window.innerWidth / w, window.innerHeight / h);
@@ -135,42 +117,81 @@
   window.addEventListener('resize', fitStage);
 
   // ---------------------------------------------------------------------
-  // Rendu d'un contenu
+  // Scènes : une par type de contenu, chargée depuis le disque
   // ---------------------------------------------------------------------
-  function render(message) {
+  async function loadScene(kind) {
+    if (scenes.has(kind)) return scenes.get(kind);
+    const sceneId = output?.scenesByKind?.[kind] || null;
+    let scene = null;
+    if (sceneId) {
+      try {
+        const res = await fetch(withToken(`/api/scenes/${sceneId}`), { cache: 'no-store' });
+        if (res.ok) scene = await res.json();
+      } catch { /* repli ci-dessous */ }
+    }
+    if (!scene) {
+      // Aucune scène définie : on retombe sur le preset de la sortie plutôt que
+      // d'afficher un écran noir (le culte ne s'arrête pas pour un fichier).
+      scene = sceneFromPreset({
+        id: `scn_fallback_${kind}`,
+        name: `Repli — ${kind}`,
+        kind,
+        preset: output?.preset || 'full',
+        transparent: Boolean(output?.transparent)
+      });
+      if (debug) console.warn(`[sortie] scène absente pour « ${kind} », preset « ${output?.preset} » utilisé`);
+    }
+    scenes.set(kind, scene);
+    return scene;
+  }
+
+  function assetsFor(scene) {
+    // Les calques ne connaissent que des identifiants : l'URL est construite ici.
+    const map = {};
+    const walk = (layers) => {
+      for (const layer of layers || []) {
+        const id = layer.assetId || layer.source?.assetId;
+        if (id) map[id] = withToken(`/api/assets/${id}`);
+        if (layer.children) walk(layer.children);
+      }
+    };
+    walk(scene?.layers);
+    return map;
+  }
+
+  // ---------------------------------------------------------------------
+  // Rendu
+  // ---------------------------------------------------------------------
+  async function render(message) {
     current = message;
     if (!message || message.t === 'clear') {
-      textEl.textContent = '';
-      refEl.textContent = '';
+      stage.replaceChildren();
       bar.style.width = '0';
       return;
     }
-    const p = message.payload || {};
-    const text = p.text ?? p.body ?? '';
-    textEl.textContent = text;
-    refEl.textContent = p.reference || p.ref || '';
+    const kind = message.kind || 'bible';
+    currentKind = kind;
+    const scene = await loadScene(kind);
+    const content = contentFromPayload(message.payload || {}, kind);
+    const transparent = output?.transparent ?? false;
 
-    // Taille : on part de la scène, on réduit jusqu'à tenir dans le cadre.
-    const base = p.fontSize || (output?.preset === 'bottom' ? 74 : 108);
-    autoFit(text, base);
+    // `mountScene` insère **et** ajuste : c'est exactement ce que fait l'éditeur.
+    const result = mountScene(stage, {
+      scene,
+      content,
+      assets: assetsFor(scene),
+      transparent,
+      editing: false
+    });
+    // Une seconde passe après chargement des polices : la mesure dépend d'elles.
+    document.fonts?.ready.then(() => applyAutoFit(stage)).catch(() => {});
+    fitStage();
+    if (debug) console.debug('[sortie] rendu', { layers: scene.layers?.length, html: result.html.length });
 
-    const total = p.partCount || 1;
-    const index = (p.partIndex ?? 0) + 1;
+    const total = content.partCount || 1;
+    const index = (content.partIndex || 0) + 1;
     bar.style.width = total > 1 ? `${Math.round((index / total) * 100)}%` : '0';
     if (debug) logDebug(message);
-  }
-
-  function autoFit(text, base) {
-    let size = base;
-    textEl.style.fontSize = size + 'px';
-    textEl.style.lineHeight = '1.18';
-    const maxHeight = stage.clientHeight - 200;
-    const maxWidth = stage.clientWidth - 180;
-    let guard = 0;
-    while (guard++ < 40 && (textEl.scrollHeight > maxHeight || textEl.scrollWidth > maxWidth) && size > 26) {
-      size -= 4;
-      textEl.style.fontSize = size + 'px';
-    }
   }
 
   function logDebug(message) {
@@ -178,10 +199,12 @@
     el.textContent = [
       `sortie   : ${outputId}`,
       `type     : ${message?.kind || '—'}`,
-      `filtre   : ${kindFilter || 'tout'}`,
+      `filtre   : ${queryKind || 'tout'}`,
+      `scène    : ${scenes.get(message?.kind)?.id || '—'}`,
       `établie  : ${connected ? 'oui' : 'non'}`,
       `seq      : ${message?.seq ?? '—'}`,
       `partie   : ${(message?.payload?.partIndex ?? 0) + 1}/${message?.payload?.partCount ?? 1}`,
+      `auto-fit : ${stage.querySelectorAll('[data-fit-factor]').length}`,
       `reçu     : ${message?.ts ? new Date(message.ts).toLocaleTimeString('fr-FR') : '—'}`
     ].join('\n');
   }
@@ -191,7 +214,7 @@
   // ---------------------------------------------------------------------
   async function loadOutput() {
     try {
-      const res = await fetch('/api/outputs', { cache: 'no-store' });
+      const res = await fetch(withToken('/api/outputs'), { cache: 'no-store' });
       if (!res.ok) throw new Error('configuration illisible');
       const data = await res.json();
       output = (data.outputs || []).find((o) => o.id === outputId) || null;
@@ -210,18 +233,18 @@
     }
 
     document.title = `${output.name} — OpenPresenter`;
-    document.body.classList.toggle('preset-bottom', output.preset === 'bottom');
-    document.body.classList.toggle('preset-lowerthird', output.preset === 'lowerthird');
-    document.body.classList.toggle('preset-bottom-right', output.preset === 'bottom-right');
-    stage.classList.toggle('stage-transparent', Boolean(output.transparent));
-    if (output.transparent) document.documentElement.style.background = 'transparent';
+    if (output.transparent) {
+      // Fond alpha : OBS/vMix composent sur la scène, pas sur du noir.
+      document.documentElement.style.background = 'transparent';
+      document.body.style.background = 'transparent';
+    }
     fitStage();
 
     // Filtre `receives` : un type exclu reste vide même via l'URL directe (EF-08).
-    if (kindFilter && output.receives && output.receives[kindFilter] === false) {
+    if (queryKind && output.receives && output.receives[queryKind] === false) {
       showWait(
         'Cette sortie ne reçoit pas ce type de contenu',
-        `« ${output.name} » n’accepte pas les contenus de type « ${kindFilter} ».`,
+        `« ${output.name} » n’accepte pas les contenus de type « ${queryKind} ».`,
         true
       );
       return false;
@@ -233,7 +256,7 @@
   function showWait(title, hint, keepOnline) {
     wait.classList.add('show');
     $('#waitText').textContent = title;
-    $('#waitHint').innerHTML = hint || '';
+    $('#waitHint').textContent = hint || '';
     dot.classList.toggle('on', Boolean(keepOnline));
   }
 
@@ -246,7 +269,7 @@
   // ---------------------------------------------------------------------
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${proto}://${location.host}/ws?channel=op_out_${outputId}${location.search.includes('t=') ? '&' + location.search.slice(1) : ''}`;
+    const url = `${proto}://${location.host}/ws?channel=op_out_${outputId}${token ? `&t=${encodeURIComponent(token)}` : ''}`;
     socket = new WebSocket(url);
 
     socket.addEventListener('open', () => {
@@ -255,6 +278,14 @@
       socket.send(JSON.stringify({ t: 'hello' }));
       hideWait();
       if (debug) logDebug(current);
+      // Resynchronise l'antenne : une page rouverte doit retrouver l'affichage.
+      fetch(withToken('/api/live/state'), { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((state) => {
+          const shown = state?.channels?.[outputId];
+          if (shown && shown.t === 'show') render(shown);
+        })
+        .catch(() => {});
     });
 
     socket.addEventListener('message', (event) => {
@@ -262,10 +293,14 @@
       try { msg = JSON.parse(event.data); } catch { return; }
       if (msg.t === 'show') {
         // Une sortie filtrée ignore silencieusement les autres types.
-        if (kindFilter && output && output.receives && output.receives[kindFilter] === false) return;
+        if (queryKind && output?.receives && output.receives[queryKind] === false) return;
         render(msg);
       } else if (msg.t === 'clear') {
         render({ t: 'clear' });
+      } else if (msg.t === 'project:changed' && String(msg.resource || '').startsWith('scenes/')) {
+        // Une scène corrigée dans le studio doit s'appliquer sans recharger.
+        scenes.clear();
+        if (current?.t === 'show') render(current);
       } else if (msg.t === 'error') {
         showWait('Message invalide', msg.message || '', true);
       }

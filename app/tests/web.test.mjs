@@ -9,7 +9,7 @@ import { ROOT } from './helpers.mjs';
 
 const run = promisify(execFile);
 const WEB = path.join(ROOT, 'app', 'web');
-const PAGES = ['studio.html', 'output.html', 'socle.html'];
+const PAGES = ['studio.html', 'output.html', 'socle.html', 'scene.html'];
 const VOID = new Set(['br', 'img', 'input', 'meta', 'link', 'hr', 'source', 'area', 'base', 'col', 'embed', 'param', 'track', 'wbr']);
 
 test('chaque page a un titre, une langue et un viewport', async () => {
@@ -32,8 +32,9 @@ test('les modules ES des pages se compilent', async () => {
       for (const [i, code] of blocks.entries()) {
         const tmp = path.join(tmpDir, `${page}-${i}.mjs`);
         // Les imports `/shared/...` n'existent pas hors du serveur : on les neutralise
-        // pour ne vérifier que la syntaxe du reste du module.
-        await fs.writeFile(tmp, code.replace(/^import .*$/gm, ''));
+        // pour ne vérifier que la syntaxe du reste du module. Un import peut tenir
+        // sur plusieurs lignes (`import {\n a,\n b\n} from '…'`).
+        await fs.writeFile(tmp, code.replace(/^import\s[\s\S]*?from\s+'[^']*';[ \t]*$/gm, ''));
         await run(process.execPath, ['--check', tmp]);
       }
     }

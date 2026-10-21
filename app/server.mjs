@@ -36,6 +36,7 @@ import { buildExport, importArchive, saveExport } from './src/core/exporter.mjs'
 import { analyze, run as runMigration, detectSource } from './src/migration/v1.mjs';
 import { Relay } from './src/core/ws.mjs';
 import * as live from './src/core/live.mjs';
+import { channelFor } from './src/core/live.mjs';
 import { log, readLogs, purgeLogs, setVerbose } from './src/core/log.mjs';
 import {
   seedSampleBible, listBibles, resolveBible, buildBibleSelection, makeVerseCounter
@@ -221,7 +222,13 @@ async function serveStatic(req, res, pathname) {
 async function serveShared(req, res, rel) {
   const root = path.join(APP_DIR, 'src', 'core');
   const target = path.resolve(root, rel);
-  const allowed = ['books.mjs', 'split.mjs', 'bible/reference.mjs', 'bible/navigation.mjs'];
+  // Liste blanche : uniquement des modules purs, sans `node:*`, partagés entre
+  // le serveur, l'éditeur et la page de sortie (ENF-42).
+  const allowed = [
+    'books.mjs', 'split.mjs', 'ids.mjs', 'scene.mjs', 'looks.mjs', 'history.mjs',
+    'bible/reference.mjs', 'bible/navigation.mjs',
+    'render/engine.mjs', 'render/content.mjs', 'render/autofit.mjs', 'render/contrast.mjs'
+  ];
   const clean = path.relative(root, target).split(path.sep).join('/');
   if (!allowed.includes(clean)) {
     return sendError(res, 404, 'NOT_FOUND', 'Module introuvable.');
@@ -673,6 +680,20 @@ async function handleResources(req, res, segments, method) {
     RELAY?.broadcast('op_project', {
       t: 'project:changed', resource: `${RESOURCES[type].dir}/${id}`, rev: saved.rev, ts: Date.now()
     });
+    // Une scène modifiée doit s'appliquer **sans rechargement** aux sorties qui
+    // l'utilisent : on publie aussi sur leur canal (une seule connexion par page).
+    if (type === 'scenes') {
+      const outputs = await readOutputs();
+      const message = {
+        t: 'project:changed', resource: `${RESOURCES[type].dir}/${id}`,
+        sceneId: id, rev: saved.rev, ts: Date.now()
+      };
+      for (const output of outputs.outputs || []) {
+        if (Object.values(output.scenesByKind || {}).includes(id)) {
+          RELAY?.publish(channelFor(output.id), message);
+        }
+      }
+    }
     return sendJSON(res, method === 'POST' ? 201 : 200, saved);
   }
   if (method === 'DELETE') {

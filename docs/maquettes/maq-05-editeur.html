@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-05 — Éditeur de scène WYSIWYG · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-rows: 48px 1fr; height: 820px; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .body { display: grid; grid-template-columns: 190px 1fr 330px; min-height: 0; }
+
+  .left { background: #0a0c11; border-right: 1px solid var(--line); padding: 10px 9px; overflow: auto; display: flex; flex-direction: column; gap: 13px; }
+  .sect-t { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); font-weight: 700; margin-bottom: 5px; }
+  .preset { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 4px; font-size: 11px; color: var(--txt-2); }
+  .preset.on { background: #f5b9421c; color: var(--accent); font-weight: 700; }
+
+  .layer { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 4px; font-size: 11px; color: var(--txt-2); border: 1px solid transparent; }
+  .layer.on { background: #f5b94224; border-color: #f5b94266; color: var(--accent); font-weight: 700; }
+  .layer .ic { font-size: 10px; width: 13px; }
+  .layer .eye { margin-left: auto; font-size: 9px; color: var(--txt-3); }
+  .grp { padding-left: 16px; }
+
+  .addl { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; }
+  .addl button { flex: 1 0 44%; padding: 5px 4px; font-size: 9px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line-2); color: var(--txt-2); }
+
+  /* Canevas */
+  .stage { background: #05060a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; min-width: 0; }
+  .canvas {
+    position: relative; width: 100%; max-width: 780px; aspect-ratio: 16/9;
+    border-radius: 4px; overflow: hidden;
+    box-shadow: 0 0 0 1px #2b3140, 0 18px 50px #0009;
+    background: linear-gradient(135deg,#3a0a1a,#6b1533);
+  }
+  .canvas .tint { position: absolute; inset: 0; background: #2a0511; opacity: .45; }
+  .canvas .vign { position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, transparent 30%, #0008 100%); }
+  .lb { position: absolute; transform: translate(-50%,-50%); }
+  .lb.selected { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .handle { position: absolute; width: 8px; height: 8px; background: var(--accent); border: 1px solid #161616; border-radius: 2px; }
+  .handle.nw { left: -4px; top: -4px } .handle.ne { right: -4px; top: -4px }
+  .handle.sw { left: -4px; bottom: -4px } .handle.se { right: -4px; bottom: -4px }
+  .rot { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 1px solid #161616; }
+
+  /* Guide de zone de sécurité */
+  .safe { position: absolute; inset: 5%; border: 1px dashed #ffffff2e; pointer-events: none; }
+  .safe-in { position: absolute; inset: 11%; border: 1px dashed #ffffff17; pointer-events: none; }
+
+  .canvabar { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--txt-3); }
+  .zoombar { display: flex; gap: 3px; }
+  .zb { padding: 3px 8px; border-radius: 3px; background: #0d1017; border: 1px solid var(--line-2); color: var(--txt-2); font-size: 10px; }
+  .zb.on { background: var(--accent); color: #17110a; border-color: var(--accent); font-weight: 700; }
+
+  /* Inspecteur */
+  .insp { background: #0a0c11; border-left: 1px solid var(--line); padding: 11px; overflow: auto; display: flex; flex-direction: column; gap: 11px; }
+  .card2 { background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; }
+  .fld { margin-bottom: 7px; }
+  .fld:last-child { margin-bottom: 0; }
+  .fld > span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-3); margin-bottom: 3px; }
+
+  /* Grille d'alignement 3x3 */
+  .align9 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 84px; }
+  .align9 div { aspect-ratio: 1; border-radius: 3px; background: #0d1017; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 11px; color: var(--txt-3); }
+  .align9 div.on { background: var(--accent); color: #17110a; border-color: var(--accent); }
+
+  .swatches { display: flex; gap: 4px; }
+  .sw { width: 17px; height: 17px; border-radius: 4px; border: 1px solid #ffffff22; }
+
+  .segs { display: flex; gap: 2px; }
+  .seg { flex: 1; padding: 4px 0; text-align: center; font-size: 10px; background: #0d1017; border: 1px solid var(--line-2); color: var(--txt-2); }
+  .seg:first-child { border-radius: 4px 0 0 4px } .seg:last-child { border-radius: 0 4px 4px 0 }
+  .seg.on { background: var(--accent); color: #17110a; border-color: var(--accent); font-weight: 700; }
+
+  .row2 { display: flex; gap: 6px; }
+  .row2 > * { flex: 1; min-width: 0; }
+
+  .sw-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--txt-2); padding: 3px 0; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html" class="on">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">Scène · Bible · Sortie « Bas centré — Stream »</span>
+    <span>MAQ-05 · éditeur WYSIWYG</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> scène « Bas centré — Saint-Valentin », calque <b>Verset</b> sélectionné (liaison <code>verse</code>), alignement bas-centre, justification activée, guides de zone de sécurité affichés.</div>
+
+  <div class="app">
+
+    <div class="head">
+      <span class="sm b">SCÈNE</span>
+      <span class="pill">Bible</span>
+      <span class="sm muted">Sortie « Bas centré — Stream »</span>
+      <span class="sm dim cod">·</span>
+      <span class="sm">Bas centré — Saint-Valentin</span>
+      <span class="spacer"></span>
+      <span class="tiny dim">Modifié · non enregistré</span>
+      <button class="btn sm">Aperçu</button>
+      <button class="btn sm primary">Enregistrer</button>
+      <button class="btn sm icon">✕</button>
+    </div>
+
+    <div class="body">
+
+      <!-- GAUCHE -->
+      <div class="left">
+
+        <div>
+          <div class="sect-t">Dispositions</div>
+          <div class="preset">Cinéma</div>
+          <div class="preset">Galerie</div>
+          <div class="preset on">Bas centré</div>
+          <div class="preset">Bas droite</div>
+          <div class="preset">Lower third</div>
+        </div>
+
+        <div>
+          <div class="sect-t">Calques</div>
+          <div class="layer"><span class="ic">▣</span> Fond <span class="eye">👁</span></div>
+          <div class="layer"><span class="ic">▢</span> Bandeau <span class="eye">👁</span></div>
+          <div class="layer on"><span class="ic">T</span> Verset <span class="eye">👁</span></div>
+          <div class="layer"><span class="ic">T</span> Référence <span class="eye">👁</span></div>
+          <div class="layer"><span class="ic">T</span> Version <span class="eye">👁</span></div>
+          <div class="layer"><span class="ic">▣</span> Logo <span class="eye" style="opacity:.3">◌</span></div>
+          <div class="addl">
+            <button>＋ Texte</button>
+            <button>＋ Panneau</button>
+            <button>＋ Image</button>
+            <button>＋ Groupe</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="sect-t">Looks</div>
+          <div class="preset">Sobre</div>
+          <div class="preset">Festif</div>
+          <div class="preset on">★ Saint-Valentin</div>
+          <button class="btn sm" style="width:100%;margin-top:4px">Enregistrer comme look</button>
+        </div>
+
+      </div>
+
+      <!-- CANEVAS -->
+      <div class="stage">
+
+        <div class="canvas">
+          <div class="tint"></div>
+          <div class="vign"></div>
+          <div class="safe"></div>
+          <div class="safe-in"></div>
+
+          <!-- Bandeau -->
+          <div class="lb" style="left:50%;top:85%;width:82%;height:25%;background:rgba(8,10,16,.92);border-left:7px solid #e8698f;border-radius:7px"></div>
+
+          <!-- Référence -->
+          <div class="lb" style="left:51%;top:71%;width:68%;text-align:left;font-size:11px;font-weight:800;letter-spacing:.12em;color:#ffb3c6;font-variant:small-caps">JEAN 3:16</div>
+
+          <!-- Badge version -->
+          <div class="lb" style="left:14%;top:82%;width:9%;height:8%;background:#e8698f;border-radius:3px;display:grid;place-items:center;font-size:9px;font-weight:900;color:#17110a">LSG</div>
+
+          <!-- Verset sélectionné -->
+          <div class="lb selected" style="left:54%;top:87%;width:66%;text-align:justify;text-align-last:center;font-size:13px;line-height:1.45;color:#fff;font-weight:600">
+            Car Dieu a tant aimé le monde<br>qu'il a donné son Fils unique,
+            <div class="rot"></div>
+            <div class="handle nw"></div><div class="handle ne"></div>
+            <div class="handle sw"></div><div class="handle se"></div>
+          </div>
+        </div>
+
+        <div class="canvabar">
+          <span>1920 × 1080</span>
+          <span class="dim">·</span>
+          <span>zoom 62 %</span>
+          <span class="spacer"></span>
+          <div class="zoombar">
+            <span class="zb">−</span>
+            <span class="zb on">62 %</span>
+            <span class="zb">+</span>
+            <span class="zb">1:1</span>
+          </div>
+          <span class="dim">·</span>
+          <span class="zb">↶</span>
+          <span class="zb">↷</span>
+          <span class="dim">·</span>
+          <span class="zb">⌗ grille</span>
+          <span class="zb">⊞ guides</span>
+          <span class="zb on">⇔ aimants</span>
+        </div>
+
+      </div>
+
+      <!-- INSPECTEUR -->
+      <aside class="insp">
+
+        <div class="card2">
+          <div class="sect-t">Scène</div>
+          <div class="fld"><span>Nom</span><div class="field">Bas centré — Saint-Valentin</div></div>
+          <div class="row2">
+            <div class="fld"><span>Découpage</span><div class="field">25 mots</div></div>
+            <div class="fld"><span>Transition</span><div class="field">slide-up</div></div>
+          </div>
+          <div class="fld"><span>Durée</span><div class="field">300 ms</div></div>
+        </div>
+
+        <div class="card2">
+          <div class="sect-t">Calque « Verset »</div>
+
+          <div class="fld"><span>Liaison</span><div class="field">verse — texte du verset</div></div>
+
+          <div class="fld">
+            <span>Position dans le calque</span>
+            <div class="row" style="gap:8px">
+              <div class="align9">
+                <div>↖</div><div>↑</div><div>↗</div>
+                <div>←</div><div>●</div><div>→</div>
+                <div>↙</div><div class="on">↓</div><div>↘</div>
+              </div>
+              <div class="tiny muted" style="flex:1">
+                Bas · centre<br>
+                <span class="dim">9 combinaisons disponibles</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fld">
+            <span>Alignement du texte</span>
+            <div class="segs">
+              <span class="seg">Gauche</span>
+              <span class="seg">Centré</span>
+              <span class="seg">Droite</span>
+              <span class="seg on">Justifié</span>
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="fld"><span>Police</span><div class="field">Merriweather</div></div>
+            <div class="fld"><span>Taille</span><div class="field mono">40</div></div>
+          </div>
+
+          <div class="row2">
+            <div class="fld"><span>Interligne</span><div class="field mono">1.45</div></div>
+            <div class="fld"><span>Lettrage</span><div class="field mono">0</div></div>
+          </div>
+
+          <div class="fld">
+            <span>Couleur</span>
+            <div class="swatches">
+              <div class="sw" style="background:#fff;border-color:var(--accent);box-shadow:0 0 0 2px #f5b94255"></div>
+              <div class="sw" style="background:#ffb3c6"></div>
+              <div class="sw" style="background:#f5b942"></div>
+              <div class="sw" style="background:#000"></div>
+              <div class="sw" style="background:#e8698f"></div>
+              <div class="sw" style="background:linear-gradient(135deg,#f00,#00f)"></div>
+            </div>
+          </div>
+
+          <div class="row" style="gap:5px;margin-top:2px">
+            <span class="seg on" style="flex:0 0 30px;padding:4px 0;text-align:center;border-radius:4px">B</span>
+            <span class="seg" style="flex:0 0 30px;padding:4px 0;text-align:center;border-radius:4px;font-style:italic">I</span>
+            <span class="seg" style="flex:0 0 30px;padding:4px 0;text-align:center;border-radius:4px;text-decoration:underline">U</span>
+            <span class="seg" style="flex:0 0 30px;padding:4px 0;text-align:center;border-radius:4px;letter-spacing:.05em">AA</span>
+            <div class="spacer"></div>
+            <span class="tiny dim">Contour</span>
+            <span class="cb" style="width:14px;height:14px"></span>
+            <span class="tiny dim">Ombre</span>
+            <span class="cb on" style="width:14px;height:14px">✓</span>
+          </div>
+        </div>
+
+        <div class="card2">
+          <div class="sect-t">Auto-ajustement</div>
+          <div class="sw-toggle"><span class="cb on" style="width:14px;height:14px">✓</span> Réduire pour faire tenir</div>
+          <div class="row2" style="margin-top:5px">
+            <div class="fld"><span>Min</span><div class="field mono">16</div></div>
+            <div class="fld"><span>Max</span><div class="field mono">120</div></div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/08-editeur-scene.md</code></h3>
+  <ul>
+    <li><b>La grille 3×3</b> remplace les listes déroulantes pour l'alignement : 9 combinaisons d'un coup d'œil (EF-09.22).</li>
+    <li><b>Les 4 alignements horizontaux</b> incluent « Justifié » (EF-09.17), avec <code>text-align-last: center</code>.</li>
+    <li><b>Le calque sélectionné</b> montre ses 4 poignées, sa poignée de rotation et son contour en accent (EF-09, § 8.5).</li>
+    <li><b>Les guides de zone de sécurité</b> à 5 % et 11 % sont visibles et ne sortent jamais à l'antenne (EF-09.45).</li>
+    <li><b>L'aperçu utilise un vrai verset long</b>, jamais du faux texte (EF-09.51).</li>
+    <li><b>Le fond image + teinte + vignettage</b> illustre la lisibilité garantie (EF-09.6, P7).</li>
+    <li><b>La modification non enregistrée</b> est signalée en tête (EF-09.49).</li>
+  </ul>
+</div>
+
+</body>
+</html>

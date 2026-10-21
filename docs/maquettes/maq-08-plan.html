@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-08 — Événements et plan de déroulement · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-rows: 48px 1fr 76px; height: 790px; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
+
+  .planlist { overflow: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .cue {
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px;
+    border-radius: 6px; border: 1px solid transparent; font-size: 12px;
+  }
+  .cue:hover { background: #12161f; }
+  .cue.on { background: #f5b94214; border-color: #f5b94266; }
+  .cue.on .idx { background: var(--accent); color: #17110a; font-weight: 900; }
+  .cue.skipped { opacity: .4; }
+  .idx {
+    width: 21px; height: 21px; border-radius: 4px; background: #0d1017;
+    border: 1px solid var(--line-2); display: grid; place-items: center;
+    font-size: 10px; font-family: var(--mono); color: var(--txt-3); flex: none;
+  }
+  .cue .ic { font-size: 12px; width: 16px; text-align: center; flex: none; }
+  .cue .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cue .lbl .sub { color: var(--txt-3); font-size: 10px; margin-left: 6px; }
+  .cue .dur { font-family: var(--mono); font-size: 10px; color: var(--txt-3); flex: none; }
+  .cue .ptr { color: var(--accent); font-size: 11px; flex: none; width: 12px; }
+  .cue.note { color: var(--txt-2); font-style: italic; }
+  .cue.note .lbl { color: var(--txt-2); }
+
+  .side { border-left: 1px solid var(--line); background: #0a0c11; padding: 13px; overflow: auto; display: flex; flex-direction: column; gap: 11px; }
+  .sect-t { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); font-weight: 700; margin-bottom: 6px; }
+
+  .now { background: #0d1017; border: 1px solid #f5b94255; border-radius: 8px; padding: 11px 12px; }
+  .now .ref { font-size: 11px; font-weight: 800; color: var(--accent); letter-spacing: .04em; margin-bottom: 6px; }
+  .now .txt { font-size: 13px; line-height: 1.5; color: var(--txt); }
+  .now .meta { margin-top: 7px; font-size: 10px; color: var(--txt-3); display: flex; gap: 10px; }
+
+  .nextbox { background: #0d1017; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+  .nextbox .k { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); font-weight: 700; }
+  .nextbox .v { font-size: 12px; margin-top: 3px; }
+  .nextbox .v b { color: var(--accent); }
+
+  .total { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--txt-2); padding: 8px 10px; background: #0d1017; border: 1px solid var(--line); border-radius: 7px; }
+  .total b { color: var(--txt); font-family: var(--mono); }
+
+  .bar { display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #07080d; border-top: 1px solid var(--line); }
+  .bigadv { padding: 12px 40px; font-size: 15px; font-weight: 900; border-radius: 8px; background: var(--accent); color: #17110a; border: none; box-shadow: 0 6px 22px #f5b94233; }
+  .tr { width: 34px; height: 34px; border-radius: 7px; background: var(--bg-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 13px; color: var(--txt-2); }
+  .kbdhint { font-size: 10px; color: var(--txt-3); }
+  .kbdhint b { display: inline-block; padding: 1px 6px; border-radius: 3px; background: #1a2030; border: 1px solid var(--line-2); color: var(--txt-2); font-family: var(--mono); font-size: 9px; }
+
+  .impbox { background: #0d1017; border: 1px solid var(--line-2); border-radius: 7px; padding: 9px 11px; font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: var(--txt-2); }
+  .impbox .ok { color: var(--ok); }
+  .impbox .warn { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html" class="on">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#plan</span>
+    <span>MAQ-08 · événement et plan de déroulement</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> culte du 26/10/2026, étape 4 « Offrande » en cours (une <b>note</b> : rien n'est diffusé, seul le repère avance), verset et intervention déjà passés.</div>
+
+  <div class="app">
+
+    <div class="head">
+      <span class="b" style="font-size:13px">PLAN</span>
+      <span class="sm muted">Culte du 26/10/2026 · 08:30 · Temple principal</span>
+      <span class="pill accent">ICC Pahou — Culte du dimanche</span>
+      <div class="spacer"></div>
+      <span class="tiny dim">Durée estimée <b style="color:var(--txt-2)">1 h 52</b></span>
+      <button class="btn sm">⬆ Importer</button>
+      <button class="btn sm">＋ Étape</button>
+      <button class="btn sm">🖨 Imprimer</button>
+      <button class="btn sm">↺ Réinitialiser</button>
+    </div>
+
+    <div class="body">
+
+      <!-- Liste du plan -->
+      <div class="planlist">
+
+        <div class="cue note">
+          <span class="ptr"></span><span class="idx">1</span><span class="ic">📝</span>
+          <span class="lbl">Accueil</span><span class="dur">5 min</span>
+        </div>
+
+        <div class="cue">
+          <span class="ptr"></span><span class="idx">2</span><span class="ic">🎤</span>
+          <span class="lbl">Grâce infinie <span class="sub">Refrain · Couplet 2 · Refrain</span></span><span class="dur">4 min</span>
+        </div>
+
+        <div class="cue">
+          <span class="ptr"></span><span class="idx">3</span><span class="ic">📖</span>
+          <span class="lbl">Jean 3:16-18 <span class="sub">LSG · 3 parties</span></span><span class="dur">2 min</span>
+        </div>
+
+        <div class="cue on">
+          <span class="ptr">▶</span><span class="idx">4</span><span class="ic">📝</span>
+          <span class="lbl">Offrande <span class="sub">note · rien n'est diffusé</span></span><span class="dur">7 min</span>
+        </div>
+
+        <div class="cue">
+          <span class="ptr"></span><span class="idx">5</span><span class="ic">🎤</span>
+          <span class="lbl">Tu es saint <span class="sub">Couplet 1 · Refrain</span></span><span class="dur">5 min</span>
+        </div>
+
+        <div class="cue">
+          <span class="ptr"></span><span class="idx">6</span><span class="ic">⏱</span>
+          <span class="lbl">Prédication <span class="sub">minuteur 35 min</span></span><span class="dur">35 min</span>
+        </div>
+
+        <div class="cue note">
+          <span class="ptr"></span><span class="idx">7</span><span class="ic">📝</span>
+          <span class="lbl">Prière</span><span class="dur">5 min</span>
+        </div>
+
+        <div class="cue">
+          <span class="ptr"></span><span class="idx">8</span><span class="ic">🏷️</span>
+          <span class="lbl">Intervenant <span class="sub">Pasteur Jean Dossou</span></span><span class="dur">—</span>
+        </div>
+
+        <div class="cue skipped">
+          <span class="ptr"></span><span class="idx">9</span><span class="ic">🖼️</span>
+          <span class="lbl">Annonce mission <span class="sub">sautée</span></span><span class="dur">—</span>
+        </div>
+
+        <div class="cue note">
+          <span class="ptr"></span><span class="idx">10</span><span class="ic">📝</span>
+          <span class="lbl">Bénédiction</span><span class="dur">3 min</span>
+        </div>
+
+      </div>
+
+      <!-- Panneau latéral -->
+      <aside class="side">
+
+        <div>
+          <div class="sect-t">En cours</div>
+          <div class="now">
+            <div class="ref">ÉTAPE 4 / 10 · NOTE</div>
+            <div class="txt" style="font-size:15px;font-weight:600;color:var(--txt-2);font-style:italic">Offrande</div>
+            <div class="txt" style="font-size:11px;color:var(--txt-3);margin-top:6px">
+              Aucun contenu n'est diffusé. Le repère avance dans la régie et sur la vue scène.
+            </div>
+            <div class="meta">
+              <span>⏱ 00:42:18</span>
+              <span>·</span>
+              <span>prévu 7 min</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="sect-t">Suivant</div>
+          <div class="nextbox">
+            <div class="v"><b>🎤 Tu es saint</b></div>
+            <div class="tiny dim" style="margin-top:3px">Couplet 1 · Refrain — 5 min</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="sect-t">Après</div>
+          <div class="nextbox">
+            <div class="v"><b>⏱ Prédication</b></div>
+            <div class="tiny dim" style="margin-top:3px">minuteur 35 min</div>
+          </div>
+        </div>
+
+        <div class="total">
+          <span>Durée totale du plan</span>
+          <span class="spacer"></span>
+          <b>1 h 52</b>
+        </div>
+
+        <div>
+          <div class="sect-t">Rapport d'import CSV</div>
+          <div class="impbox"><span class="ok">Accueil</span>         → note
+<span class="ok">Grâce infinie</span>   → chant <span class="dim">(exact)</span>
+<span class="ok">Jean 3:16-18</span>    → verset <span class="dim">(LSG)</span>
+<span class="ok">Offrande</span>        → note
+<span class="ok">Tu es saint</span>     → chant <span class="dim">(exact)</span>
+<span class="warn">Prédication</span>     → note  <span class="warn">⚠ non apparié</span></div>
+        </div>
+
+      </aside>
+
+    </div>
+
+    <!-- Barre de transport -->
+    <div class="bar">
+      <div class="row gap4">
+        <span class="tr">⏮</span>
+        <span class="tr">◀</span>
+      </div>
+      <button class="bigadv">▶ &nbsp;AVANCER</button>
+      <span class="tr">▶</span>
+      <div class="spacer"></div>
+      <span class="kbdhint"><b>Espace</b> ou <b>→</b> avancer &nbsp;·&nbsp; <b>←</b> reculer &nbsp;·&nbsp; <b>Échap</b> couper</span>
+      <div class="spacer"></div>
+      <span class="tr" style="color:#ff8e97;border-color:#ef536066">■</span>
+      <span class="sm dim">Couper</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/14-organisations-evenements-plans.md</code></h3>
+  <ul>
+    <li><b>Les notes ne diffusent rien</b> : elles avancent le pointeur et affichent leur libellé partout (EF-23.2, EF-23.8).</li>
+    <li><b>Les trois panneaux</b> En cours / Suivant / Après sont toujours visibles (EF-23.4).</li>
+    <li><b>La durée totale</b> du déroulé est recalculée en direct (EF-23.5).</li>
+    <li><b>Une étape sautée</b> apparaît grisée, pas supprimée (EF-23.7).</li>
+    <li><b>L'import CSV</b> produit un rapport d'appariement explicite, y compris les échecs (EF-23.14).</li>
+    <li><b>Une seule touche</b> conduit le plan : <code>Espace</code> (EF-23.3).</li>
+  </ul>
+</div>
+
+</body>
+</html>

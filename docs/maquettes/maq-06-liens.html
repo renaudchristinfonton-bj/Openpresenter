@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-06 — Sorties et matrice de liens · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-columns: 250px 1fr; min-height: 720px; }
+
+  .side { background: #0a0c11; border-right: 1px solid var(--line); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .sect-t { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); font-weight: 700; margin: 10px 4px 5px; }
+  .outitem { display: flex; align-items: center; gap: 7px; padding: 8px 9px; border-radius: 6px; font-size: 12px; color: var(--txt-2); border: 1px solid transparent; }
+  .outitem.on { background: #f5b9421c; border-color: #f5b94255; color: var(--accent); font-weight: 700; }
+  .outitem .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .outitem .meta { font-size: 9px; color: var(--txt-3); font-family: var(--mono); }
+
+  .main { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  table.mx { width: 100%; border-collapse: separate; border-spacing: 4px; }
+  table.mx th {
+    font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-3);
+    font-weight: 700; padding: 6px 4px; text-align: center;
+  }
+  table.mx th:first-child { text-align: left; }
+  table.mx td { padding: 0; }
+
+  .outcell {
+    background: #0d1017; border: 1px solid var(--line); border-radius: 5px;
+    padding: 8px 10px; min-width: 150px;
+  }
+  .outcell .nm { font-size: 11px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 5px; }
+  .outcell .sp { font-size: 9px; color: var(--txt-3); font-family: var(--mono); margin-top: 2px; }
+
+  .cell {
+    background: #0d1017; border: 1px solid var(--line); border-radius: 5px;
+    padding: 6px 4px; text-align: center; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; height: 100%; justify-content: center;
+  }
+  .cell .links { display: flex; gap: 3px; }
+  .cell .ic {
+    width: 20px; height: 20px; border-radius: 4px; background: #1a2030;
+    border: 1px solid var(--line-2); display: grid; place-items: center;
+    font-size: 9px; color: var(--txt-2); cursor: pointer;
+  }
+  .cell .ic:hover { border-color: var(--accent); color: var(--accent); }
+  .cell .res { font-size: 8px; font-family: var(--mono); color: var(--txt-3); }
+  .cell.off { background: repeating-linear-gradient(45deg,#0b0d13,#0b0d13 4px,#0e1118 4px,#0e1118 8px); opacity: .5; }
+  .cell.off .ic { cursor: not-allowed; }
+  .cell.live { border-color: #34d39955; }
+
+  .toolbar { display: flex; align-items: center; gap: 8px; }
+  .legendbar { display: flex; gap: 16px; font-size: 10px; color: var(--txt-3); margin-top: 4px; }
+  .legendbar span { display: flex; align-items: center; gap: 5px; }
+
+  .panel { background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; padding: 12px 13px; }
+  .panel h3 { margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+
+  pre.copiable {
+    margin: 0; padding: 10px 12px; border-radius: 6px; background: #06080c;
+    border: 1px solid var(--line-2); font-family: var(--mono); font-size: 10.5px;
+    line-height: 1.65; color: #a9b3c4; overflow-x: auto;
+  }
+  pre.copiable b { color: var(--accent); font-weight: 700; }
+  pre.copiable i { color: #6b7487; font-style: normal; }
+
+  .cols2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
+  @media (max-width: 1150px) { .cols2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html" class="on">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#outputs</span>
+    <span>MAQ-06 · sorties et matrice de liens</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> trois sorties, la première sélectionnée. Les cellules hachurées correspondent aux types de contenu que la sortie <b>ne reçoit pas</b> (<code>receives</code>).</div>
+
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="side">
+      <div class="sect-t">Sorties (3)</div>
+
+      <div class="outitem on">
+        <span class="dot ok"></span>
+        <span class="nm">Plein écran — Salle</span>
+      </div>
+      <div class="outitem">
+        <span class="dot ok"></span>
+        <span class="nm">Bas centré — Stream</span>
+      </div>
+      <div class="outitem">
+        <span class="dot off"></span>
+        <span class="nm">Lower third — Intervenants</span>
+      </div>
+
+      <button class="btn sm" style="margin-top:8px">＋ Créer une sortie</button>
+
+      <div class="sect-t">Propriétés</div>
+      <div class="card" style="font-size:11px;display:flex;flex-direction:column;gap:6px">
+        <div class="row"><span class="dim">Résolution</span><span class="spacer"></span><span class="mono">1920×1080</span></div>
+        <div class="row"><span class="dim">Cadrage</span><span class="spacer"></span><span class="mono">contain</span></div>
+        <div class="row"><span class="dim">Transparent</span><span class="spacer"></span><span class="mono">non</span></div>
+        <div class="row"><span class="dim">Cible défaut</span><span class="spacer"></span><span class="mono">oui</span></div>
+        <div class="hr" style="margin:4px 0"></div>
+        <div class="row"><span class="dim">Pages connectées</span><span class="spacer"></span><span class="pill ok">1</span></div>
+      </div>
+
+      <button class="btn sm" style="margin-top:6px">⚙ Modifier les scènes…</button>
+      <button class="btn sm">Dupliquer</button>
+      <button class="btn sm danger">Supprimer</button>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <div class="toolbar">
+        <span class="b">LIENS POUR OBS / vMix</span>
+        <div class="spacer"></div>
+        <button class="btn sm">🎬 Installer dans OBS</button>
+        <button class="btn sm">Tout copier</button>
+        <button class="btn sm">📱 QR</button>
+      </div>
+
+      <table class="mx">
+        <thead>
+          <tr>
+            <th style="width:210px">Sortie</th>
+            <th>Bible</th>
+            <th>Chants</th>
+            <th>Médias</th>
+            <th>Annonces</th>
+            <th>Habillage</th>
+            <th>Minuteur</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="outcell">
+                <div class="nm"><span class="dot ok"></span> Plein écran — Salle</div>
+                <div class="sp">1920×1080 · contain</div>
+              </div>
+            </td>
+            <td><div class="cell live"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="outcell">
+                <div class="nm"><span class="dot ok"></span> Bas centré — Stream</div>
+                <div class="sp">1920×1080 · alpha</div>
+              </div>
+            </td>
+            <td><div class="cell live"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="outcell">
+                <div class="nm"><span class="dot off"></span> Lower third — Intervenants</div>
+                <div class="sp">1920×1080 · alpha</div>
+              </div>
+            </td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+            <td><div class="cell"><div class="links"><span class="ic">⧉</span><span class="ic">📱</span></div><span class="res">1920×1080</span></div></td>
+            <td><div class="cell off"><div class="links"><span class="ic">✕</span></div><span class="res">non autorisé</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="legendbar">
+        <span><b class="mono" style="color:var(--accent)">⧉</b> copier le lien</span>
+        <span><b class="mono" style="color:var(--accent)">📱</b> QR code</span>
+        <span><b class="mono" style="color:var(--txt-3)">✕</b> non autorisé par cette sortie</span>
+        <span><b class="mono" style="color:#34d399">▣</b> contenu en cours sur ce lien</span>
+        <span style="margin-left:auto">Chaque source OBS doit être réglée sur la résolution indiquée.</span>
+      </div>
+
+      <div class="cols2">
+
+        <div class="panel">
+          <h3>Bloc « Tout copier »</h3>
+          <pre class="copiable"><b>OpenPresenter — liens OBS</b>
+Projet : ICC Pahou          Généré le 21/10/2026 à 18:04
+
+<b>PLEIN ECRAN SALLE</b>  <i>(1920×1080)</i>
+  Tout          http://192.168.1.42:8788/o/out_full
+  Bible         http://192.168.1.42:8788/o/out_full?kind=bible
+  Chants        http://192.168.1.42:8788/o/out_full?kind=songs
+  Médias        http://192.168.1.42:8788/o/out_full?kind=media
+  Annonces      http://192.168.1.42:8788/o/out_full?kind=announcements
+  Habillage     http://192.168.1.42:8788/o/out_full?kind=lowerthird
+  Minuteur      http://192.168.1.42:8788/o/out_full?kind=timer
+
+<b>BAS CENTRE STREAM</b>  <i>(1920×1080, transparent)</i>
+  Tout          http://192.168.1.42:8788/o/out_bottom
+  Bible         http://192.168.1.42:8788/o/out_bottom?kind=bible
+  Chants        http://192.168.1.42:8788/o/out_bottom?kind=songs
+  Annonces      http://192.168.1.42:8788/o/out_bottom?kind=announcements
+  Habillage     http://192.168.1.42:8788/o/out_bottom?kind=lowerthird
+  <i>(Médias et Minuteur : non autorisés sur cette sortie)</i></pre>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div style="padding:11px 13px;border-bottom:1px solid var(--line)">
+              <h3 style="margin:0">Filtre de contenu — « Bas centré »</h3>
+            </div>
+            <div style="padding:11px 13px;display:flex;flex-direction:column;gap:6px;font-size:11px">
+              <div class="row"><span class="cb on">✓</span> Bible</div>
+              <div class="row"><span class="cb on">✓</span> Chants</div>
+              <div class="row" style="opacity:.55"><span class="cb"> </span> Médias</div>
+              <div class="row"><span class="cb on">✓</span> Annonces</div>
+              <div class="row"><span class="cb on">✓</span> Habillage</div>
+              <div class="row" style="opacity:.55"><span class="cb"> </span> Minuteur</div>
+              <div class="hr"></div>
+              <div class="tiny dim">Décocher un type le rend impossible sur cette sortie, même via son URL directe.</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Assistant OBS</h3>
+            <div style="font-size:11px;display:flex;flex-direction:column;gap:6px">
+              <div><span class="lbl">Adresse</span><div class="field mono">ws://localhost:4455</div></div>
+              <div><span class="lbl">Mot de passe</span><div class="field mono">••••••••</div></div>
+              <div class="row tiny dim">OBS → Outils → Paramètres du serveur WebSocket</div>
+              <div class="hr"></div>
+              <div class="tiny"><b>Sera créé :</b> 12 sources navigateur · 3 scènes</div>
+              <div class="row" style="gap:6px;margin-top:2px">
+                <span class="cb on">✓</span><span class="tiny">Ne pas modifier les éléments existants</span>
+              </div>
+              <div class="row gap4" style="margin-top:4px">
+                <button class="btn sm" style="flex:1">Tester</button>
+                <button class="btn sm primary" style="flex:1">Installer</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/07-sorties-et-liens.md</code></h3>
+  <ul>
+    <li><b>Une ligne par sortie, une colonne par type de contenu</b> (EF-08.11) — c'est la matrice demandée.</li>
+    <li><b>Les types non autorisés sont hachurés</b>, pas masqués : on comprend pourquoi (EF-08.6).</li>
+    <li><b>La résolution à régler dans OBS</b> est rappelée dans chaque cellule (EF-08.13).</li>
+    <li><b>Le lien est stable</b> : renommer la sortie ne change pas l'URL (EF-07.6).</li>
+    <li><b>« Tout copier »</b> produit un bloc brut, prêt pour un document de régie (EF-08.14).</li>
+    <li><b>L'assistant OBS</b> crée 12 sources + 3 scènes sans toucher à l'existant (EF-08.16).</li>
+  </ul>
+</div>
+
+</body>
+</html>

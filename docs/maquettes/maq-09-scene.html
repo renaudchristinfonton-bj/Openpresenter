@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-09 — Vue scène · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-rows: 46px 1fr; height: 720px; background: #05060a; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid #191c24; background: #07080b; }
+  .mark { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #ed7958); display: grid; place-items: center; color: #17110a; font-size: 9px; font-weight: 900; }
+
+  .body { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+
+  /* Gauche : aperçu */
+  .left { display: flex; flex-direction: column; padding: 14px 16px; gap: 9px; min-width: 0; }
+  .canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .canvas {
+    position: relative; width: 100%; max-width: 720px; aspect-ratio: 16/9;
+    border-radius: 6px; overflow: hidden; border: 1px solid #232838;
+    background: linear-gradient(135deg,#05060a,#19131a);
+  }
+  .canvas .panel { position: absolute; border-radius: 8px; }
+  .canvas .ref { position: absolute; transform: translate(-50%,-50%); font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--accent); }
+  .canvas .badge { position: absolute; transform: translate(-50%,-50%); background: var(--accent); color: #17110a; font-size: 8px; font-weight: 900; padding: 2px 5px; border-radius: 3px; }
+  .canvas .verse { position: absolute; transform: translate(-50%,-50%); font-size: 15px; color: #fff; font-weight: 600; line-height: 1.45; text-align: center; }
+  .canvas .hintl, .canvas .hintr { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; font-size: 22px; color: #ffffff40; }
+  .canvas .hintl { left: 3% } .canvas .hintr { right: 3% }
+
+  .caption { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--txt-3); }
+  .caption b { color: var(--txt-2); }
+
+  /* Droite : cartes */
+  .side { border-left: 1px solid #191c24; background: #08090d; padding: 13px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+
+  .card { background: #0d0f15; border: 1px solid #1e222c; border-radius: 8px; padding: 10px 12px; }
+  .card h3 { margin: 0 0 6px; font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: #5c6577; font-weight: 700; }
+
+  .refbig { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: .01em; }
+  .refsub { font-size: 10px; color: #5c6577; margin-top: 2px; }
+
+  .curtext { font-size: 14px; line-height: 1.5; color: #e8eaf0; }
+
+  .parts { display: flex; gap: 7px; margin-top: 2px; }
+  .part { flex: 1; background: #0a0c11; border: 1px solid #1e222c; border-radius: 5px; padding: 6px 8px; }
+  .part small { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; color: #5c6577; margin-bottom: 3px; }
+  .part span { font-size: 11px; color: #c9d1dc; line-height: 1.4; display: block; }
+  .part.now { border-color: #f5b94255; background: #f5b94210; }
+  .part.now span { color: var(--accent); font-weight: 600; }
+
+  .timer { display: flex; align-items: flex-end; gap: 10px; }
+  .timer .val { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); line-height: 1; letter-spacing: -.02em; }
+  .timer .lbl { font-size: 10px; color: #5c6577; padding-bottom: 4px; }
+  .prog { height: 5px; border-radius: 3px; background: #1a1d26; margin-top: 9px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 72%; background: linear-gradient(90deg,#f5b942,#ed7958); border-radius: 3px; }
+  .progmeta { display: flex; justify-content: space-between; font-size: 9px; color: #5c6577; margin-top: 4px; }
+
+  .msg { border-left: 3px solid var(--warn); padding-left: 9px; }
+  .msg .t { font-size: 13px; color: #ffd07a; font-weight: 600; }
+  .msg .m { font-size: 9px; color: #5c6577; margin-top: 3px; }
+
+  .msg-urgent { background: #ef5360; border-radius: 6px; padding: 9px 11px; display: flex; align-items: center; gap: 8px; }
+  .msg-urgent .t { font-size: 13px; font-weight: 800; color: #fff; }
+  .msg-urgent .blink { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2 } }
+
+  .controls { display: flex; gap: 6px; margin-top: auto; }
+  .controls .btn { flex: 1; padding: 9px 6px; font-size: 11px; }
+
+  .fsbadge { font-size: 9px; color: #5c6577; text-align: center; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html" class="on">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://192.168.1.42:8788/stage.html  —  écran face à la scène</span>
+    <span>MAQ-09 · vue scène</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> verset en cours partie 2/3, minuteur « Prédication » à 12 min 41 s (zone orange), un message <b>important</b> de la régie. Fond noir absolu, aucune décoration.</div>
+
+  <div class="app">
+
+    <div class="head">
+      <span class="mark">OP</span>
+      <span class="sm" style="color:#8b93a5;font-weight:700">Vue scène</span>
+      <span class="pill err"><span class="dot live"></span> EN DIRECT · Jean 3:16</span>
+      <div class="spacer"></div>
+      <span class="sm mono" style="color:#8b93a5">18:04:22</span>
+      <button class="btn sm" style="background:#12151d;border-color:#232838;font-size:10px">⚙ Contrôle</button>
+    </div>
+
+    <div class="body">
+
+      <!-- Aperçu -->
+      <div class="left">
+        <div class="canvas-wrap">
+          <div class="canvas">
+            <div class="panel" style="left:3%;top:8%;right:3%;bottom:8%;background:rgba(6,8,14,.52);border-top:2px solid var(--accent);border-bottom:2px solid var(--accent)"></div>
+            <div class="ref" style="left:43%;top:20%">JEAN 3:16</div>
+            <div class="badge" style="left:88%;top:18%">LSG</div>
+            <div class="verse" style="left:50%;top:60%;width:64%">Car Dieu a tant aimé le monde<br>qu'il a donné son Fils unique,</div>
+            <div class="hintl">‹</div>
+            <div class="hintr">›</div>
+          </div>
+        </div>
+        <div class="caption">
+          <span>Sortie suivie : <b>Plein écran — Salle</b></span>
+          <span>·</span>
+          <span>aperçu de la sortie</span>
+          <div class="spacer"></div>
+          <span>← / → pour naviguer dans les parties</span>
+        </div>
+      </div>
+
+      <!-- Cartes -->
+      <aside class="side">
+
+        <div class="card">
+          <h3>Référence</h3>
+          <div class="refbig">Jean 3:16</div>
+          <div class="refsub">Louis Segond 1910 · Nouveau Testament</div>
+        </div>
+
+        <div class="card">
+          <h3>Texte courant</h3>
+          <div class="curtext">Car Dieu a tant aimé le monde qu'il a donné son Fils unique,</div>
+        </div>
+
+        <div class="card">
+          <h3>Parties / diapositive</h3>
+          <div class="parts">
+            <div class="part now">
+              <small>Actuelle</small>
+              <span>2 / 3 — « Car Dieu a tant aimé le monde qu'il a donné son Fils unique »</span>
+            </div>
+          </div>
+          <div class="parts" style="margin-top:5px">
+            <div class="part">
+              <small>Suivante</small>
+              <span>« afin que quiconque croit en lui ne périsse point »</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Minuteur · Prédication</h3>
+          <div class="timer">
+            <span class="val">12:41</span>
+            <span class="lbl">restantes<br>sur 35:00</span>
+          </div>
+          <div class="prog"><i></i></div>
+          <div class="progmeta"><span>64 % écoulé</span><span>zone orange</span></div>
+        </div>
+
+        <div class="card">
+          <h3>Message de la régie</h3>
+          <div class="msg">
+            <div class="t">Il reste 5 minutes</div>
+            <div class="m">Régie · 18:02 · important</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Aperçu d'un message urgent</h3>
+          <div class="msg-urgent">
+            <span class="blink"></span>
+            <span class="t">Merci de conclure</span>
+          </div>
+          <div class="m" style="font-size:9px;color:#5c6577;margin-top:5px">Fond rouge, texte blanc, clignotement doux — au-dessus de tout le reste.</div>
+        </div>
+
+        <div class="controls">
+          <button class="btn">‹ Précédent</button>
+          <button class="btn" style="background:#ef536022;border-color:#ef536066;color:#ff8e97">■ Écran noir</button>
+          <button class="btn">Suivant ›</button>
+        </div>
+
+        <div class="fsbadge">F11 pour le plein écran · taille du texte : normal / grand / très grand</div>
+
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/15-scene-et-telecommande.md</code></h3>
+  <ul>
+    <li><b>Fond noir absolu</b>, texte blanc, aucun élément décoratif (EF-24.1).</li>
+    <li><b>Le texte courant</b> est en très grand, avec auto-ajustement (EF-24.2).</li>
+    <li><b>La partie suivante</b> est affichée en clair (EF-24.6).</li>
+    <li><b>Le minuteur</b> change de couleur selon les seuils orange et rouge (EF-18.9).</li>
+    <li><b>Un message urgent</b> passe au-dessus de tout, en inverse (EF-24.15).</li>
+    <li><b>Aucune interaction n'est requise</b> : les boutons sont optionnels et discrets (EF-24.3).</li>
+    <li><b>L'aperçu de la sortie</b> est masquable pour ne garder que le texte (EF-24.14).</li>
+  </ul>
+</div>
+
+</body>
+</html>

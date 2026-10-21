@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-07 — Profils · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .wrap { padding: 18px 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .head-row { display: flex; align-items: center; gap: 10px; }
+  .head-row h2 { margin: 0; font-size: 15px; letter-spacing: .02em; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 1050px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+
+  .pcard {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .pcard.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 30px #f5b94220; }
+  .pcard .top { padding: 13px 13px 10px; display: flex; align-items: flex-start; gap: 9px; }
+  .pcard .ico { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; flex: none; }
+  .pcard .nm { font-size: 12.5px; font-weight: 800; line-height: 1.25; }
+  .pcard .kd { font-size: 9.5px; color: var(--txt-3); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+  .pcard .check { margin-left: auto; }
+  .pcard .stats { padding: 0 13px 10px; display: flex; gap: 10px; font-size: 10px; color: var(--txt-2); }
+  .pcard .stats b { color: var(--txt); }
+  .pcard .prev { margin: 0 13px 11px; border-radius: 5px; overflow: hidden; border: 1px solid var(--line-2); position: relative; aspect-ratio: 16/9; }
+  .pcard .prev .bg { position: absolute; inset: 0; }
+  .pcard .prev .bar { position: absolute; left: 9%; right: 9%; bottom: 12%; height: 22%; border-radius: 4px; }
+  .pcard .prev .line { position: absolute; left: 13%; right: 13%; bottom: 18%; height: 4px; border-radius: 2px; background: #fff9; }
+  .pcard .prev .line2 { position: absolute; left: 22%; right: 22%; bottom: 26%; height: 4px; border-radius: 2px; background: #ffffff66; }
+  .pcard .acts { padding: 0 13px 12px; display: flex; gap: 5px; }
+  .pcard .acts .btn { flex: 1; }
+
+  .newcard { border: 1px dashed var(--line-2); border-radius: 10px; display: grid; place-items: center; padding: 26px 14px; text-align: center; color: var(--txt-3); }
+  .newcard b { display: block; color: var(--txt-2); font-size: 12px; margin-bottom: 3px; }
+  .newcard span { font-size: 10px; }
+
+  .detail { display: grid; grid-template-columns: 1fr 330px; gap: 14px; }
+  @media (max-width: 1050px) { .detail { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--bg-3); border: 1px solid var(--line); border-radius: 9px; padding: 13px 14px; }
+  .panel h3 { margin: 0 0 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 11.5px; }
+  .kv dt { color: var(--txt-3); }
+  .kv dd { margin: 0; color: var(--txt); }
+
+  .outline { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+  .oline { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; background: #0d1017; border: 1px solid var(--line); font-size: 11px; }
+  .oline .sp { margin-left: auto; font-family: var(--mono); font-size: 9px; color: var(--txt-3); }
+
+  .conf { background: #1a1508; border: 1px solid #3a2f12; border-radius: 8px; padding: 12px 14px; }
+  .conf h4 { margin: 0 0 8px; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+  .conf ul { margin: 0 0 10px; padding-left: 17px; font-size: 11.5px; color: var(--txt-2); line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html" class="on">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#profiles</span>
+    <span>MAQ-07 · profils</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> trois profils livrés d'office et un profil personnalisé, le profil « Église » étant actif. Chaque vignette montre un aperçu du look par défaut.</div>
+
+  <div class="wrap">
+
+    <div class="head-row">
+      <h2>PROFILS</h2>
+      <span class="pill">4 disponibles</span>
+      <div class="spacer"></div>
+      <button class="btn sm">⬇ Importer un profil</button>
+      <button class="btn sm primary">＋ Créer un profil</button>
+    </div>
+
+    <div class="cards">
+
+      <!-- Église (actif) -->
+      <div class="pcard on">
+        <div class="top">
+          <div class="ico" style="background:#f5b94222;color:#f5b942">🏛</div>
+          <div>
+            <div class="nm">Église</div>
+            <div class="kd">Church · livré d'office</div>
+          </div>
+          <div class="check"><span class="pill accent">✓ Actif</span></div>
+        </div>
+        <div class="stats"><span><b>2</b> sorties</span><span><b>6</b> looks</span><span><b>1</b> plan type</span></div>
+        <div class="prev">
+          <div class="bg" style="background:linear-gradient(135deg,#0f172a,#1e293b)"></div>
+          <div class="line2"></div>
+          <div class="line"></div>
+          <div class="bar" style="background:rgba(15,23,42,.9);border-left:4px solid #f59e0b"></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm" disabled>Appliquer</button>
+          <button class="btn sm">Modifier</button>
+          <button class="btn sm icon">⋯</button>
+        </div>
+      </div>
+
+      <!-- Conférence -->
+      <div class="pcard">
+        <div class="top">
+          <div class="ico" style="background:#38bdf822;color:#38bdf8">🎤</div>
+          <div>
+            <div class="nm">Conférence</div>
+            <div class="kd">Conference · livré d'office</div>
+          </div>
+        </div>
+        <div class="stats"><span><b>3</b> sorties</span><span><b>3</b> looks</span><span><b>1</b> plan type</span></div>
+        <div class="prev">
+          <div class="bg" style="background:linear-gradient(135deg,#030712,#0b1c2b)"></div>
+          <div class="line2"></div>
+          <div class="line"></div>
+          <div class="bar" style="background:rgba(3,11,22,.85);border-left:4px solid #38bdf8"></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm primary">Appliquer</button>
+          <button class="btn sm">Modifier</button>
+          <button class="btn sm icon">⋯</button>
+        </div>
+      </div>
+
+      <!-- Stream -->
+      <div class="pcard">
+        <div class="top">
+          <div class="ico" style="background:#e879f922;color:#e879f9">🎬</div>
+          <div>
+            <div class="nm">Stream live</div>
+            <div class="kd">Stream · livré d'office</div>
+          </div>
+        </div>
+        <div class="stats"><span><b>3</b> sorties</span><span><b>2</b> looks</span><span><b>1</b> plan type</span></div>
+        <div class="prev alpha">
+          <div class="bar" style="background:rgba(6,8,14,.92);border-left:4px solid #e879f9"></div>
+          <div class="line" style="bottom:19%"></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm primary">Appliquer</button>
+          <button class="btn sm">Modifier</button>
+          <button class="btn sm icon">⋯</button>
+        </div>
+      </div>
+
+      <!-- Personnalisé -->
+      <div class="pcard">
+        <div class="top">
+          <div class="ico" style="background:#34d39922;color:#34d399">⭐</div>
+          <div>
+            <div class="nm">ICC Pahou</div>
+            <div class="kd">Personnalisé · 21/10/2026</div>
+          </div>
+        </div>
+        <div class="stats"><span><b>2</b> sorties</span><span><b>2</b> looks</span><span><b>0</b> plan type</span></div>
+        <div class="prev">
+          <div class="bg" style="background:linear-gradient(135deg,#3a0a1a,#6b1533)"></div>
+          <div class="line2"></div>
+          <div class="line"></div>
+          <div class="bar" style="background:rgba(8,10,16,.92);border-left:4px solid #e8698f"></div>
+        </div>
+        <div class="acts">
+          <button class="btn sm primary">Appliquer</button>
+          <button class="btn sm">Modifier</button>
+          <button class="btn sm icon">⋯</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="detail">
+
+      <!-- Détail du profil Église -->
+      <div class="panel">
+        <h3>Profil actif — « Église »</h3>
+        <dl class="kv">
+          <dt>Identifiant</dt><dd class="mono" style="font-size:10px">prof_church</dd>
+          <dt>Type</dt><dd>Église (church)</dd>
+          <dt>Description</dt><dd>Projecteur salle + bandeau stream OBS</dd>
+          <dt>Look par défaut</dt><dd>Sobre</dd>
+          <dt>Looks appliqués</dt><dd>Sobre · Festif · Carême · Noël · Aube · Mission</dd>
+          <dt>Bible primaire</dt><dd>Louis Segond 1910 (LSG)</dd>
+          <dt>Bible secondaire</dt><dd>Bible du Semeur (BDS) — 2 versions désactivé</dd>
+          <dt>Vue scène</dt><dd>activée · minuteur « Prédication » 35 min · accords visibles</dd>
+          <dt>Découpage</dt><dd>25 mots (bandeau) · 40 mots (plein écran)</dd>
+          <dt>Plan type</dt><dd>Culte du dimanche</dd>
+        </dl>
+
+        <div class="outline">
+          <div class="oline"><span class="dot ok"></span> Plein écran — Salle <span class="sp">full · 1920×1080 · opaque</span></div>
+          <div class="oline"><span class="dot ok"></span> Bas centré — Stream <span class="sp">bottom · 1920×1080 · alpha</span></div>
+        </div>
+
+        <div class="row gap4" style="margin-top:12px">
+          <button class="btn sm">Dupliquer</button>
+          <button class="btn sm">Exporter</button>
+          <button class="btn sm">Exporter avec médias</button>
+          <button class="btn sm">Renommer</button>
+          <div class="spacer"></div>
+          <button class="btn sm danger">Supprimer</button>
+        </div>
+      </div>
+
+      <!-- Confirmation d'application -->
+      <div class="conf">
+        <h4>Confirmation — « Conférence »</h4>
+        <ul>
+          <li>couper ce qui est à l'antenne</li>
+          <li>remplacer 2 sorties et en créer 1</li>
+          <li>appliquer les looks Moderne, Minimal, Cinéma</li>
+          <li>changer la Bible par défaut pour LSG</li>
+        </ul>
+        <div class="tiny" style="color:var(--txt-2);margin-bottom:9px">
+          Vos scènes et looks actuels sont conservés : ils pourront être réappliqués à tout moment.
+        </div>
+        <div class="row gap4">
+          <button class="btn sm primary" style="flex:1">Appliquer</button>
+          <button class="btn sm" style="flex:1">Annuler</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/13-profils.md</code></h3>
+  <ul>
+    <li><b>Trois profils livrés d'office</b> : Église, Conférence, Stream live (EF-20.1, EF-20.13).</li>
+    <li><b>Chaque vignette</b> montre le nom, le nombre de sorties et de looks, et un aperçu du look (EF-20.1).</li>
+    <li><b>Le profil actif</b> est marqué et son bouton « Appliquer » est désactivé (EF-20.9).</li>
+    <li><b>L'application demande confirmation</b> si quelque chose est à l'antenne (EF-20.2).</li>
+    <li><b>Un profil ne contient aucun binaire</b> : il référence les objets du projet (EF-20, § 13.1).</li>
+    <li><b>L'application est atomique</b> : en cas d'erreur, rien n'est appliqué (EF-20.16).</li>
+  </ul>
+</div>
+
+</body>
+</html>

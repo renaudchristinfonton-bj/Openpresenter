@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-02 — Console du lanceur · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .term {
+    background: #07090d; color: #c9d1dc;
+    font-family: var(--mono); font-size: 12px; line-height: 1.62;
+    padding: 20px 24px; min-height: 620px;
+    white-space: pre; overflow-x: auto;
+  }
+  .term .ok { color: #4ade80; }
+  .term .warn { color: #fbbf24; }
+  .term .err { color: #f87171; }
+  .term .acc { color: var(--accent); }
+  .term .dim { color: #6b7487; }
+  .term .box { color: var(--accent); }
+  .term .white { color: #e8eaf0; }
+  .term .prompt { color: #93c5fd; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
+  .col-term { border-right: 1px solid var(--line); }
+  .col-term:last-child { border-right: none; }
+  .col-title { padding: 8px 20px; background: #0c0f15; border-bottom: 1px solid var(--line); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-3); font-family: var(--sans); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html" class="on">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">OpenPresenter.bat  —  C:\OpenPresenter</span>
+    <span>MAQ-02 · console du lanceur</span>
+  </div>
+  <div class="maq-note"><b>Deux états côte à côte :</b> à gauche le démarrage nominal (runtime présent), à droite le premier lancement sur un PC sans Node.js.</div>
+
+  <div class="cols">
+
+    <!-- GAUCHE : nominal -->
+    <div class="col-term">
+      <div class="col-title">État A — démarrage nominal</div>
+      <div class="term"><span class="box">╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║    <span class="acc">OpenPresenter</span>                                         ║
+║    Suite de régie live — Bible, chants, médias           ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝</span>
+  Dossier : <span class="white">D:\OpenPresenter</span>
+  Version : <span class="white">3.0.0</span>
+  Vérifications en cours…
+
+  <span class="ok">✓</span> Runtime    Node.js v22.11.0
+               emplacement : runtime/node
+  <span class="ok">✓</span> Projet     project/  (3 bibles · 84 chants · 213 médias)
+  <span class="ok">✓</span> Écriture   dossier inscriptible
+  <span class="ok">✓</span> Port       <span class="white">8788</span> disponible
+  <span class="ok">✓</span> Serveur    démarré en <span class="white">1,8 s</span>
+
+<span class="box">╔══════════════════════════════════════════════════════════╗
+║    Sur ce PC          <span class="white">http://localhost:8788/</span>             ║
+║    Depuis le réseau   <span class="white">http://192.168.1.42:8788/</span>          ║
+║    Code d'accès       <span class="white">4F2K</span>                               ║
+╚══════════════════════════════════════════════════════════╝</span>
+
+  Ouverture du navigateur…
+
+  <span class="dim">────────────────────────────────────────────────────────</span>
+  <span class="dim">Laissez cette fenêtre ouverte pendant l'utilisation.</span>
+  <span class="dim">Appuyez sur Ctrl+C pour arrêter.</span>
+  <span class="dim">────────────────────────────────────────────────────────</span>
+</div>
+    </div>
+
+    <!-- DROITE : premier lancement sans Node -->
+    <div class="col-term">
+      <div class="col-title">État B — premier lancement, Node.js absent</div>
+      <div class="term"><span class="box">╔══════════════════════════════════════════════════════════╗
+║    <span class="acc">OpenPresenter</span>                                         ║
+║    Suite de régie live — Bible, chants, médias           ║
+╚══════════════════════════════════════════════════════════╝</span>
+  Dossier : <span class="white">D:\OpenPresenter</span>
+  Version : <span class="white">3.0.0</span>
+  Vérifications en cours…
+
+  <span class="err">✗</span> Runtime    <span class="white">Node.js introuvable</span>
+
+     OpenPresenter a besoin de Node.js 20 ou plus récent.
+     Nous pouvons l'installer pour vous dans ce dossier.
+
+     Méthode proposée : téléchargement du binaire portable officiel
+       source      https://nodejs.org/dist/v22.11.0/node-v22.11.0-win-x64.zip
+       taille      29,1 Mo
+       empreinte   SHA-256 3f2a1b… <span class="dim">(vérifiée après téléchargement)</span>
+       destination runtime\  <span class="dim">(dans le dossier du projet)</span>
+       connexion   Internet requise pour cette étape uniquement
+
+     <span class="prompt">[O]</span> Installer maintenant <span class="dim">(recommandé)</span>
+     <span class="prompt">[M]</span> M'indiquer la commande à taper moi-même
+     <span class="prompt">[N]</span> Ne rien faire — je vais installer Node.js puis relancer
+
+  <span class="dim">Votre choix [O] :</span> <span class="white">_</span>
+
+  <span class="dim">────────────────────────────────────────────────────────</span>
+  <span class="dim">Après installation, OpenPresenter démarre tout seul.</span>
+  <span class="dim">Aucune modification du système n'est effectuée :</span>
+  <span class="dim">le runtime reste dans le dossier du projet.</span>
+  <span class="dim">────────────────────────────────────────────────────────</span>
+</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/03-lanceur.md</code></h3>
+  <ul>
+    <li><b>Trois états de vérification</b> seulement : <code>✓</code> ok · <code>!</code> avertissement · <code>✗</code> échec (EF-03.35).</li>
+    <li><b>Le chemin absolu du dossier</b> est toujours affiché (EF-03.14) — indispensable avec plusieurs clés USB.</li>
+    <li><b>Le runtime retenu et son emplacement</b> sont toujours affichés (EF-03.16).</li>
+    <li><b>L'installation n'est jamais silencieuse</b> : choix explicite, URL, taille et empreinte affichées (EF-03.8, EF-03.20).</li>
+    <li><b>Le code d'accès LAN</b> apparaît au lancement et dans le bloc d'adresses (EF-03.32).</li>
+    <li><b>Les deux adresses</b> (locale et réseau) sont encadrées et lisibles de loin (EF-03.29 → EF-03.31).</li>
+  </ul>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-01 — Page d'accueil · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { display: grid; grid-template-rows: 56px 72px 1fr 96px; height: 760px; }
+
+  /* Zone 1 */
+  .z1 { display: flex; align-items: center; gap: 14px; padding: 0 16px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: -.01em; }
+  .brand .mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, var(--accent), #ed7958); display: grid; place-items: center; color: #17110a; font-size: 10px; font-weight: 900; }
+  .live { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; background: #ef536015; border: 1px solid #ef536044; }
+  .live .txt { font-weight: 800; font-size: 12px; color: #ff8e97; }
+  .targets { font-size: 10px; color: var(--txt-3); }
+
+  /* Zone 2 */
+  .z2 { display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--bg-2); border-bottom: 1px solid var(--line); }
+  .sel { display: flex; flex-direction: column; gap: 2px; }
+  .sel .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--txt-3); }
+  .sel .val { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 9px; border: 1px solid var(--line-2); border-radius: 6px; background: #0d1017; min-width: 210px; }
+  .sel .val .caret { margin-left: auto; color: var(--txt-3); font-size: 9px; }
+  .stat { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--txt-2); }
+  .stat b { color: var(--txt); font-variant-numeric: tabular-nums; }
+
+  /* Zone 3 */
+  .z3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px 16px; overflow: hidden; }
+  .out { display: flex; flex-direction: column; background: var(--bg-3); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .out-head { display: flex; align-items: center; gap: 7px; padding: 8px 11px; border-bottom: 1px solid var(--line); }
+  .out-head .nm { font-weight: 800; font-size: 11px; letter-spacing: .03em; text-transform: uppercase; }
+  .out-head .specs { margin-left: auto; font-size: 9px; color: var(--txt-3); font-family: var(--mono); }
+  .out-body { padding: 10px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .links { display: flex; flex-wrap: wrap; gap: 4px; }
+  .lnk { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 4px; background: #0d1017; border: 1px solid var(--line-2); font-size: 10px; color: var(--txt-2); }
+  .lnk b { color: var(--accent); font-weight: 700; }
+  .out-foot { display: flex; gap: 6px; padding: 0 10px 10px; }
+  .out-foot .btn { flex: 1; }
+  .add { display: grid; place-items: center; border: 1px dashed var(--line-2); border-radius: 9px; color: var(--txt-3); font-size: 11px; text-align: center; padding: 20px; }
+  .add b { display: block; color: var(--txt-2); font-size: 13px; margin-bottom: 3px; }
+
+  /* Zone 4 */
+  .z4 { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; background: #07080d; border-top: 1px solid var(--line); }
+  .big { padding: 15px 64px; font-size: 19px; font-weight: 900; letter-spacing: -.01em; border-radius: 9px; background: var(--accent); color: #17110a; border: none; box-shadow: 0 8px 28px #f5b94233; }
+  .mini-nav { display: flex; gap: 14px; font-size: 10px; color: var(--txt-3); }
+  .mini-nav span { cursor: pointer; }
+  .mini-nav span:hover { color: var(--txt); }
+
+  /* Aperçus internes */
+  .pv { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 5px; overflow: hidden; border: 1px solid var(--line-2); }
+  .pv .bg { position: absolute; inset: 0; }
+  .pv .ref { position: absolute; transform: translate(-50%,-50%); font-weight: 800; letter-spacing: .06em; }
+  .pv .body { position: absolute; transform: translate(-50%,-50%); font-weight: 600; }
+  .pv .panel { position: absolute; border-radius: 5px; }
+  .pv .hint { position: absolute; bottom: 4px; left: 8px; font-size: 8px; color: #ffffff66; font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html" class="on">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Studio Bible</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Vue scène</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/</span>
+    <span>MAQ-01 · page d'accueil</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> culte en cours, deux sorties connectées, profil « ICC Pahou — Culte du dimanche », événement du jour sélectionné.</div>
+
+  <div class="app">
+
+    <!-- ZONE 1 -->
+    <div class="z1">
+      <div class="brand"><span class="mark">OP</span> ICC Pahou</div>
+      <div class="live">
+        <span class="dot live"></span>
+        <span class="txt">EN DIRECT · Jean 3:16</span>
+        <span class="targets">→ Plein écran · Bas centré</span>
+      </div>
+      <div class="spacer"></div>
+      <span class="dim tiny">⏱ 00:42:18</span>
+      <button class="btn danger">⏹ Tout couper</button>
+    </div>
+
+    <!-- ZONE 2 -->
+    <div class="z2">
+      <div class="sel">
+        <span class="lbl">Profil</span>
+        <span class="val">ICC Pahou — Culte du dimanche <span class="caret">▾</span></span>
+      </div>
+      <div class="sel">
+        <span class="lbl">Événement</span>
+        <span class="val">● Culte du 26/10/2026 · 08:30 <span class="caret">▾</span></span>
+      </div>
+      <div class="spacer"></div>
+      <div class="stat">⌚ <b>18:04</b></div>
+      <div class="stat">📶 <b>192.168.1.42</b> <span class="pill accent">4F2K</span> <button class="btn sm icon">QR</button></div>
+      <div class="stat"><span class="dot ok"></span> 2 sorties en ligne</div>
+    </div>
+
+    <!-- ZONE 3 -->
+    <div class="z3">
+
+      <!-- Sortie 1 -->
+      <div class="out">
+        <div class="out-head">
+          <span class="dot ok"></span>
+          <span class="nm">Plein écran — Salle</span>
+          <span class="specs">1920×1080 · contain</span>
+        </div>
+        <div class="out-body">
+          <div class="pv">
+            <div class="bg" style="background:linear-gradient(135deg,#05060a,#19131a)"></div>
+            <div class="panel" style="left:3%;top:8%;right:3%;bottom:8%;background:rgba(6,8,14,.52);border-top:2px solid #f5b942;border-bottom:2px solid #f5b942;border-radius:10px"></div>
+            <div class="ref" style="left:43%;top:20%;font-size:9px;color:#f5b942">JEAN 3:16</div>
+            <div class="panel" style="left:86%;top:15%;width:11%;height:7%;background:#f5b942;border-radius:3px"></div>
+            <div class="body" style="left:50%;top:62%;width:60%;font-size:8px;color:#fff;text-align:center;line-height:1.5">
+              Car Dieu a tant aimé le monde<br>qu'il a donné son Fils unique
+            </div>
+            <span class="hint">aperçu en direct</span>
+          </div>
+
+          <div class="links">
+            <span class="lnk">Bible <b>⧉</b></span>
+            <span class="lnk">Chants <b>⧉</b></span>
+            <span class="lnk">Médias <b>⧉</b></span>
+            <span class="lnk">Annonces <b>⧉</b></span>
+            <span class="lnk">Habillage <b>⧉</b></span>
+            <span class="lnk">Minuteur <b>⧉</b></span>
+          </div>
+        </div>
+        <div class="out-foot">
+          <button class="btn sm">⧉ Copier tout</button>
+          <button class="btn sm">📱 QR</button>
+          <button class="btn sm">⚙ Scènes</button>
+        </div>
+      </div>
+
+      <!-- Sortie 2 -->
+      <div class="out">
+        <div class="out-head">
+          <span class="dot ok"></span>
+          <span class="nm">Bas centré — Stream</span>
+          <span class="specs">1920×1080 · alpha</span>
+        </div>
+        <div class="out-body">
+          <div class="pv alpha">
+            <div class="panel" style="left:9%;top:72%;width:82%;height:25%;background:rgba(8,10,16,.92);border-left:7px solid #f5b942;border-radius:7px"></div>
+            <div class="ref" style="left:51%;top:74%;font-size:6px;color:#cbd5e1;letter-spacing:.1em">JEAN 3:16</div>
+            <div class="panel" style="left:10%;top:78%;width:14%;height:9%;background:#f5b942;border-radius:3px"></div>
+            <div class="body" style="left:56%;top:86%;width:55%;font-size:7px;color:#fff;text-align:left;line-height:1.4">
+              Car Dieu a tant aimé le monde qu'il a<br>donné son Fils unique,
+            </div>
+            <div class="panel" style="right:9%;top:76%;padding:2px 5px;font-size:7px;color:#ffffff80;background:none">partie 2/3 ›</div>
+            <span class="hint">aperçu en direct · fond transparent</span>
+          </div>
+
+          <div class="links">
+            <span class="lnk">Bible <b>⧉</b></span>
+            <span class="lnk">Chants <b>⧉</b></span>
+            <span class="lnk">Annonces <b>⧉</b></span>
+            <span class="lnk">Habillage <b>⧉</b></span>
+            <span class="lnk dim" style="opacity:.35;text-decoration:line-through">Médias ⧉</span>
+            <span class="lnk dim" style="opacity:.35;text-decoration:line-through">Minuteur ⧉</span>
+          </div>
+          <div class="tiny dim">ℹ Cette sortie ne reçoit pas les médias ni le minuteur.</div>
+        </div>
+        <div class="out-foot">
+          <button class="btn sm">⧉ Copier tout</button>
+          <button class="btn sm">📱 QR</button>
+          <button class="btn sm">⚙ Scènes</button>
+        </div>
+      </div>
+
+      <!-- Ajouter -->
+      <div class="add">
+        <div>
+          <b>＋ Ajouter une sortie</b>
+          <span class="tiny">Jusqu'à 32 sorties, chacune avec ses scènes</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ZONE 4 -->
+    <div class="z4">
+      <button class="big">🎬 Ouvrir le Studio Unifié</button>
+      <div class="mini-nav">
+        <span>Vue scène</span> · <span>Télécommande</span> · <span>Mur des sorties</span> · <span>Diagnostic</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitre <code>docs/spec/05-accueil.md</code></h3>
+  <ul>
+    <li><b>Les 4 zones</b> tiennent dans 100 vh sur un écran 1366×768 (EF-05.9).</li>
+    <li><b>« Tout couper »</b> est toujours visible, désactivé quand rien n'est à l'antenne (EF-05.4).</li>
+    <li><b>Les puces de liens</b> ne listent que les types autorisés par <code>receives</code> ; les types exclus sont barrés avec une explication (EF-05.3b).</li>
+    <li><b>L'aperçu</b> est le rendu réel via <code>render()</code>, pas un dessin (EF-05.2).</li>
+    <li><b>Le bouton Studio</b> est l'élément le plus grand et le plus contrasté de la page (EF-05.1).</li>
+    <li>Le <b>profil</b> et l'<b>événement</b> sont visibles en permanence en zone 2 (EF-05.5, EF-22.4).</li>
+  </ul>
+</div>
+
+</body>
+</html>

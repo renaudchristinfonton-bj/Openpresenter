@@ -122,9 +122,10 @@ elles sont désormais spécifiées par `23-journal-diagnostic.md`.
 | **A-18 → A-18k** | Journal, diagnostic, intégrité | EF-28, EF-30, EF-01 | manuel + analyse de rapport |
 | **P-01 → P-10** | Performance | ENF-10 → ENF-15 | automatisé |
 
-**Répartition** : 17 blocs de recette fonctionnelle, 11 tests de performance, **115 tests
-identifiés** (dont 104 cités hors du chapitre 20). Chaque identifiant est défini une seule
-fois, dans `20-tests-acceptation.md`.
+**Répartition** : 7 blocs de recette fonctionnelle (A → G) et 10 tests de performance
+(P-01 → P-10), soit **115 identifiants de recette** dont 103 également cités dans les
+chapitres de spécification. Chaque identifiant est défini une seule fois, dans
+`20-tests-acceptation.md`.
 
 ---
 

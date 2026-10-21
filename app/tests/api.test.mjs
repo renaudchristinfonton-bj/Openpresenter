@@ -118,6 +118,9 @@ test('API : page de sortie et fichiers statiques servis (A-01, A-02e)', async ()
     assert.match(page.headers.get('content-type'), /text\/html/);
     const html = await page.text();
     assert.match(html, /OpenPresenter/);
+    assert.match(html, /Studio/, 'la racine doit ouvrir le studio');
+    const socle = await fetch(`${srv.base}/socle.html`);
+    assert.equal(socle.status, 200);
 
     // Remontée de dossier interdite.
     const escape = await fetch(`${srv.base}/../package.json`);

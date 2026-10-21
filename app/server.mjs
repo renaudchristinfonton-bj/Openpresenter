@@ -35,7 +35,13 @@ import {
 import { buildExport, importArchive, saveExport } from './src/core/exporter.mjs';
 import { analyze, run as runMigration, detectSource } from './src/migration/v1.mjs';
 import { Relay } from './src/core/ws.mjs';
+import * as live from './src/core/live.mjs';
 import { log, readLogs, purgeLogs, setVerbose } from './src/core/log.mjs';
+import {
+  seedSampleBible, listBibles, resolveBible, buildBibleSelection, makeVerseCounter
+} from './src/core/bible/service.mjs';
+import { parseReference, parseVerseRange, MESSAGES } from './src/core/bible/reference.mjs';
+import { BOOKS } from './src/core/books.mjs';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -170,7 +176,12 @@ const MIME = {
 };
 
 async function serveStatic(req, res, pathname) {
-  let rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
+  // Les modules purs (références, découpage, navigation) sont servis **tels quels**
+  // au navigateur : une seule implémentation, testée côté Node (ch. 02 § 2.3).
+  if (pathname.startsWith('/shared/')) {
+    return serveShared(req, res, pathname.slice('/shared/'.length));
+  }
+  let rel = decodeURIComponent(pathname).replace(/^\/+/, '');
   const target = path.resolve(WEB_DIR, rel);
   if (!target.startsWith(WEB_DIR + path.sep) && target !== path.join(WEB_DIR, 'index.html')) {
     sendError(res, 403, 'FORBIDDEN', "Accès refusé.");
@@ -204,6 +215,28 @@ async function serveStatic(req, res, pathname) {
   headers['content-length'] = data.length;
   res.writeHead(200, headers);
   res.end(data);
+}
+
+/** Sert `app/src/core/**` en lecture seule, sans exposer les modules serveur. */
+async function serveShared(req, res, rel) {
+  const root = path.join(APP_DIR, 'src', 'core');
+  const target = path.resolve(root, rel);
+  const allowed = ['books.mjs', 'split.mjs', 'bible/reference.mjs', 'bible/navigation.mjs'];
+  const clean = path.relative(root, target).split(path.sep).join('/');
+  if (!allowed.includes(clean)) {
+    return sendError(res, 404, 'NOT_FOUND', 'Module introuvable.');
+  }
+  try {
+    const data = await fs.readFile(target);
+    res.writeHead(200, {
+      'content-type': 'text/javascript; charset=utf-8',
+      'cache-control': 'no-cache',
+      'x-content-type-options': 'nosniff'
+    });
+    return res.end(data);
+  } catch {
+    return sendError(res, 404, 'NOT_FOUND', 'Module introuvable.');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +408,35 @@ async function handleApi(req, res, url, pathname) {
       return sendJSON(res, 200, { ok: true });
     }
   }
+
+  // --- diffusion (état d'antenne) ----------------------------------------
+  if (segments[0] === 'live') {
+    if (segments[1] === 'state' && method === 'GET') {
+      return sendJSON(res, 200, { channels: live.snapshot(), outputs: (await readOutputs()).outputs });
+    }
+    if (segments[1] === 'show' && method === 'POST') {
+      const body = await readJsonBody(req);
+      const targets = Array.isArray(body.targets) && body.targets.length
+        ? body.targets.map(String)
+        : (await readOutputs()).outputs.filter((o) => o.targetByDefault !== false).map((o) => o.id);
+      const kinds = ['bible', 'songs', 'media', 'announcements', 'lowerthird', 'timer', 'plan'];
+      if (!kinds.includes(body.kind)) {
+        throw Object.assign(new Error('Type de contenu inconnu.'), { code: 'VALIDATION', path: 'kind' });
+      }
+      const result = await live.show(RELAY, {
+        targets, kind: body.kind, payload: body.payload || {}, origin: body.origin || 'studio'
+      });
+      await log('info', 'live.show', `${body.kind} diffusé`, { delivered: result.delivered.length, refused: result.refused.length });
+      return sendJSON(res, 200, result);
+    }
+    if (segments[1] === 'clear' && method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJSON(res, 200, await live.clear(RELAY, { targets: body.targets }));
+    }
+  }
+
+  // --- bible -------------------------------------------------------------
+  if (segments[0] === 'bible') return handleBible(req, res, url, segments, method);
 
   // --- assets ------------------------------------------------------------
   if (segments[0] === 'assets') {
@@ -621,6 +683,113 @@ async function handleResources(req, res, segments, method) {
 }
 
 // ---------------------------------------------------------------------------
+// Module Bible (EF-12, EF-13)
+// ---------------------------------------------------------------------------
+
+const SPLIT_DEFAULTS = {
+  splitMode: 'auto', splitBy: 'words', maxWordsPerScreen: 25,
+  maxCharsPerScreen: 165, maxLinesPerScreen: 3, minWordsPerPart: 3, balanceParts: true
+};
+
+function splitSettings(url) {
+  const settings = { ...SPLIT_DEFAULTS };
+  for (const key of ['splitMode', 'splitBy']) {
+    const value = url.searchParams.get(key);
+    if (value) settings[key] = value;
+  }
+  for (const key of ['maxWordsPerScreen', 'maxCharsPerScreen', 'maxLinesPerScreen', 'minWordsPerPart']) {
+    const value = url.searchParams.get(key);
+    if (value !== null && value !== '') settings[key] = Number(value);
+  }
+  if (url.searchParams.get('balanceParts') === '0') settings.balanceParts = false;
+  return settings;
+}
+
+async function handleBible(req, res, url, segments, method) {
+  if (method !== 'GET' && method !== 'POST') {
+    throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+  }
+
+  // Liste des versions + catalogue des livres.
+  if (segments[1] === 'versions') {
+    return sendJSON(res, 200, { versions: await listBibles(), books: BOOKS.length });
+  }
+  if (segments[1] === 'books') {
+    return sendJSON(res, 200, { books: BOOKS });
+  }
+
+  const bible = await resolveBible(url.searchParams.get('bible'), PROJECT);
+  if (!bible) {
+    throw Object.assign(new Error('Aucune version biblique dans ce projet.'), { code: 'NOT_FOUND' });
+  }
+
+  // Analyse d'une référence collée : « Jean 3:16 », « 1 Corinthiens 13:4-7 ».
+  if (segments[1] === 'parse') {
+    const ref = url.searchParams.get('ref') || '';
+    const parsed = parseReference(ref);
+    if (!parsed) {
+      return sendJSON(res, 422, {
+        error: { code: 'VALIDATION', message: MESSAGES.unknownBook(ref) },
+        parsed: null
+      });
+    }
+    const counter = await makeVerseCounter(bible.id);
+    const max = counter(parsed.bookNum, parsed.chapter);
+    if (max === null) return sendJSON(res, 200, { parsed, versesAvailable: null });
+    if (parsed.first && parsed.first > max) {
+      return sendJSON(res, 422, {
+        error: {
+          code: 'VALIDATION',
+          message: MESSAGES.verseOutOfRange(parsed.bookName, parsed.chapter, parsed.first, max)
+        },
+        parsed,
+        versesAvailable: max
+      });
+    }
+    const last = parsed.last ? Math.min(parsed.last, max) : parsed.last;
+    return sendJSON(res, 200, {
+      parsed: { ...parsed, last },
+      versesAvailable: max,
+      warning: last && parsed.last && last < parsed.last
+        ? MESSAGES.rangeTruncated(parsed.first, last, max)
+        : null
+    });
+  }
+
+  // Sélection affichable : « Jean 3:16-18 » découpé selon les réglages de la scène.
+  if (segments[1] === 'selection') {
+    const bookNum = Number(url.searchParams.get('book'));
+    const chapter = Number(url.searchParams.get('chapter'));
+    if (!Number.isInteger(bookNum) || bookNum < 1 || bookNum > BOOKS.length) {
+      throw Object.assign(new Error('Livre invalide.'), { code: 'VALIDATION', path: 'book' });
+    }
+    if (!Number.isInteger(chapter) || chapter < 1 || chapter > 200) {
+      throw Object.assign(new Error('Chapitre invalide.'), { code: 'VALIDATION', path: 'chapter' });
+    }
+    const first = url.searchParams.get('first') ? Number(url.searchParams.get('first')) : undefined;
+    const last = url.searchParams.get('last') ? Number(url.searchParams.get('last')) : undefined;
+    const selection = await buildBibleSelection({
+      bible, bookNum, chapter, first, last, settings: splitSettings(url)
+    });
+    if (!selection.items.length) {
+      return sendJSON(res, 200, {
+        ...selection,
+        empty: true,
+        message: `${selection.bookName} ${chapter} n'est pas dans cette version.`
+      });
+    }
+    // Le champ de saisie est préparé pour enchaîner (EF-12.20).
+    return sendJSON(res, 200, {
+      ...selection,
+      empty: false,
+      range: first ? { first, last: last && last > first ? last : first } : null
+    });
+  }
+
+  throw Object.assign(new Error("Cette ressource n'existe pas."), { code: 'NOT_FOUND' });
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostic consolidé (ch. 23)
 // ---------------------------------------------------------------------------
 
@@ -741,6 +910,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return sendError(res, 405, 'VALIDATION', 'Méthode non autorisée.');
     }
+    // Le studio est la porte d'entrée ; l'état du socle vit sur /socle.html.
+    if (pathname === '/') {
+      return await serveStatic(req, res, '/studio.html');
+    }
+    // Chaque sortie a son URL stable : /o/<outputId>?kind=<type> (ch. 07 § 7.3).
+    if (/^\/o\/[\w.-]+\/?$/.test(pathname)) {
+      return await serveStatic(req, res, '/output.html');
+    }
     return await serveStatic(req, res, pathname);
   } catch (err) {
     if (res.headersSent) {
@@ -799,6 +976,10 @@ async function start() {
 
   await cleanupTemps();
 
+  // Une version d'exemple permet d'essayer l'application dès le premier lancement.
+  const seeded = await seedSampleBible();
+  if (seeded) await log('info', 'bible.seeded', 'Bible d’exemple installée', { bibleId: 'bible_sample_fr' });
+
   const lock = await acquireLock();
   if (!lock.ok) {
     const existing = lock.lock || {};
@@ -825,6 +1006,9 @@ async function start() {
       PROJECT = await patchSettings({ port: actualPort });
     }
   }
+
+  const restoredLive = await live.restore();
+  if (restoredLive) await log('info', 'live.restored', 'état d’antenne restauré', { outputs: restoredLive });
 
   await log('info', 'server.start', 'serveur démarré', {
     port: actualPort, projectId: PROJECT.id, created

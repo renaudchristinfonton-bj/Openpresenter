@@ -202,12 +202,13 @@ test('sorties : plafond de 32 et identifiants uniques', async () => {
       /Identifiant de sortie invalide/
     );
 
-    const saved = await writeOutputs({ rev: 1, outputs: [{ id: 'out_main', name: 'Principal' }] });
+    const initial = await readOutputs();
+    const saved = await writeOutputs({ rev: initial.rev, outputs: [{ id: 'out_main', name: 'Principal' }] });
     assert.equal(saved.outputs.length, 1);
     assert.equal((await readOutputs()).outputs[0].name, 'Principal');
 
-    const second = await writeOutputs({ rev: 1, outputs: [{ id: 'out_main', name: 'Principal 2' }] });
-    assert.equal(second.rev, 2);
+    const second = await writeOutputs({ rev: saved.rev, outputs: [{ id: 'out_main', name: 'Principal 2' }] });
+    assert.equal(second.rev, saved.rev + 1);
     await assert.rejects(() => writeOutputs({ rev: 1, outputs: [] }), (err) => err.code === 'CONFLICT');
   } finally { await cleanup(base); }
 });

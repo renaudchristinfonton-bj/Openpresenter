@@ -272,13 +272,13 @@ Migration en cours…  ✓ terminée.
 **TXT-021** · message court · *4.4.1 Procédure d'import (normative)*
 
 ```text
-« <nom> » est illisible.` |
+« <nom> » est illisible.
 ```
 
 **TXT-022** · message court · *4.4.1 Procédure d'import (normative)*
 
 ```text
-Écriture impossible : <raison>` |
+Écriture impossible : <raison>
 ```
 
 **TXT-023** · dialogue · *4.4.2 Fichiers volumineux (décision D-04)*
@@ -350,37 +350,37 @@ Réglages    12
 **TXT-029** · message · *5.4.1 Sélecteur de profil*
 
 ```text
-Appliquer le profil « Conférence » ? Les sorties, les looks et le plan type vont être remplacés. Ce qui est à l'antenne sera coupé.` |
+Appliquer le profil « Conférence » ? Les sorties, les looks et le plan type vont être remplacés. Ce qui est à l'antenne sera coupé.
 ```
 
 **TXT-030** · message court · *5.5.1 Contenu d'une carte*
 
 ```text
-Cette sortie ne reçoit pas les médias. Modifiez-le dans ⚙.`
+Cette sortie ne reçoit pas les médias. Modifiez-le dans ⚙.
 ```
 
 **TXT-031** · message court · *5.8 États particuliers*
 
 ```text
-Bienvenue. Choisissez un profil pour commencer →` |
+Bienvenue. Choisissez un profil pour commencer →
 ```
 
 **TXT-032** · message court · *5.8 États particuliers*
 
 ```text
-Aucune sortie en ligne. Ouvrez les liens dans OBS.` |
+Aucune sortie en ligne. Ouvrez les liens dans OBS.
 ```
 
 **TXT-033** · message court · *5.8 États particuliers*
 
 ```text
-Importez une Bible pour pouvoir diffuser des versets.` |
+Importez une Bible pour pouvoir diffuser des versets.
 ```
 
 **TXT-034** · message court · *5.8 États particuliers*
 
 ```text
-Serveur déconnecté — relancez OpenPresenter.` |
+Serveur déconnecté — relancez OpenPresenter.
 ```
 
 ### Chapitre 06 — `06-studio.md`
@@ -388,31 +388,31 @@ Serveur déconnecté — relancez OpenPresenter.` |
 **TXT-035** · message court · *6.5 Barre de diffusion (commune à tous les modules de contenu)*
 
 ```text
-Aucune sortie sélectionnée.` |
+Aucune sortie sélectionnée.
 ```
 
 **TXT-036** · message court · *6.8 Notifications (toasts)*
 
 ```text
-Jean 3:16 diffusé sur 2 sorties` |
+Jean 3:16 diffusé sur 2 sorties
 ```
 
 **TXT-037** · message court · *6.8 Notifications (toasts)*
 
 ```text
-Profil « Conférence » appliqué` |
+Profil « Conférence » appliqué
 ```
 
 **TXT-038** · message court · *6.8 Notifications (toasts)*
 
 ```text
-« Lower third » ne reçoit pas les médias — sortie ignorée` |
+« Lower third » ne reçoit pas les médias — sortie ignorée
 ```
 
 **TXT-039** · message court · *6.8 Notifications (toasts)*
 
 ```text
-Import impossible : ce fichier n'est pas une Bible reconnue.` |
+Import impossible : ce fichier n'est pas une Bible reconnue.
 ```
 
 ### Chapitre 07 — `07-sorties-et-liens.md`
@@ -464,13 +464,13 @@ Cette sortie ne reçoit pas les médias.` sur fond transparent |
 **TXT-045** · message court · *7.3.2 Le filtre `receives`*
 
 ```text
-« Bas centré » ne reçoit pas les médias — sortie ignorée.` |
+« Bas centré » ne reçoit pas les médias — sortie ignorée.
 ```
 
 **TXT-046** · message · *7.4.1 Assistant « Installer dans OBS »*
 
 ```text
-Impossible de joindre OBS à ws://localhost:4455. Vérifiez que le serveur WebSocket est activé dans Outils → Paramètres du serveur WebSocket.` |
+Impossible de joindre OBS à ws://localhost:4455. Vérifiez que le serveur WebSocket est activé dans Outils → Paramètres du serveur WebSocket.
 ```
 
 **TXT-047** · message long · *7.4.2 Réglages OBS recommandés (texte affiché)*
@@ -503,7 +503,7 @@ Média indisponible` sur fond neutre, sans figer la sortie |
 **TXT-050** · message court · *7.8 Tests d'acceptation liés*
 
 ```text
-Maximum : 32 sorties.` |
+Maximum : 32 sorties.
 ```
 
 ### Chapitre 08 — `08-editeur-scene.md`
@@ -572,55 +572,55 @@ Jean compte 21 chapitres.
 **TXT-057** · message court · *9.3.5 État 2 — verset*
 
 ```text
-Plage trop large (200 versets maximum).` |
+Plage trop large (200 versets maximum).
 ```
 
 **TXT-058** · message court · *9.3.5 État 2 — verset*
 
 ```text
-Jean 3 ne contient pas de verset 42 (1 à 36).` |
+Jean 3 ne contient pas de verset 42 (1 à 36).
 ```
 
 **TXT-059** · message court · *9.3.5 État 2 — verset*
 
 ```text
-Versets 30 à 36 affichés (le chapitre s'arrête à 36).` |
+Versets 30 à 36 affichés (le chapitre s'arrête à 36).
 ```
 
 **TXT-060** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-Aucun livre ne correspond à « xyz ».` | **non** |
+Aucun livre ne correspond à « xyz ».
 ```
 
 **TXT-061** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-Saisissez un numéro de chapitre, puis Espace et le verset.` | non |
+Saisissez un numéro de chapitre, puis Espace et le verset.
 ```
 
 **TXT-062** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-<Livre> ne contient pas de chapitre <n> (1 à <max>).` | non |
+<Livre> ne contient pas de chapitre <n> (1 à <max>).
 ```
 
 **TXT-063** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-<Livre> <c> ne contient pas de verset <n> (1 à <max>).` | non |
+<Livre> <c> ne contient pas de verset <n> (1 à <max>).
 ```
 
 **TXT-064** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-Plage trop large (200 versets maximum).` | non |
+Plage trop large (200 versets maximum).
 ```
 
 **TXT-065** · message court · *9.3.7 Erreurs de saisie*
 
 ```text
-Importez d'abord une version biblique.` | non |
+Importez d'abord une version biblique.
 ```
 
 **TXT-066** · message long · *9.5.5 Aperçu avant diffusion*
@@ -661,7 +661,7 @@ Métadonnées  auteur, clave, tempo
 **TXT-070** · message court · *10.3 Navigation*
 
 ```text
-Fin du chant « Grâce infinie ».`
+Fin du chant « Grâce infinie ».
 ```
 
 **TXT-071** · dialogue · *10.5 Organisation*
@@ -684,7 +684,7 @@ Enregistrez-le au format .pptx ou exportez-le en PDF.
 **TXT-073** · message · *11.2 Import*
 
 ```text
-« fond.jpg » est identique à un fichier déjà importé (réutilisation).` |
+« fond.jpg » est identique à un fichier déjà importé (réutilisation).
 ```
 
 **TXT-074** · dialogue · *11.2.1 Rapport d'import*
@@ -703,7 +703,7 @@ Import terminé
 **TXT-075** · message court · *11.5 PDF et présentations*
 
 ```text
-2 polices du fichier sont absentes et ont été remplacées.` |
+2 polices du fichier sont absentes et ont été remplacées.
 ```
 
 ### Chapitre 13 — `13-profils.md`
@@ -711,7 +711,7 @@ Import terminé
 **TXT-076** · message court · *13.5.1 Séquence normative*
 
 ```text
-Profil « Conférence » appliqué · 3 sorties · 3 looks` |
+Profil « Conférence » appliqué · 3 sorties · 3 looks
 ```
 
 **TXT-077** · dialogue · *13.5.2 Confirmation*
@@ -736,7 +736,7 @@ réappliqués à tout moment.
 **TXT-078** · message court · *14.4.2 Écran*
 
 ```text
-Fin du plan.` |
+Fin du plan.
 ```
 
 **TXT-079** · dialogue · *14.4.3 Import CSV / texte (repris de V1)*
@@ -828,49 +828,49 @@ Profils       4 importés
 **TXT-083** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Le catalogue est désactivé. Activez-le dans Réglages → Catalogue en ligne.` |
+Le catalogue est désactivé. Activez-le dans Réglages → Catalogue en ligne.
 ```
 
 **TXT-084** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Aucune connexion Internet détectée. Le catalogue est indisponible — le reste du logiciel n'est pas affecté.` |
+Aucune connexion Internet détectée. Le catalogue est indisponible — le reste du logiciel n'est pas affecté.
 ```
 
 **TXT-085** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Le serveur n'a pas répondu dans les 8 secondes. Réessayez plus tard.` |
+Le serveur n'a pas répondu dans les 8 secondes. Réessayez plus tard.
 ```
 
 **TXT-086** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Le fichier téléchargé ne correspond pas à l'empreinte annoncée. Le téléchargement a été annulé par sécurité.` |
+Le fichier téléchargé ne correspond pas à l'empreinte annoncée. Le téléchargement a été annulé par sécurité.
 ```
 
 **TXT-087** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Ce fichier fait 240 Mo, au-delà de la limite de 100 Mo. Téléchargez-le manuellement puis importez-le.` |
+Ce fichier fait 240 Mo, au-delà de la limite de 100 Mo. Téléchargez-le manuellement puis importez-le.
 ```
 
 **TXT-088** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-Le fichier a été téléchargé mais n'est pas une Bible reconnue. Il a été supprimé.` |
+Le fichier a été téléchargé mais n'est pas une Bible reconnue. Il a été supprimé.
 ```
 
 **TXT-089** · message · *17.5 Messages d'erreur (littéraux)*
 
 ```text
-La licence de ce contenu n'est pas indiquée. Vérifiez vos droits avant de l'utiliser publiquement.` |
+La licence de ce contenu n'est pas indiquée. Vérifiez vos droits avant de l'utiliser publiquement.
 ```
 
 **TXT-090** · message court · *17.6 Mode hors-ligne*
 
 ```text
-Liste en cache — téléchargement indisponible.`
+Liste en cache — téléchargement indisponible.
 ```
 
 ### Chapitre 18 — `18-clavier-accessibilite.md`
@@ -878,7 +878,7 @@ Liste en cache — téléchargement indisponible.`
 **TXT-091** · message court · *18.1.6 Règles de résolution*
 
 ```text
-« L » est déjà utilisé pour « Verrouiller ».` |
+« L » est déjà utilisé pour « Verrouiller ».
 ```
 
 ### Chapitre 23 — `23-journal-diagnostic.md`
@@ -892,19 +892,19 @@ Bas centré — aucun client connecté`, avec deux boutons par sortie :
 **TXT-093** · message court · *23.3.3 Données*
 
 ```text
-Aucune sauvegarde. Vos données ne tiennent qu'à ce dossier.`
+Aucune sauvegarde. Vos données ne tiennent qu'à ce dossier.
 ```
 
 **TXT-094** · message · *23.3.4 Environnement*
 
 ```text
-Navigateur non pris en charge. Utilisez Chrome, Edge, Firefox ou Safari à jour.` |
+Navigateur non pris en charge. Utilisez Chrome, Edge, Firefox ou Safari à jour.
 ```
 
 **TXT-095** · message · *23.3.4 Environnement*
 
 ```text
-Aucune adresse réseau — ce poste n'est pas connecté à un réseau local.` |
+Aucune adresse réseau — ce poste n'est pas connecté à un réseau local.
 ```
 
 **TXT-096** · message · *23.3.4 Environnement*
@@ -933,7 +933,7 @@ backups/orphelins-2026-10-21/ et conservés 30 jours.
 **TXT-099** · message · *23.6 Copier le rapport*
 
 ```text
-Copie automatique impossible — sélectionnez tout (Ctrl+A) et copiez.`
+Copie automatique impossible — sélectionnez tout (Ctrl+A) et copiez.
 ```
 
 ---

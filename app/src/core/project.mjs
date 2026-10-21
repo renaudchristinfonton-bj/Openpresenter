@@ -32,6 +32,7 @@ export async function ensureProject({ name } = {}) {
     await writeJson(path.join(dir, 'project.json'), project);
     await log('info', 'project.open', 'project.json créé', { projectId: project.id });
   }
+  await seedDefaultOutputs();
   return { created, project };
 }
 
@@ -61,6 +62,55 @@ export function defaultProject(name) {
       verboseLog: process.env.OPENPRESENTER_VERBOSE === '1'
     }
   };
+}
+
+/**
+ * Les deux sorties créées avec le projet (ch. 07 § 7.2.1) :
+ * « Plein écran — Salle » et « Bas centré — Stream » (transparente).
+ */
+export const DEFAULT_OUTPUTS = [
+  {
+    id: 'out_full',
+    name: 'Plein écran — Salle',
+    preset: 'full',
+    width: 1920,
+    height: 1080,
+    fit: 'contain',
+    transparent: false,
+    enabled: true,
+    targetByDefault: true,
+    receives: {
+      bible: true, songs: true, media: true, announcements: true,
+      lowerthird: false, timer: false, plan: false
+    },
+    scenesByKind: {},
+    notes: 'Projecteur de salle.'
+  },
+  {
+    id: 'out_bottom',
+    name: 'Bas centré — Stream',
+    preset: 'bottom',
+    width: 1920,
+    height: 1080,
+    fit: 'contain',
+    transparent: true,
+    enabled: true,
+    targetByDefault: true,
+    receives: {
+      bible: true, songs: true, media: true, announcements: true,
+      lowerthird: true, timer: true, plan: false
+    },
+    scenesByKind: {},
+    notes: 'Bandeau à superposer dans OBS ou vMix.'
+  }
+];
+
+export async function seedDefaultOutputs() {
+  const file = path.join(projectDir(), 'outputs', 'outputs.json');
+  const existing = await readJson(file, null);
+  if (existing) return false;
+  await writeJson(file, { rev: 1, outputs: structuredClone(DEFAULT_OUTPUTS) });
+  return true;
 }
 
 export function randomToken() {

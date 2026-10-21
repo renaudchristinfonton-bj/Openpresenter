@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — Sortie</title>
+<style>
+  :root{
+    --bg:#000; --fg:#fff; --accent:#f5b942;
+    --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);overflow:hidden}
+  body{font-family:var(--font);color:var(--fg)}
+
+  /* Scène : 1920×1080 mise à l'échelle, quel que soit l'écran (ch. 08). */
+  #stage{
+    position:absolute; left:50%; top:50%;
+    width:1920px; height:1080px;
+    transform-origin:center center;
+    background:#000;
+    overflow:hidden;
+  }
+  .layer{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:60px 90px;
+  }
+  .text{
+    text-align:center;
+    line-height:1.18;
+    font-weight:600;
+    letter-spacing:-.01em;
+    text-wrap:balance;
+    max-width:100%;
+    white-space:pre-line;
+    text-shadow:0 4px 24px rgba(0,0,0,.55);
+  }
+  .ref{
+    position:absolute; right:90px; bottom:56px;
+    font-size:34px; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; opacity:.72;
+  }
+  .empty{display:none}
+
+  /* Bandeau (preset « Bas centré ») : la scène est transparente. */
+  body.preset-bottom #stage,
+  body.preset-lowerthird #stage,
+  body.preset-bottom-right #stage.stage-transparent{background:transparent}
+  body.preset-bottom #stage .layer{
+    align-items:flex-end; padding:0 120px 70px;
+  }
+  body.preset-bottom #stage .box,
+  body.preset-lowerthird #stage .box{
+    background:rgba(0,0,0,.55);
+    border-radius:18px; padding:26px 34px;
+    backdrop-filter:blur(6px);
+  }
+  .box{display:inline-block; max-width:100%}
+
+  /* État hors ligne / en attente. */
+  #wait{
+    position:fixed; inset:0; display:none;
+    align-items:center; justify-content:center; flex-direction:column; gap:14px;
+    background:#05060a; color:#8b93a5; font-size:22px; text-align:center; padding:40px;
+  }
+  #wait.show{display:flex}
+  #wait b{color:#e8eaf0; font-size:30px; font-weight:800; letter-spacing:-.01em}
+  #wait code{font-family:ui-monospace,Menlo,monospace; font-size:16px; background:#11141c; padding:6px 10px; border-radius:6px; color:#f5b942}
+  .dot{width:10px;height:10px;border-radius:50%;background:#ef5360;display:inline-block}
+  .dot.on{background:#34d399}
+
+  /* Mode debug : informations de contrôle, jamais visibles à l'antenne. */
+  #debug{
+    position:fixed; left:14px; top:14px; z-index:10;
+    font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.5;
+    color:#0f0; background:rgba(0,0,0,.72); padding:10px 12px; border-radius:8px;
+    border:1px solid #0f03; display:none; white-space:pre;
+  }
+  body.debug #debug{display:block}
+  .progress{
+    position:fixed; left:0; right:0; bottom:0; height:3px; background:#ffffff12;
+  }
+  .progress i{display:block; height:100%; background:var(--accent); width:0; transition:width .18s}
+  body.hide-progress .progress{display:none}
+</style>
+</head>
+<body>
+<div id="stage" aria-live="polite" aria-atomic="true">
+  <div class="layer"><div class="box"><div class="text" id="text"></div></div></div>
+  <div class="ref" id="ref"></div>
+</div>
+
+<div id="wait">
+  <div><span class="dot" id="dot"></span> <span id="waitText">Connexion à OpenPresenter…</span></div>
+  <div id="waitHint"></div>
+</div>
+
+<div id="debug"></div>
+<div class="progress"><i id="bar"></i></div>
+
+<script type="module">
+(() => {
+  const params = new URLSearchParams(location.search);
+  const outputId = location.pathname.split('/')[2] || params.get('output') || 'out_full';
+  const kindFilter = params.get('kind') || null;
+  const debug = params.get('debug') === '1';
+  if (debug) document.body.classList.add('debug');
+
+  const $ = (s) => document.querySelector(s);
+  const textEl = $('#text');
+  const refEl = $('#ref');
+  const stage = $('#stage');
+  const bar = $('#bar');
+  const wait = $('#wait');
+  const dot = $('#dot');
+
+  let output = null;
+  let current = null;   // message `show` courant
+  let socket = null;
+  let retry = 0;
+  let connected = false;
+
+  // ---------------------------------------------------------------------
+  // Mise à l'échelle de la scène
+  // ---------------------------------------------------------------------
+  function fitStage() {
+    const w = output?.width || 1920;
+    const h = output?.height || 1080;
+    stage.style.width = w + 'px';
+    stage.style.height = h + 'px';
+    const scale = Math.min(window.innerWidth / w, window.innerHeight / h);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+  window.addEventListener('resize', fitStage);
+
+  // ---------------------------------------------------------------------
+  // Rendu d'un contenu
+  // ---------------------------------------------------------------------
+  function render(message) {
+    current = message;
+    if (!message || message.t === 'clear') {
+      textEl.textContent = '';
+      refEl.textContent = '';
+      bar.style.width = '0';
+      return;
+    }
+    const p = message.payload || {};
+    const text = p.text ?? p.body ?? '';
+    textEl.textContent = text;
+    refEl.textContent = p.reference || p.ref || '';
+
+    // Taille : on part de la scène, on réduit jusqu'à tenir dans le cadre.
+    const base = p.fontSize || (output?.preset === 'bottom' ? 74 : 108);
+    autoFit(text, base);
+
+    const total = p.partCount || 1;
+    const index = (p.partIndex ?? 0) + 1;
+    bar.style.width = total > 1 ? `${Math.round((index / total) * 100)}%` : '0';
+    if (debug) logDebug(message);
+  }
+
+  function autoFit(text, base) {
+    let size = base;
+    textEl.style.fontSize = size + 'px';
+    textEl.style.lineHeight = '1.18';
+    const maxHeight = stage.clientHeight - 200;
+    const maxWidth = stage.clientWidth - 180;
+    let guard = 0;
+    while (guard++ < 40 && (textEl.scrollHeight > maxHeight || textEl.scrollWidth > maxWidth) && size > 26) {
+      size -= 4;
+      textEl.style.fontSize = size + 'px';
+    }
+  }
+
+  function logDebug(message) {
+    const el = $('#debug');
+    el.textContent = [
+      `sortie   : ${outputId}`,
+      `type     : ${message?.kind || '—'}`,
+      `filtre   : ${kindFilter || 'tout'}`,
+      `établie  : ${connected ? 'oui' : 'non'}`,
+      `seq      : ${message?.seq ?? '—'}`,
+      `partie   : ${(message?.payload?.partIndex ?? 0) + 1}/${message?.payload?.partCount ?? 1}`,
+      `reçu     : ${message?.ts ? new Date(message.ts).toLocaleTimeString('fr-FR') : '—'}`
+    ].join('\n');
+  }
+
+  // ---------------------------------------------------------------------
+  // Chargement de la configuration de la sortie
+  // ---------------------------------------------------------------------
+  async function loadOutput() {
+    try {
+      const res = await fetch('/api/outputs', { cache: 'no-store' });
+      if (!res.ok) throw new Error('configuration illisible');
+      const data = await res.json();
+      output = (data.outputs || []).find((o) => o.id === outputId) || null;
+    } catch {
+      output = null;
+    }
+
+    if (!output) {
+      showWait(
+        'Cette sortie n’existe pas',
+        `Identifiant « ${outputId} ». Ouvrez le studio pour copier un lien valide.`,
+        false
+      );
+      document.title = 'Sortie introuvable — OpenPresenter';
+      return false;
+    }
+
+    document.title = `${output.name} — OpenPresenter`;
+    document.body.classList.toggle('preset-bottom', output.preset === 'bottom');
+    document.body.classList.toggle('preset-lowerthird', output.preset === 'lowerthird');
+    document.body.classList.toggle('preset-bottom-right', output.preset === 'bottom-right');
+    stage.classList.toggle('stage-transparent', Boolean(output.transparent));
+    if (output.transparent) document.documentElement.style.background = 'transparent';
+    fitStage();
+
+    // Filtre `receives` : un type exclu reste vide même via l'URL directe (EF-08).
+    if (kindFilter && output.receives && output.receives[kindFilter] === false) {
+      showWait(
+        'Cette sortie ne reçoit pas ce type de contenu',
+        `« ${output.name} » n’accepte pas les contenus de type « ${kindFilter} ».`,
+        true
+      );
+      return false;
+    }
+    hideWait();
+    return true;
+  }
+
+  function showWait(title, hint, keepOnline) {
+    wait.classList.add('show');
+    $('#waitText').textContent = title;
+    $('#waitHint').innerHTML = hint || '';
+    dot.classList.toggle('on', Boolean(keepOnline));
+  }
+
+  function hideWait() {
+    wait.classList.remove('show');
+  }
+
+  // ---------------------------------------------------------------------
+  // WebSocket
+  // ---------------------------------------------------------------------
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const url = `${proto}://${location.host}/ws?channel=op_out_${outputId}${location.search.includes('t=') ? '&' + location.search.slice(1) : ''}`;
+    socket = new WebSocket(url);
+
+    socket.addEventListener('open', () => {
+      connected = true;
+      retry = 0;
+      socket.send(JSON.stringify({ t: 'hello' }));
+      hideWait();
+      if (debug) logDebug(current);
+    });
+
+    socket.addEventListener('message', (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.t === 'show') {
+        // Une sortie filtrée ignore silencieusement les autres types.
+        if (kindFilter && output && output.receives && output.receives[kindFilter] === false) return;
+        render(msg);
+      } else if (msg.t === 'clear') {
+        render({ t: 'clear' });
+      } else if (msg.t === 'error') {
+        showWait('Message invalide', msg.message || '', true);
+      }
+    });
+
+    socket.addEventListener('close', () => {
+      connected = false;
+      if (document.hidden) return;
+      const delay = Math.min(1000 * 2 ** retry++, 8000);
+      showWait('Connexion perdue', `Nouvelle tentative dans ${Math.round(delay / 1000)} s.`, false);
+      setTimeout(connect, delay);
+    });
+
+    socket.addEventListener('error', () => socket.close());
+  }
+
+  // Une sortie ne doit jamais s'endormir pendant un culte.
+  setInterval(() => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'ping' }));
+  }, 25000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && socket?.readyState !== WebSocket.OPEN) connect();
+  });
+
+  // Raccourcis de secours sur la sortie elle-même (si le poste est seul).
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') render({ t: 'clear' });
+  });
+
+  // ---------------------------------------------------------------------
+  // Démarrage
+  // ---------------------------------------------------------------------
+  (async () => {
+    const ok = await loadOutput();
+    if (!ok) return;
+    connect();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ OpenPresenter réunit tous les outils de projection dont une régie a besoin (Bi
 
 - [Cahier des charges de la refonte](#cahier-des-charges-de-la-refonte)
 - [Phase 0 : le socle est en place](#phase-0--le-socle-est-en-place)
+- [Phase 1 : la Bible, de la frappe à l'écran](#phase-1--la-bible-de-la-frappe-à-lécran)
 - [Pourquoi ce projet](#pourquoi-ce-projet)
 - [Fonctionnalités](#fonctionnalités)
 - [Comment ça fonctionne](#comment-ça-fonctionne)
@@ -46,7 +47,7 @@ serveur local sans aucune dépendance npm, lanceur universel qui ouvre le naviga
 
 ```bash
 ./OpenPresenter.sh        # macOS : ./OpenPresenter.command   Windows : OpenPresenter.bat
-npm test                  # 62 tests — 0 échec
+npm test                  # 138 tests — 0 échec
 npm run schema:check      # 16 schémas de l'annexe 24, validés sur un projet réel
 npm run trace:check       # cohérence du cahier des charges, T1 → T16
 ```
@@ -58,6 +59,31 @@ npm run trace:check       # cohérence du cahier des charges, T1 → T16
 | `app/src/core/` | écriture atomique, projet, assets, objets métier, export, journal, validateur |
 | `app/src/migration/v1.mjs` | migration idempotente de `openpresenter-sauvegarde-2026-08-09.json` |
 | `app/tests/` | A-01→A-05, A-13→A-13e, A-18→A-18k, lanceur, validateur |
+
+---
+
+## Phase 1 : la Bible, de la frappe à l'écran
+
+La première tranche verticale est en place : **taper une référence au clavier et la voir
+s'afficher**, découpée en morceaux lisibles, avec navigation aux flèches — sur deux sorties
+(OBS/EQ, vMix, projecteur).
+
+```
+j e Entrée 3 Espace 1 6 Entrée   →   Jean 3:16   →   2 parties   →   sortie
+```
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-1-BIBLE.md`](docs/PHASE-1-BIBLE.md) | parcours complet, tests A-06→A-09 couverts, ce qui reste |
+| `app/src/core/bible/reference.mjs` | machine à états LIVRE → CHAPITRE → VERSET, références collées, messages |
+| `app/src/core/split.mjs` | découpage lisible normatif (25 mots, ponctuation, équilibrage) |
+| `app/src/core/bible/navigation.mjs` | navigation plate, touches du § 9.4.2, clicker USB |
+| `app/web/studio.html` | studio : champ unique, parties, aperçu, choix des sorties |
+| `app/web/output.html` | page de sortie `/o/<id>?kind=bible` — plein écran ou bandeau |
+| `app/src/core/live.mjs` | état d'antenne, filtre `receives`, reprise après reconnexion |
+
+Les modules purs sont servis **tels quels** au navigateur (`/shared/…`) : la logique testée
+côté Node est exactement celle qui tourne à l'écran.
 
 ---
 

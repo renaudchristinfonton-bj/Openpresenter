@@ -125,6 +125,9 @@ La **phase 0** du [chapitre 21](21-plan-livraison.md) est livrée et vérifiée 
 socle disque, assets, export/restauration, migration V1, lanceur universel, diagnostic.
 Détail, tests couverts et dettes assumées : [`../PHASE-0-SOCLE.md`](../PHASE-0-SOCLE.md).
 
+La **phase 1** est commencée par la tranche Bible (chapitre 09) : saisie clavier, découpage
+lisible, navigation, studio et sorties. Détail : [`../PHASE-1-BIBLE.md`](../PHASE-1-BIBLE.md).
+
 ---
 
 ## Relevé de cohérence final (21/10/2026)

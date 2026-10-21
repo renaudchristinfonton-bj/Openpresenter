@@ -107,6 +107,7 @@
   .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
   .stage-idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#2b3040;font-weight:600;font-size:15px}
   .screen.idle .op-stage{display:none}
+  .screen:not(.idle) .stage-idle{display:none}
 
   .strip{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);background:#07080d;overflow:auto;flex:0 0 auto;flex-wrap:wrap}
   .out{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:6px;border:1px solid var(--line2);background:var(--bg2);font-size:11px;cursor:pointer;user-select:none}

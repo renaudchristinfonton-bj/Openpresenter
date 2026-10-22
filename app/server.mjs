@@ -38,6 +38,7 @@ import { Relay } from './src/core/ws.mjs';
 import * as live from './src/core/live.mjs';
 import { channelFor } from './src/core/live.mjs';
 import { log, readLogs, purgeLogs, setVerbose } from './src/core/log.mjs';
+import { isPreviewMode, previewRequestAllowed } from './src/core/preview.mjs';
 import {
   seedSampleBible, listBibles, resolveBible, buildBibleSelection, makeVerseCounter
 } from './src/core/bible/service.mjs';
@@ -76,6 +77,7 @@ let RELAY = null;
 const startedAt = Date.now();
 
 setVerbose(process.env.OPENPRESENTER_VERBOSE === '1');
+const PREVIEW_MODE = isPreviewMode();
 
 // ---------------------------------------------------------------------------
 // Utilitaires HTTP
@@ -159,6 +161,9 @@ function isLoopback(req) {
 
 function authorized(req, url) {
   if (isLoopback(req)) return true;
+  // Prévisualisation derrière le proxy de l'hébergeur : l'hôte du proxy est de
+  // confiance, le jeton réseau reste exigé pour toute autre adresse (EF-04.6).
+  if (PREVIEW_MODE && previewRequestAllowed(req.headers, { mode: true })) return true;
   const token = url.searchParams.get('t') || req.headers['x-op-token'];
   const expected = PROJECT?.settings?.lanToken;
   if (!PROJECT?.settings?.lanTokenEnabled || !expected) return true;
@@ -1794,6 +1799,9 @@ async function start() {
     `  Projet   : ${projectDir()}\n` +
     `  Local    : http://127.0.0.1:${actualPort}/\n` +
     (addrs.length ? `  Réseau   : http://${addrs[0].address}:${actualPort}/  (jeton ${PROJECT.settings.lanToken})\n` : '') +
+    (PREVIEW_MODE
+      ? '  Aperçu   : accès proxy *.e2b.app sans jeton (OPENPRESENTER_PREVIEW=1)\n'
+      : '') +
     (READ_ONLY ? '  Mode     : lecture seule\n' : '') +
     '\n'
   );

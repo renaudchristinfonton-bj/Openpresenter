@@ -191,6 +191,21 @@ Depuis le réseau : http://192.168.x.x:8787/
 
 Laissez cette fenêtre de terminal ouverte tant que vous diffusez.
 
+### Aperçu / démonstration derrière un proxy
+
+Sur une machine de la salle, le serveur protège les écritures par un **jeton réseau** :
+un poste du Wi-Fi doit présenter `?t=<jeton>`. Dans un environnement d'aperçu (hébergeur,
+proxy, iframe), les requêtes arrivent d'une adresse non locale et ne peuvent pas porter ce
+jeton. Démarrez alors le serveur avec :
+
+```bash
+OPENPRESENTER_PREVIEW=1 HOST=0.0.0.0 PORT=8790 node app/server.mjs
+```
+
+Seul l'hôte du proxy (`*.e2b.app`, `localhost`, `127.0.0.1`) est dispensé de jeton ; une
+adresse IP du réseau local reste protégée. Le mode est **inactif par défaut** et l'écran de
+démarrage l'annonce (`Aperçu : accès proxy *.e2b.app sans jeton`).
+
 ## Utilisation
 
 ### Ouvrir les outils

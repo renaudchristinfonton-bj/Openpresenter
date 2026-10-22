@@ -174,6 +174,8 @@ export function imageLayer(overrides = {}) {
     blendMode: 'normal',
     bind: null,
     assetId: null,
+    // `content` : l'image vient du média diffusé (module Médias), pas de la scène.
+    assetSource: 'scene',
     fit: 'contain',
     radius: 0,
     radiusPerCorner: null,
@@ -325,12 +327,198 @@ export function sceneFromPreset({ id, name, kind = 'bible', preset = 'full', tra
 }
 
 /** Scènes créées avec un projet : une par sortie et par type courant. */
+/**
+ * Scène d'affichage d'un média (EF-16) : l'image vient du **contenu diffusé**,
+ * pas de la scène (`assetSource: 'content'`), donc une seule scène sert pour
+ * toute la bibliothèque.
+ */
+export function mediaScene({ id, name, preset = 'full' } = {}) {
+  const transparent = preset !== 'full';
+  const scene = sceneFromPreset({ id, name: name || 'Média', kind: 'media', preset: 'full', transparent });
+  scene.layers = [];
+  if (!transparent) {
+    scene.layers.push(backgroundLayer({
+      name: 'Fond',
+      source: { ...backgroundLayer().source, kind: 'color', color: '#000000' }
+    }));
+  }
+  scene.layers.push(imageLayer({
+    name: 'Média',
+    assetSource: 'content',
+    fit: transparent ? 'contain' : 'cover',
+    x: transparent ? 50 : 50,
+    y: transparent ? 50 : 50,
+    w: transparent ? 84 : 100,
+    h: transparent ? 74 : 100,
+    radius: transparent ? 18 : 0
+  }));
+  if (transparent) {
+    scene.layers.push(overlayLayer({
+      name: 'Cartouche',
+      x: 50, y: 92, w: 84, h: 12,
+      bg: 'rgba(6,8,14,.82)',
+      radius: 14,
+      border: { width: 6, color: '#f5b942', sides: ['left'], style: 'solid' }
+    }));
+    scene.layers.push(textLayer({
+      name: 'Nom du média',
+      bind: 'media',
+      x: 50, y: 92, w: 78, h: 9,
+      style: { ...textLayer().style, fontSize: 34, align: 'center', verticalAlign: 'center' },
+      autoFit: { enabled: true, min: 16, max: 40, scaleDown: true, scaleUp: false }
+    }));
+  }
+  return scene;
+}
+
+/**
+ * Habillage / lower third (EF-19) : un bandeau nom + fonction, à superposer
+ * sur la caméra. Transparent par construction (la scène n'a pas de fond).
+ */
+export function lowerThirdScene({ id, name, preset = 'lowerthird' } = {}) {
+  const scene = sceneFromPreset({
+    id: id || newSceneId('lowerthird', preset),
+    name: name || 'Habillage — Intervenant',
+    kind: 'lowerthird',
+    preset: 'lowerthird',
+    transparent: true
+  });
+  scene.layers = [];
+  scene.layers.push(overlayLayer({
+    name: 'Bandeau',
+    x: 27, y: 82, w: 46, h: 15,
+    bg: 'rgba(6,8,14,.88)',
+    radius: 14,
+    border: { width: 8, color: '#f5b942', sides: ['left'], style: 'solid' }
+  }));
+  scene.layers.push(textLayer({
+    name: 'Nom',
+    bind: 'title',
+    x: 27, y: 85.5, w: 41, h: 5.5,
+    style: { ...textLayer().style, fontSize: 46, fontWeight: 700, align: 'left', verticalAlign: 'center' },
+    autoFit: { enabled: true, min: 20, max: 56, scaleDown: true, scaleUp: false }
+  }));
+  scene.layers.push(textLayer({
+    name: 'Fonction',
+    bind: 'announcement',
+    x: 27, y: 91, w: 41, h: 4.5,
+    style: { ...textLayer().style, fontSize: 26, color: '#f5b942', align: 'left', verticalAlign: 'center' },
+    autoFit: { enabled: true, min: 14, max: 32, scaleDown: true, scaleUp: false }
+  }));
+  return scene;
+}
+
+/**
+ * Scène de minuteur (EF-18) : chiffres géants, lisibles du fond de la salle.
+ * En bandeau, le libellé de l'item précède le temps (`Prédication · 12:04`).
+ */
+export function timerScene({ id, name, preset = 'full' } = {}) {
+  const banner = preset !== 'full';
+  const scene = sceneFromPreset({
+    id: id || newSceneId('timer', preset),
+    name: name || (banner ? 'Minuteur — bandeau' : 'Minuteur — plein écran'),
+    kind: 'timer',
+    preset: banner ? 'bottom' : 'full',
+    transparent: banner
+  });
+  scene.layers = [];
+  if (!banner) {
+    scene.layers.push(backgroundLayer({
+      name: 'Fond',
+      source: { ...backgroundLayer().source, kind: 'color', color: '#05060a' }
+    }));
+    scene.layers.push(textLayer({
+      name: 'Temps restant',
+      bind: 'timer',
+      x: 50, y: 50, w: 86, h: 26,
+      style: {
+        ...textLayer().style,
+        fontSize: 260,
+        fontWeight: 800,
+        align: 'center',
+        verticalAlign: 'center',
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        letterSpacing: 4
+      },
+      autoFit: { enabled: true, min: 60, max: 300, scaleDown: true, scaleUp: false }
+    }));
+    scene.layers.push(textLayer({
+      name: 'Libellé',
+      bind: 'title',
+      x: 50, y: 74, w: 60, h: 6,
+      style: {
+        ...textLayer().style,
+        fontSize: 34,
+        color: '#f5b942',
+        align: 'center',
+        verticalAlign: 'center',
+        textCase: 'uppercase',
+        letterSpacing: 2
+      },
+      autoFit: { enabled: true, min: 16, max: 44, scaleDown: true, scaleUp: false }
+    }));
+    return scene;
+  }
+  scene.layers.push(overlayLayer({
+    name: 'Bandeau',
+    x: 50, y: 84, w: 46, h: 14,
+    bg: 'rgba(6,8,14,.84)',
+    radius: 18,
+    border: { width: 6, color: '#f5b942', sides: ['left'], style: 'solid' }
+  }));
+  scene.layers.push(textLayer({
+    name: 'Libellé',
+    bind: 'title',
+    x: 32, y: 91, w: 24, h: 5,
+    style: { ...textLayer().style, fontSize: 22, align: 'left', verticalAlign: 'center', color: '#f5b942' },
+    autoFit: { enabled: true, min: 12, max: 28, scaleDown: true, scaleUp: false }
+  }));
+  scene.layers.push(textLayer({
+    name: 'Temps restant',
+    bind: 'timer',
+    x: 63, y: 84, w: 24, h: 14,
+    style: {
+      ...textLayer().style,
+      fontSize: 62,
+      fontWeight: 800,
+      align: 'right',
+      verticalAlign: 'center',
+      fontFamily: 'ui-monospace, Menlo, Consolas, monospace'
+    },
+    autoFit: { enabled: true, min: 24, max: 72, scaleDown: true, scaleUp: false }
+  }));
+  return scene;
+}
+
+/**
+ * Scène de repli pour une sortie qui n'a pas (encore) de scène câblée pour un
+ * type. Sans ceci, un habillage, un média ou un minuteur hériterait du gabarit
+ * « Bible » et afficherait un verset à la place de son contenu (A-10b).
+ */
+export function fallbackSceneFor({ id, name, kind = 'bible', preset = 'full', transparent = false } = {}) {
+  if (kind === 'media') {
+    return mediaScene({ id, name, preset: transparent ? 'bottom' : 'full' });
+  }
+  if (kind === 'lowerthird') {
+    return lowerThirdScene({ id, name });
+  }
+  if (kind === 'timer') {
+    return timerScene({ id, name, preset });
+  }
+  return sceneFromPreset({ id, name, kind, preset, transparent });
+}
+
 export function defaultScenes() {
   return [
     { outputId: 'out_full', kind: 'bible', scene: sceneFromPreset({ id: 'scn_bible_full', name: 'Plein écran — Bible', kind: 'bible', preset: 'full' }) },
     { outputId: 'out_bottom', kind: 'bible', scene: sceneFromPreset({ id: 'scn_bible_bottom', name: 'Bas centré — Bible', kind: 'bible', preset: 'bottom' }) },
     { outputId: 'out_full', kind: 'songs', scene: sceneFromPreset({ id: 'scn_songs_full', name: 'Plein écran — Chants', kind: 'songs', preset: 'full' }) },
-    { outputId: 'out_bottom', kind: 'songs', scene: sceneFromPreset({ id: 'scn_songs_bottom', name: 'Bas centré — Chants', kind: 'songs', preset: 'bottom' }) }
+    { outputId: 'out_bottom', kind: 'songs', scene: sceneFromPreset({ id: 'scn_songs_bottom', name: 'Bas centré — Chants', kind: 'songs', preset: 'bottom' }) },
+    { outputId: 'out_full', kind: 'media', scene: mediaScene({ id: 'scn_media_full', name: 'Plein écran — Média', preset: 'full' }) },
+    { outputId: 'out_bottom', kind: 'media', scene: mediaScene({ id: 'scn_media_bottom', name: 'Bas centré — Média', preset: 'bottom' }) },
+    { outputId: 'out_full', kind: 'lowerthird', scene: lowerThirdScene({ id: 'scn_lowerthird_full', name: 'Habillage — Intervenant' }) },
+    { outputId: 'out_bottom', kind: 'lowerthird', scene: lowerThirdScene({ id: 'scn_lowerthird_bottom', name: 'Habillage — Bandeau stream', preset: 'lowerthird' }) },
+    { outputId: 'out_bottom', kind: 'timer', scene: timerScene({ id: 'scn_timer_bottom', name: 'Minuteur — Bandeau stream', preset: 'bottom' }) }
   ];
 }
 

@@ -16,9 +16,14 @@ test('scènes : un projet neuf reçoit une scène par sortie et par type', async
   try {
     const res = await json(base, '/api/scenes');
     assert.equal(res.status, 200);
-    assert.equal(res.data.items.length, 4);
+    assert.equal(res.data.items.length, 9);
     const ids = res.data.items.map((item) => item.id).sort();
-    assert.deepEqual(ids, ['scn_bible_bottom', 'scn_bible_full', 'scn_songs_bottom', 'scn_songs_full']);
+    assert.deepEqual(ids, [
+      'scn_bible_bottom', 'scn_bible_full',
+      'scn_lowerthird_bottom', 'scn_lowerthird_full',
+      'scn_media_bottom', 'scn_media_full',
+      'scn_songs_bottom', 'scn_songs_full', 'scn_timer_bottom'
+    ]);
 
     // Les fichiers sont bien sur le disque, à l'endroit attendu (D-02).
     for (const id of ids) {

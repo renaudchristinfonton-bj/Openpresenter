@@ -114,6 +114,19 @@ Le studio réunit désormais Bible, chants et annonces derrière un seul champ d
 | `app/src/core/bible/formats.mjs` | détection Beblia / Zefania / OSIS / USFX, sans dépendance |
 | `app/src/core/bible/importer.mjs` | import avec prévisualisation, copie de la source, index de versets |
 
+### Un seul écran pour toute la régie
+
+Le studio réunit six modules sur le même écran : Bible, Chants, Annonces, Médias,
+Habillage, Minuteur. On change de module à la souris ou au clavier (`Alt+1` … `Alt+6`),
+le contenu déjà à l'antenne n'est jamais coupé par ce changement.
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-2-MODULES.md`](docs/PHASE-2-MODULES.md) | médias (EF-16), minuteur (EF-18), habillage (EF-19), routage des calques, vérification fonction par fonction |
+| `app/web/studio.html` | les six modules, la liste des sorties et le cut général |
+| `app/src/core/overlay.mjs` | où poser un calque sans éteindre le contenu principal |
+| `app/src/core/preview.mjs` | accès en prévisualisation derrière un proxy (`OPENPRESENTER_PREVIEW=1`) |
+
 ### Profils, événements et plan de déroulement
 
 Trois profils prêts à l'emploi (église, conférence, stream) s'appliquent en une action ;
@@ -261,8 +274,3 @@ Projet créé et maintenu par **Renaud Christin FONTON**.
 - 🌐 Site : [renaudfonton.netlify.app](https://renaudfonton.netlify.app)
 
 Suggestions, retours ou questions sont les bienvenus.
-#   O p e n p r e s e n t e r 
- 
- #   O p e n p r e s e n t e r 
- 
- 

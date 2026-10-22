@@ -68,9 +68,12 @@ test('le bandeau « bas centré » a un fond semi-transparent et aucun alignemen
 
 test('scenes par défaut : une par sortie et par type, identifiants conformes', () => {
   const list = defaultScenes();
-  assert.equal(list.length, 4);
+  assert.equal(list.length, 9);
   const pairs = new Set(list.map((entry) => `${entry.outputId}/${entry.kind}`));
-  assert.deepEqual([...pairs].sort(), ['out_bottom/bible', 'out_bottom/songs', 'out_full/bible', 'out_full/songs']);
+  assert.deepEqual([...pairs].sort(), [
+    'out_bottom/bible', 'out_bottom/lowerthird', 'out_bottom/media', 'out_bottom/songs', 'out_bottom/timer',
+    'out_full/bible', 'out_full/lowerthird', 'out_full/media', 'out_full/songs'
+  ]);
   for (const entry of list) {
     assert.match(entry.scene.id, /^scn_[a-z0-9_]{3,40}$/, entry.scene.id);
     assert.equal(validateScene(entry.scene).ok, true);

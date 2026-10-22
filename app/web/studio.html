@@ -161,6 +161,26 @@
   }
   .lyrics{white-space:pre-wrap;font-size:12.5px;line-height:1.5;color:var(--txt2)}
 
+  /* Modules Médias / Habillage / Minuteur : tout au même écran (EF-16, EF-19, EF-18) */
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;padding:10px 12px;flex:1;min-height:0;overflow:auto;align-content:start}
+  .media{display:flex;flex-direction:column;gap:0;padding:0;border:1px solid var(--line2);border-radius:9px;background:var(--bg3);cursor:pointer;overflow:hidden;text-align:left;font-family:inherit}
+  .media:hover{border-color:#ffffff33}
+  .media.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .media.live{border-color:#34d399}
+  .media .th{aspect-ratio:16/9;background:#0a0c12;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:22px;overflow:hidden}
+  .media .th img{width:100%;height:100%;object-fit:contain;display:block}
+  .media .nm{font-size:10.5px;color:var(--txt2);padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#090b11}
+  .module select{background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:inherit}
+  .lbl{font-size:11px;color:var(--txt3)}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+  .field label{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em}
+  .field input{background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;width:100%}
+  .field input:focus{border-color:var(--accent)}
+  .clock{font-family:var(--mono);font-size:62px;font-weight:700;text-align:center;padding:18px 0 6px;color:var(--txt);letter-spacing:.01em}
+  .clock.warn{color:var(--accent)}
+  .clock.over{color:#ef5360}
+  .chip.on{border-color:#34d399;color:#34d399;background:#34d39914}
+
   /* Recherche unifiée (EF-06.8 → EF-06.18) */
   .palette{
     width:min(680px,94vw);margin:12vh auto auto;border:1px solid var(--line2);border-radius:12px;
@@ -244,6 +264,9 @@
     <button class="mode on" id="modeBible" role="tab" aria-selected="true" data-mode="bible">Bible <kbd>Alt+1</kbd></button>
     <button class="mode" id="modeSongs" role="tab" aria-selected="false" data-mode="songs">Chants <kbd>Alt+2</kbd></button>
     <button class="mode" id="modeAnn" role="tab" aria-selected="false" data-mode="announcements">Annonces <kbd>Alt+3</kbd></button>
+    <button class="mode" id="modeMedia" role="tab" aria-selected="false" data-mode="media">Médias <kbd>Alt+4</kbd></button>
+    <button class="mode" id="modeLt" role="tab" aria-selected="false" data-mode="lowerthird">Habillage <kbd>Alt+5</kbd></button>
+    <button class="mode" id="modeTimer" role="tab" aria-selected="false" data-mode="timer">Minuteur <kbd>Alt+6</kbd></button>
   </nav>
   <span class="spacer"></span>
   <span class="chip" id="ws"><span class="dot"></span> <span id="wsText">connexion</span></span>
@@ -322,6 +345,82 @@
       <button class="btn sm" id="qAppend" title="Ajouter un refrain à la fin">＋ Refrain à la fin</button>
       <button class="btn sm" id="qRepeat" title="Répéter la section courante">↻ Répéter</button>
       <button class="btn sm" id="qSkip" title="Sauter la section courante">⤼ Sauter</button>
+    </div>
+   </div>
+
+   <div class="module" id="mod-media" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="mediaSearch" type="search" placeholder="Nom du média… (image ou vidéo)" aria-label="Rechercher un média">
+        <button class="btn primary" id="mediaImport" title="Importer une image ou une vidéo (Ctrl+O)">＋ Importer</button>
+      </div>
+      <div class="hint">Un clic = à l’antenne · <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> parcourir · <kbd>↵</kbd> rediffuser · <kbd>Échap</kbd> couper</div>
+    </div>
+    <h2>Médias <span class="spacer"></span><span class="chip" id="mediaCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="media-grid" id="mediaGrid"></div>
+    <div class="quick">
+      <label class="lbl" for="mediaFit">Cadre</label>
+      <select id="mediaFit" title="Comment l’image remplit l’écran">
+        <option value="contain">Entier</option>
+        <option value="cover">Remplir</option>
+        <option value="stretch">Étirer</option>
+      </select>
+      <input type="file" id="mediaPick" accept="image/*,video/*" multiple hidden>
+    </div>
+   </div>
+
+   <div class="module" id="mod-lt" hidden>
+    <div class="field-wrap">
+      <div class="row" style="flex-wrap:wrap">
+        <span class="field"><label for="ltName">Nom</label><input id="ltName" type="text" placeholder="Pasteur Jean Koffi" autocomplete="off"></span>
+        <span class="field"><label for="ltRole">Fonction</label><input id="ltRole" type="text" placeholder="Prédicateur" autocomplete="off"></span>
+      </div>
+      <div class="row" style="margin-top:9px;flex-wrap:wrap">
+        <span class="field" style="max-width:110px"><label for="ltHold">Durée (s)</label><input id="ltHold" type="number" min="0" step="1" value="8" title="0 = reste à l’écran jusqu’à « Couper »"></span>
+        <button class="btn primary" id="ltGo" title="Afficher maintenant (Entrée)">▲ À l’antenne</button>
+        <button class="btn" id="ltCutBtn" title="Retirer le bandeau (Échap)">■ Couper</button>
+        <span class="chip" id="ltState">hors antenne</span>
+      </div>
+      <div class="hint">Le bandeau se pose sur <b>n’importe quelle sortie</b> sans éteindre le verset affiché. <kbd>↵</kbd> affiche · <kbd>Échap</kbd> retire.</div>
+    </div>
+    <h2>Bandeau courant</h2>
+    <div class="field-wrap" style="padding-top:0"><div class="lyrics" id="ltEcho">—</div></div>
+    <h2>Bandeaux enregistrés <span class="spacer"></span><span class="chip" id="ltCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="ltList" style="max-height:none;flex:1"></div>
+    <div class="quick">
+      <button class="btn sm" id="ltSave" title="Enregistrer ce nom et cette fonction dans le projet">＋ Enregistrer ce bandeau</button>
+    </div>
+   </div>
+
+   <div class="module" id="mod-timer" hidden>
+    <div class="clock" id="timerClock">15:00</div>
+    <div class="field-wrap" style="padding-top:0">
+      <div class="row" style="justify-content:center;margin-bottom:10px">
+        <span class="chip" id="timerState">à l’arrêt</span>
+      </div>
+      <div class="row" style="flex-wrap:wrap">
+        <span class="field" style="max-width:96px"><label for="timerMin">Minutes</label><input id="timerMin" type="number" min="0" step="1" value="15"></span>
+        <span class="field" style="max-width:96px"><label for="timerWarn">Alerte (min)</label><input id="timerWarn" type="number" min="0" step="1" value="5"></span>
+        <span class="field" style="max-width:96px"><label for="timerCrit">Rouge (min)</label><input id="timerCrit" type="number" min="0" step="1" value="1"></span>
+        <button class="btn primary" id="timerStart" title="Espace">▶ Démarrer</button>
+        <button class="btn" id="timerReset" title="Revenir au réglage">↺ Réinitialiser</button>
+        <button class="btn" id="timerMode" title="Basculer compte à rebours / compteur">Compte à rebours</button>
+      </div>
+      <div class="row" style="margin-top:9px;flex-wrap:wrap">
+        <span class="lbl">Rappels</span>
+        <button class="btn sm" data-min="5">5</button>
+        <button class="btn sm" data-min="10">10</button>
+        <button class="btn sm" data-min="15">15</button>
+        <button class="btn sm" data-min="20">20</button>
+        <button class="btn sm" data-min="30">30</button>
+        <span class="spacer"></span>
+        <button class="btn primary sm" id="timerAir" title="Afficher le minuteur sur les sorties cochées">▲ À l’antenne</button>
+        <button class="btn sm" id="timerOff" title="Retirer le minuteur des sorties">■ Couper</button>
+      </div>
+      <label class="row" style="margin-top:9px;gap:7px;font-size:11.5px;color:var(--txt2)">
+        <input type="checkbox" id="timerCut" checked> Couper l’affichage à la fin du temps
+      </label>
+      <div class="hint">La sortie continue d’afficher le décompte <b>même si ce poste est fermé</b> : le temps est calculé sur place, sans réseau.</div>
     </div>
    </div>
   </section>
@@ -420,7 +519,8 @@ import { navigate, currentItem, actionForKey, isTypingTarget, positionLabel } fr
 // Le même moteur que la page de sortie : l'aperçu est la sortie (A-10).
 import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
 import { contentFromPayload } from '/shared/render/content.mjs';
-import { sceneFromPreset } from '/shared/scene.mjs';
+import { pickOverlayTargets, makeOverlayOutput, acceptsKind, overlayRouteLabel } from '/shared/overlay.mjs';
+import { fallbackSceneFor, lowerThirdScene } from '/shared/scene.mjs';
 // Chants : mêmes modules purs que le serveur (import, sections, arrangements).
 import { parseSongText, importSummary, SECTION_LABELS } from '/shared/songs/parser.mjs';
 import {
@@ -567,7 +667,7 @@ async function sceneFor(kind) {
     } catch { /* repli */ }
   }
   if (!scene) {
-    scene = sceneFromPreset({
+    scene = fallbackSceneFor({
       id: `scn_preview_${kind}`,
       name: `Aperçu — ${kind}`,
       kind,
@@ -579,7 +679,7 @@ async function sceneFor(kind) {
   return scene;
 }
 
-async function showOnStage(kind, content) {
+async function showOnStage(kind, content, assets = {}) {
   if (!content) {
     $('#stage').replaceChildren();
     $('#preview').textContent = 'Aucun contenu à l’antenne';
@@ -587,7 +687,7 @@ async function showOnStage(kind, content) {
     return;
   }
   const scene = await sceneFor(kind);
-  mountScene($('#stage'), { scene, content, editing: false });
+  mountScene($('#stage'), { scene, content, assets, editing: false });
   $('#screen').classList.remove('idle');
   scaleStage();
 }
@@ -771,6 +871,9 @@ async function loadSampleSongs() {
     if (!res.ok) throw new Error(data?.error?.message || 'Ajout impossible.');
     await loadSongs();
     await loadAnnouncements();
+    wireExtraModules();
+    await restoreTimerState();
+    if (timer.running) startTimerTick();
     toast('Deux chants d’exemple ajoutés.');
     if (songs[0]) await loadSong(songs[0].id);
   } catch (err) {
@@ -869,6 +972,9 @@ function setMode(next) {
   $('#mod-bible').hidden = next !== 'bible';
   $('#mod-songs').hidden = next !== 'songs';
   $('#mod-ann').hidden = next !== 'announcements';
+  $('#mod-media').hidden = next !== 'media';
+  $('#mod-lt').hidden = next !== 'lowerthird';
+  $('#mod-timer').hidden = next !== 'timer';
   try { localStorage.setItem('op.studio.mode', next); } catch { /* stockage refusé */ }
   // EF-06.7 : changer de module ne coupe jamais ce qui est à l'antenne.
   if (next === 'bible') {
@@ -877,6 +983,12 @@ function setMode(next) {
   } else if (next === 'songs') {
     paintSongsAll();
     if (currentSong) paintSongPreview();
+  } else if (next === 'media') {
+    loadMedia().then(() => { if (mediaLive) previewMedia(mediaLive); });
+  } else if (next === 'lowerthird') {
+    previewLtSoon(true);
+  } else if (next === 'timer') {
+    renderTimer();
   } else {
     renderAnnouncements();
   }
@@ -911,14 +1023,15 @@ async function loadSelection(bookNum, chapter, first, last, { preview = false } 
 }
 
 /** Envoie un contenu aux sorties cochées ; ne lève jamais d'exception à l'UI. */
-async function sendToOutputs(kind, payload, { force = false } = {}) {
-  if (!targets.size && !force) return;
-  if (!targets.size) toast('Aucune sortie cochée : diffusion vers les sorties par défaut.');
+async function sendToOutputs(kind, payload, { force = false, targetsOverride = null } = {}) {
+  const chosen = targetsOverride || [...targets];
+  if (!chosen.length && !force) return;
+  if (!targetsOverride && !targets.size) toast('Aucune sortie cochée : diffusion vers les sorties par défaut.');
   try {
     const res = await fetch('/api/live/show', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ targets: [...targets], kind, payload })
+      body: JSON.stringify({ targets: chosen, kind, payload })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error?.message || 'Diffusion refusée.');
@@ -953,6 +1066,9 @@ async function broadcastBible(force = false) {
 /** Diffuse l'élément courant du module actif (bouton « Diffuser », Entrée). */
 async function broadcast(force = false) {
   if (mode === 'songs') return broadcastSong(force);
+  if (mode === 'media') return broadcastMedia(force);
+  if (mode === 'lowerthird') return broadcastLt(force);
+  if (mode === 'timer') return sendTimerToAir();
   return broadcastBible(force);
 }
 
@@ -980,11 +1096,13 @@ async function clearOutputs() {
   $('#stage').replaceChildren();
   $('#preview').textContent = 'Aucun contenu à l’antenne';
   $('#screen').classList.add('idle');
+  afterClear();
   toast('Sorties coupées.');
 }
 
 function move(action) {
   if (mode === 'songs') return moveSong(action);
+  if (mode === 'media') return moveMedia(action === 'next' ? 1 : -1);
   if (!selection) return;
   const result = navigate(selection, action);
   if (result.chapter) {
@@ -997,6 +1115,654 @@ function move(action) {
   selection = result.selection;
   paintParts();
   broadcast();
+}
+
+// ---------------------------------------------------------------------------
+// Module Médias (EF-16) : la bibliothèque du dossier `assets/medias/`
+// ---------------------------------------------------------------------------
+let mediaItems = [];
+let mediaIndex = -1;
+let mediaQuery = '';
+let mediaLive = null;
+
+function mediaUrl(item) {
+  if (!item) return '';
+  return item.url || (item.assetId ? `/api/assets/${item.assetId}` : '');
+}
+
+function currentMedia() { return mediaItems[mediaIndex] || null; }
+
+async function loadMedia() {
+  const params = new URLSearchParams();
+  if (mediaQuery) params.set('q', mediaQuery);
+  try {
+    const res = await fetch(`/api/media?${params}`, { cache: 'no-store' });
+    const data = await res.json();
+    mediaItems = Array.isArray(data.items) ? data.items : [];
+  } catch {
+    mediaItems = [];
+  }
+  if (mediaIndex >= mediaItems.length) mediaIndex = mediaItems.length - 1;
+  if (mediaIndex < 0 && mediaItems.length) mediaIndex = 0;
+  renderMedia();
+}
+
+function renderMedia() {
+  const grid = $('#mediaGrid');
+  $('#mediaCount').textContent = mediaItems.length ? `${mediaItems.length} fichier(s)` : '';
+  if (!mediaItems.length) {
+    grid.innerHTML = `<div class="empty-state">Aucun média ici pour l’instant.<br>
+      « ＋ Importer » copie le fichier dans le projet : il reste affichable hors ligne.</div>`;
+    return;
+  }
+  grid.innerHTML = mediaItems.map((item, i) => `
+    <button class="media${i === mediaIndex ? ' on' : ''}${mediaLive?.assetId === item.assetId ? ' live' : ''}"
+            data-i="${i}" title="${esc(item.name)}">
+      <span class="th">${item.thumb
+        ? `<img src="${esc(item.thumb)}" alt="" loading="lazy">`
+        : (item.mime && String(item.mime).startsWith('video') ? '▶' : '▣')}</span>
+      <span class="nm">${esc(item.name)}</span>
+    </button>`).join('');
+  for (const node of grid.querySelectorAll('.media')) {
+    node.onclick = () => {
+      mediaIndex = Number(node.dataset.i);
+      renderMedia();
+      broadcastMedia(true);
+    };
+  }
+}
+
+function mediaPayload(item) {
+  return {
+    assetId: item.assetId,
+    assetKind: String(item.mime || '').startsWith('video') ? 'video' : 'image',
+    mediaName: item.name,
+    title: item.name,
+    fit: $('#mediaFit') ? $('#mediaFit').value : 'contain'
+  };
+}
+
+async function previewMedia(item) {
+  if (!item) { await showOnStage('media', null); return; }
+  const content = contentFromPayload(mediaPayload(item), 'media');
+  await showOnStage('media', content, { [item.assetId]: mediaUrl(item) });
+  $('#refbar').textContent = `Média — ${item.name}`;
+  $('#counter').textContent = mediaItems.length ? `${mediaIndex + 1} / ${mediaItems.length}` : '';
+}
+
+async function broadcastMedia(force = false) {
+  const item = currentMedia();
+  if (!item) { toast('Aucun média sélectionné.', 'err'); return; }
+  await previewMedia(item);
+  await sendToOutputs('media', mediaPayload(item), { force });
+  mediaLive = item;
+  renderMedia();
+}
+
+function moveMedia(delta) {
+  if (!mediaItems.length) return;
+  mediaIndex = Math.max(0, Math.min(mediaItems.length - 1, mediaIndex + delta));
+  renderMedia();
+  previewMedia(currentMedia());
+  const node = $('#mediaGrid').querySelectorAll('.media')[mediaIndex];
+  node?.scrollIntoView({ block: 'nearest' });
+}
+
+async function importMediaFiles(fileList) {
+  const files = [...(fileList || [])].filter((f) => f && f.size > 0);
+  if (!files.length) return;
+  let done = 0;
+  let failed = 0;
+  for (const file of files) {
+    try {
+      const res = await fetch(
+        `/api/assets?name=${encodeURIComponent(file.name)}&kind=media`,
+        { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error?.message || 'Import refusé.');
+      }
+      done += 1;
+    } catch (err) {
+      failed += 1;
+      toast(`${file.name} : ${err.message}`, 'err');
+    }
+  }
+  if (done) {
+    toast(failed
+      ? `${done} média(s) importé(s), ${failed} en échec.`
+      : `${done} média(s) importé(s) dans le projet.`);
+    await loadMedia();
+  }
+}
+
+function handleMediaKey(event) {
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault(); moveMedia(1); return true;
+  }
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault(); moveMedia(-1); return true;
+  }
+  if (event.key === 'Enter') { event.preventDefault(); broadcastMedia(true); return true; }
+  if (event.key === 'Home') { event.preventDefault(); mediaIndex = 0; renderMedia(); previewMedia(currentMedia()); return true; }
+  if (event.key === 'End') {
+    event.preventDefault(); mediaIndex = mediaItems.length - 1; renderMedia(); previewMedia(currentMedia()); return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Module Habillage (EF-19) : bandeau nom + fonction par-dessus la caméra
+// ---------------------------------------------------------------------------
+let ltLive = false;
+let ltCut = null;
+let ltTargets = null;
+
+// Ce que chaque sortie porte en ce moment, suivi par le relais WebSocket.
+// C'est ce qui permet de refuser qu'un calque écrase un verset en direct.
+const onAir = new Map();
+
+// Un calque (habillage, minuteur) ne remplace jamais le contenu principal :
+// une sortie ne porte qu'un seul contenu à l'antenne. On vise donc une sortie
+// qui accepte ce type, de préférence parmi celles cochées par le régisseur.
+// Un calque (habillage, minuteur) ne remplace jamais le contenu principal :
+// une sortie ne porte qu'un seul contenu à l'antenne. Le routage est partagé
+// avec le serveur (`/shared/overlay.mjs`) pour que la règle soit la même ici,
+// dans les tests et dans le profil appliqué.
+async function refreshOutputs() {
+  try {
+    const res = await fetch('/api/outputs', { cache: 'no-store' });
+    const data = await res.json();
+    outputs = data.outputs || outputs;
+    sceneCache.clear();
+    paintOutputs();
+    return data;
+  } catch { return null; }
+}
+
+async function overlayRoute(kind) {
+  let route = pickOverlayTargets(outputs, [...targets], kind, { onAir: Object.fromEntries(onAir) });
+  if (!route.needsCreation) return route;
+  // Aucun porteur dédié : on crée la sortie transparente une fois pour toutes,
+  // plutôt que d'écraser le verset affiché.
+  const created = makeOverlayOutput(kind, outputs.map((o) => o.id));
+  // La sortie naît avec sa scène : sinon l'écran d'affichage retomberait sur un
+  // gabarit générique et le régisseur ne pourrait rien retoucher.
+  try {
+    const scene = lowerThirdScene({ id: `scn_${kind === 'timer' ? 'timer' : 'lowerthird'}_${created.id.replace(/^out_/, '')}` });
+    const saved = await fetch(`/api/scenes/${scene.id}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(scene)
+    });
+    if (saved.ok) created.scenesByKind = { lowerthird: scene.id, timer: scene.id };
+  } catch { /* l'affichage a un repli */ }
+  const doc = await refreshOutputs();
+  if (doc) {
+    doc.rev = (Number(doc.rev) || 1) + 1;
+    doc.outputs = [...(doc.outputs || []), created];
+    const res = await fetch('/api/outputs', {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc)
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast(data?.error?.message || 'La sortie de calque n’a pas pu être créée.', 'err');
+      return pickOverlayTargets(outputs, [...targets], kind);
+    }
+    await refreshOutputs();
+    toast(`Sortie « ${created.name} » créée : le calque s’y pose sans éteindre le contenu en cours.`);
+  }
+  return pickOverlayTargets(outputs, [...targets], kind, { onAir: Object.fromEntries(onAir) });
+}
+
+function announceOverlayRoute(kind, route) {
+  if (!route.moved) return;
+  toast(kind === 'lowerthird'
+    ? `Bandeau envoyé sur « ${route.label} » : c’est la sortie transparente qui reçoit l’habillage.`
+    : `Minuteur envoyé sur « ${route.label} » : la sortie principale reste sur le contenu en cours.`);
+}
+
+function ltPayload() {
+  const name = $('#ltName').value.trim();
+  const role = $('#ltRole').value.trim();
+  return {
+    title: name,
+    // La liaison `announcement` porte la seconde ligne du bandeau.
+    body: role,
+    text: role
+  };
+}
+
+async function previewLt() {
+  const payload = ltPayload();
+  if (!payload.title && !payload.body) { await showOnStage('lowerthird', null); return; }
+  await showOnStage('lowerthird', contentFromPayload(payload, 'lowerthird'));
+  $('#refbar').textContent = `Habillage — ${payload.title || payload.body}`;
+  $('#counter').textContent = '';
+}
+
+async function broadcastLt(force = true) {
+  const payload = ltPayload();
+  if (!payload.title && !payload.body) { toast('Saisissez un nom (ou une fonction).', 'err'); return; }
+  const seconds = Math.max(0, Number($('#ltHold').value) || 0);
+  const route = await overlayRoute('lowerthird');
+  if (!route.ids.length) { toast('Aucune sortie ne reçoit l’habillage : cochez-en une ou créez une sortie transparente.', 'err'); return; }
+  ltTargets = route.ids;
+  await previewLt();
+  await sendToOutputs('lowerthird', payload, { force, targetsOverride: route.ids });
+  announceOverlayRoute('lowerthird', route);
+  ltLive = true;
+  $('#ltState').textContent = `${overlayRouteLabel(route)}${seconds ? ` · coupe dans ${seconds} s` : ''}`;
+  $('#ltState').classList.add('on');
+  if (ltCut) clearTimeout(ltCut);
+  if (seconds > 0) ltCut = setTimeout(() => clearLt(), seconds * 1000);
+}
+
+async function clearLt() {
+  if (ltCut) { clearTimeout(ltCut); ltCut = null; }
+  ltLive = false;
+  $('#ltState').textContent = 'hors antenne';
+  $('#ltState').classList.remove('on');
+  await showOnStage('lowerthird', null);
+  await fetch('/api/live/clear', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targets: [...targets, ...(ltTargets || [])], kind: 'lowerthird' })
+  }).catch(() => {});
+}
+
+// Les bandeaux nommés appartiennent au projet (`library/lowerthirds/`) : on les
+// retrouve sur n'importe quel poste qui ouvre le même dossier (EF-19.6).
+let ltPresets = [];
+
+async function loadLowerThirds() {
+  try {
+    const res = await fetch('/api/library/lowerthirds', { cache: 'no-store' });
+    const data = await res.json();
+    ltPresets = (data.items || []).slice()
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
+  } catch {
+    ltPresets = [];
+  }
+  renderLtList();
+}
+
+function renderLtList() {
+  const box = $('#ltList');
+  $('#ltCount').textContent = ltPresets.length ? String(ltPresets.length) : '';
+  if (!ltPresets.length) {
+    box.innerHTML = `<div class="empty-state">Aucun bandeau enregistré.<br>Renseignez un nom puis « ＋ Enregistrer ce bandeau ».</div>`;
+    return;
+  }
+  box.innerHTML = ltPresets.map((item) => `
+    <div class="song" data-id="${esc(item.id)}" title="Cliquer pour afficher ce bandeau">
+      <span class="t">${esc(item.name)}</span>
+      <span class="a">${esc(item.subtitle || '')}</span>
+      <button class="btn sm" data-del="${esc(item.id)}" title="Retirer ce bandeau du projet">×</button>
+    </div>`).join('');
+  for (const node of box.querySelectorAll('.song')) {
+    node.onclick = async (event) => {
+      if (event.target.dataset.del) return;
+      const item = ltPresets.find((entry) => entry.id === node.dataset.id);
+      if (!item) return;
+      $('#ltName').value = item.title || item.name;
+      $('#ltRole').value = item.subtitle || '';
+      $('#ltHold').value = Number.isFinite(Number(item.holdSec)) ? String(item.holdSec) : '8';
+      await previewLtSoon(true);
+      broadcastLt(true);
+    };
+  }
+  for (const button of box.querySelectorAll('[data-del]')) {
+    button.onclick = async (event) => {
+      event.stopPropagation();
+      const id = button.dataset.del;
+      const item = ltPresets.find((entry) => entry.id === id);
+      if (!item || !confirm(`Retirer le bandeau « ${item.name} » du projet ?`)) return;
+      await fetch(`/api/library/lowerthirds/${id}`, { method: 'DELETE' }).catch(() => {});
+      await loadLowerThirds();
+      toast('Bandeau retiré du projet.');
+    };
+  }
+}
+
+async function saveLowerThird() {
+  const title = $('#ltName').value.trim();
+  const subtitle = $('#ltRole').value.trim();
+  if (!title) { toast('Donnez un nom au bandeau avant de l’enregistrer.', 'err'); return; }
+  const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 28) || 'bandeau';
+  const id = `lt_${slug}`;
+  const existing = ltPresets.find((entry) => entry.id === id);
+  const body = {
+    id,
+    rev: existing ? existing.rev : 1,
+    name: title,
+    title,
+    subtitle,
+    holdSec: Math.max(0, Number($('#ltHold').value) || 0),
+    layout: 'classic',
+    animationIn: 'slide-left',
+    animationOut: 'slide-left',
+    animationMs: 400
+  };
+  const res = await fetch(`/api/library/lowerthirds/${id}`, {
+    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    toast((data && data.error && data.error.message) || 'Enregistrement refusé.', 'err');
+    return;
+  }
+  await loadLowerThirds();
+  toast(`Bandeau « ${title} » enregistré dans le projet.`);
+}
+
+// ---------------------------------------------------------------------------
+// Module Minuteur (EF-18) : compte à rebours de l'événement
+// ---------------------------------------------------------------------------
+let timerTargets = null;
+let timerAirLabel = '';
+const timer = { mode: 'down', running: false, endsAt: null, startedAt: null, remainingMs: 15 * 60 * 1000, onAir: false, cutAtEnd: true, handle: null };
+
+function timerRemainingMs() {
+  if (timer.mode === 'up') {
+    return timer.running && timer.startedAt
+      ? timer.remainingMs + (Date.now() - timer.startedAt)
+      : timer.remainingMs;
+  }
+  if (!timer.running || !timer.endsAt) return timer.remainingMs;
+  return new Date(timer.endsAt).getTime() - Date.now();
+}
+
+function timerText(ms = timerRemainingMs()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  const total = Math.max(0, Math.round(Math.abs(ms) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const text = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return ms < 0 ? `+${text}` : text;
+}
+
+function renderTimer() {
+  const left = timerRemainingMs();
+  const el = $('#timerClock');
+  el.textContent = timerText(left);
+  const over = timer.mode === 'down' && left <= 0 && timer.running;
+  const near = timer.mode === 'down' && left > 0 && left <= timerWarnMs();
+  el.classList.toggle('over', over);
+  el.classList.toggle('warn', near && !over);
+  $('#timerState').textContent = timer.onAir
+    ? `${timerAirLabel || 'à l’antenne'} · ${timer.running ? 'en marche' : 'en pause'}`
+    : (timer.running ? 'en marche (hors antenne)' : 'à l’arrêt');
+  $('#timerState').classList.toggle('on', timer.onAir);
+  $('#timerStart').textContent = timer.running ? '⏸ Pause' : '▶ Démarrer';
+  $('#timerMode').textContent = timer.mode === 'down' ? 'Compte à rebours' : 'Compteur';
+}
+
+function timerPayload() {
+  const left = Math.max(0, timerRemainingMs());
+  return {
+    mode: timer.mode,
+    running: timer.running,
+    endsAt: timer.mode === 'down' && timer.running ? timer.endsAt : null,
+    startedAt: timer.mode === 'up' && timer.running ? timer.startedAt : null,
+    remainingMs: left,
+    timer: timerText(left),
+    warnAtMs: timerWarnMs(),
+    criticalAtMs: timerCriticalMs()
+  };
+}
+
+/** Seuils choisis par le régisseur, en millisecondes (EF-18.3). */
+function timerWarnMs() {
+  return Math.max(0, (Number($('#timerWarn').value) || 0) * 60_000);
+}
+
+function timerCriticalMs() {
+  return Math.max(0, (Number($('#timerCrit').value) || 0) * 60_000);
+}
+
+function startTimerTick() {
+  if (timer.handle) clearInterval(timer.handle);
+  timer.handle = setInterval(() => {
+    renderTimer();
+    if (timer.onAir) {
+      // La sortie calcule elle-même le temps restant ; on ne renvoie le payload
+      // qu'au démarrage et à la pause, jamais seconde par seconde.
+    }
+    if (timer.mode === 'down' && timer.running && timerRemainingMs() <= 0) {
+      timer.running = false;
+      if (timer.handle) { clearInterval(timer.handle); timer.handle = null; }
+      renderTimer();
+      toast('Temps écoulé.');
+      if (timer.onAir && timer.cutAtEnd) stopTimer({ silent: true });
+    }
+  }, 250);
+}
+
+function toggleTimer() {
+  if (timer.running) {
+    // Pause : on fige le temps restant.
+    if (timer.handle) { clearInterval(timer.handle); timer.handle = null; }
+    timer.remainingMs = Math.max(0, timerRemainingMs());
+    timer.running = false;
+    timer.endsAt = null;
+    timer.startedAt = null;
+    if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+  } else {
+    if (timer.mode === 'down') {
+      if (timer.remainingMs <= 0) timer.remainingMs = (Number($('#timerMin').value) || 0) * 60_000;
+      timer.endsAt = new Date(Date.now() + timer.remainingMs).toISOString();
+    } else {
+      timer.startedAt = Date.now();
+    }
+    timer.running = true;
+    startTimerTick();
+    if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+  }
+  renderTimer();
+  saveTimerState();
+}
+
+async function sendTimerToAir() {
+  timer.onAir = true;
+  if (!timer.running && timer.mode === 'down' && timer.remainingMs <= 0) {
+    timer.remainingMs = (Number($('#timerMin').value) || 0) * 60_000;
+  }
+  const route = await overlayRoute('timer');
+  if (!route.ids.length) { toast('Aucune sortie ne reçoit le minuteur : cochez-en une ou créez une sortie transparente.', 'err'); return; }
+  timerTargets = route.ids;
+  await previewTimer();
+  await sendToOutputs('timer', timerPayload(), { force: true, targetsOverride: route.ids });
+  timerAirLabel = overlayRouteLabel(route);
+  renderTimer();
+  saveTimerState();
+  if (route.moved) announceOverlayRoute('timer', route);
+  else toast('Minuteur à l’antenne.');
+}
+
+async function stopTimer({ silent = false } = {}) {
+  timer.onAir = false;
+  timer.running = false;
+  timer.remainingMs = Math.max(0, timerRemainingMs());
+  timer.endsAt = null;
+  timer.startedAt = null;
+  await showOnStage('timer', null);
+  await fetch('/api/live/clear', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targets: [...targets, ...(timerTargets || [])], kind: 'timer' })
+  }).catch(() => {});
+  renderTimer();
+  saveTimerState();
+  if (!silent) toast('Minuteur retiré de l’antenne.');
+}
+
+function resetTimer(minutes) {
+  if (Number.isFinite(minutes)) {
+    timer.remainingMs = Math.max(0, Math.round(minutes * 60_000));
+    if ($('#timerMin')) $('#timerMin').value = String(minutes);
+  } else {
+    timer.remainingMs = Math.max(0, (Number($('#timerMin')?.value) || 0) * 60_000);
+  }
+  timer.running = false;
+  timer.endsAt = null;
+  timer.startedAt = null;
+  renderTimer();
+  saveTimerState();
+  if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+}
+
+function switchTimerMode() {
+  timer.mode = timer.mode === 'down' ? 'up' : 'down';
+  timer.remainingMs = timer.mode === 'up' ? 0 : Math.max(0, (Number($('#timerMin')?.value) || 0) * 60_000);
+  timer.running = false;
+  timer.endsAt = null;
+  timer.startedAt = null;
+  renderTimer();
+  saveTimerState();
+  if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+}
+
+let timerSaveTimer = null;
+function saveTimerState() {
+  // L'état vit dans `session-state.json`, pas dans le navigateur : un poste de
+  // régie qui redémarre retrouve le compte à rebours en cours (EF-18.8).
+  if (timerSaveTimer) clearTimeout(timerSaveTimer);
+  timerSaveTimer = setTimeout(() => {
+    timerSaveTimer = null;
+    fetch('/api/session', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        timer: {
+          mode: timer.mode,
+          running: timer.running,
+          endsAt: timer.endsAt,
+          startedAt: timer.startedAt,
+          remainingMs: timer.remainingMs,
+          onAir: timer.onAir,
+          durationMin: Number($('#timerMin')?.value) || 0,
+          warnMin: Number($('#timerWarn')?.value) || 0,
+          criticalMin: Number($('#timerCrit')?.value) || 0
+        }
+      })
+    }).catch(() => {});
+  }, 250);
+}
+
+async function restoreTimerState() {
+  try {
+    const saved = await fetch('/api/session', { cache: 'no-store' }).then((r) => r.json());
+    const state = saved && saved.timer;
+    if (!state || typeof state !== 'object') return;
+    timer.mode = state.mode === 'up' ? 'up' : 'down';
+    timer.remainingMs = Number(state.remainingMs) || 0;
+    timer.onAir = Boolean(state.onAir);
+    if ($('#timerMin') && Number(state.durationMin)) $('#timerMin').value = String(state.durationMin);
+    if ($('#timerWarn') && Number(state.warnMin)) $('#timerWarn').value = String(state.warnMin);
+    if ($('#timerCrit') && Number(state.criticalMin)) $('#timerCrit').value = String(state.criticalMin);
+    if (state.running && timer.mode === 'down' && state.endsAt && new Date(state.endsAt) > new Date()) {
+      timer.running = true;
+      timer.endsAt = state.endsAt;
+      startTimerTick();
+    } else if (state.running && timer.mode === 'up' && state.startedAt) {
+      timer.running = true;
+      timer.startedAt = state.startedAt;
+      startTimerTick();
+    }
+    renderTimer();
+  } catch { /* premier lancement */ }
+}
+
+async function previewTimer() {
+  const content = contentFromPayload(timerPayload(), 'timer');
+  await showOnStage('timer', content);
+  $('#refbar').textContent = `Minuteur — ${content.timer}`;
+  $('#counter').textContent = '';
+}
+
+function handleLtKey(event) {
+  if (event.key === 'Enter') { event.preventDefault(); broadcastLt(true); return; }
+  if (event.key === 'Escape') { event.preventDefault(); clearLt(); return; }
+  previewLtSoon();
+}
+
+function handleTimerKey(event) {
+  if (event.key === ' ' || event.code === 'Space') { event.preventDefault(); toggleTimer(); return; }
+  if (event.key === 'Enter') { event.preventDefault(); sendTimerToAir(); return; }
+  if (event.key === 'Escape') { event.preventDefault(); stopTimer(); return; }
+  if (event.key === 'Backspace') { event.preventDefault(); resetTimer(); return; }
+}
+
+let ltEchoTimer = null;
+function previewLtSoon(now = false) {
+  if (ltEchoTimer) { clearTimeout(ltEchoTimer); ltEchoTimer = null; }
+  const run = () => {
+    ltEchoTimer = null;
+    const payload = ltPayload();
+    $('#ltEcho').textContent = payload.title || payload.body
+      ? `${payload.title}${payload.body ? ' — ' + payload.body : ''}`
+      : '—';
+    rememberLt();
+    if (ltLive) broadcastLt(true);   // on air : la correction est immédiate (EF-19.4)
+    else previewLt();
+  };
+  if (now) { run(); return; }
+  ltEchoTimer = setTimeout(run, 220);
+}
+
+function wireExtraModules() {
+  // Médias
+  $('#mediaImport').onclick = () => $('#mediaPick').click();
+  $('#mediaPick').onchange = (e) => { importMediaFiles(e.target.files); e.target.value = ''; };
+  let mediaSearchTimer = null;
+  $('#mediaSearch').oninput = (e) => {
+    mediaQuery = e.target.value.trim();
+    if (mediaSearchTimer) clearTimeout(mediaSearchTimer);
+    mediaSearchTimer = setTimeout(() => loadMedia(), 160);
+  };
+  $('#mediaFit').onchange = () => {
+    const item = currentMedia();
+    if (!item) return;
+    if (mediaLive?.assetId === item.assetId) broadcastMedia(true);
+    else previewMedia(item);
+  };
+
+  // Habillage
+  $('#ltGo').onclick = () => broadcastLt(true);
+  $('#ltCutBtn').onclick = () => clearLt();
+  for (const id of ['ltName', 'ltRole', 'ltHold']) {
+    $('#' + id).addEventListener('input', () => previewLtSoon());
+  }
+  $('#ltSave').onclick = saveLowerThird;
+  loadLowerThirds();
+
+  // Minuteur
+  $('#timerStart').onclick = toggleTimer;
+  $('#timerReset').onclick = () => resetTimer();
+  $('#timerMode').onclick = switchTimerMode;
+  $('#timerAir').onclick = () => sendTimerToAir();
+  $('#timerOff').onclick = () => stopTimer();
+  $('#timerMin').oninput = () => { if (!timer.running) resetTimer(); };
+  $('#timerCut').onchange = (e) => { timer.cutAtEnd = e.target.checked; };
+  for (const button of document.querySelectorAll('#mod-timer [data-min]')) {
+    button.onclick = () => resetTimer(Number(button.dataset.min));
+  }
+  renderTimer();
+}
+
+// Ce que le module partagé `clearOutputs` doit réinitialiser chez nous.
+function afterClear() {
+  for (const id of [...targets]) onAir.delete(id);
+  if (ltCut) { clearTimeout(ltCut); ltCut = null; }
+  ltLive = false;
+  const ltState = $('#ltState');
+  ltState.textContent = 'hors antenne';
+  ltState.classList.remove('on');
+  mediaLive = null;
+  renderMedia();
+  if (timer.onAir) { timer.onAir = false; renderTimer(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,9 +1781,12 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   // Raccourcis de modules (EF-06.6) et import, actifs partout.
-  if (event.altKey && ['1', '2', '3'].includes(event.key)) {
+  if (event.altKey && ['1', '2', '3', '4', '5', '6'].includes(event.key)) {
     event.preventDefault();
-    setMode({ '1': 'bible', '2': 'songs', '3': 'announcements' }[event.key]);
+    setMode({
+      1: 'bible', 2: 'songs', 3: 'announcements',
+      4: 'media', 5: 'lowerthird', 6: 'timer'
+    }[event.key]);
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
@@ -1026,6 +1795,20 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (mode === 'songs') { handleSongKey(event); return; }
+  if (mode === 'media') {
+    if (isTypingTarget(event.target) && event.target.id !== 'mediaSearch') return;
+    if (event.target.id === 'mediaSearch' && event.key !== 'Escape' && event.key !== 'ArrowDown') return;
+    if (event.key === 'Escape') { event.preventDefault(); clearOutputs(); return; }
+    if (handleMediaKey(event)) return;
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      $('#mediaSearch').focus();
+      return;
+    }
+    return;
+  }
+  if (mode === 'lowerthird') { handleLtKey(event); return; }
+  if (mode === 'timer') { handleTimerKey(event); return; }
 
   if (isTypingTarget(event.target) && event.target.tagName !== 'DIV') return;
   const s = entry.state;
@@ -1707,6 +2490,10 @@ async function boot() {
 
     outputs = outs.outputs || [];
     sceneCache.clear();
+    try {
+      const air = await fetch('/api/live/state', { cache: 'no-store' }).then((r) => r.json());
+      for (const [id, entry] of Object.entries(air.channels || {})) onAir.set(id, entry.kind);
+    } catch { /* rien à l'antenne */ }
     targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
     paintOutputs();
     paintBibleVersion();
@@ -1717,7 +2504,7 @@ async function boot() {
     // EF-06.4 : le module actif est mémorisé entre les sessions.
     let savedMode = 'bible';
     try { savedMode = localStorage.getItem('op.studio.mode') || 'bible'; } catch { /* stockage refusé */ }
-    if (savedMode !== 'bible' && ['songs', 'announcements'].includes(savedMode)) {
+    if (savedMode !== 'bible' && ['songs', 'announcements', 'media', 'lowerthird', 'timer'].includes(savedMode)) {
       mode = 'bible';            // pour que setMode() applique le changement
       setMode(savedMode);
     } else {
@@ -1747,6 +2534,8 @@ function connectWs() {
     let msg;
     try { msg = JSON.parse(event.data); } catch { return; }
     if (msg.t === 'hello:ack') $('#wsText').textContent = 'en ligne';
+    if (msg.t === 'live:state') for (const id of msg.targets || []) onAir.set(id, msg.kind);
+    if (msg.t === 'live:cleared') for (const id of msg.targets || []) onAir.delete(id);
   });
 }
 
@@ -1758,6 +2547,9 @@ $('#field').addEventListener('click', () => {
 // --- Chants ---------------------------------------------------------------
 $('#modeBible').addEventListener('click', () => setMode('bible'));
 $('#modeSongs').addEventListener('click', () => setMode('songs'));
+$('#modeMedia').addEventListener('click', () => setMode('media'));
+$('#modeLt').addEventListener('click', () => setMode('lowerthird'));
+$('#modeTimer').addEventListener('click', () => setMode('timer'));
 $('#songImport').addEventListener('click', openImport);
 $('#songSearch').addEventListener('input', (event) => { songQuery = event.target.value; paintSongs(); });
 $('#arrangement').addEventListener('change', (event) => changeArrangement(event.target.value));
@@ -1815,6 +2607,13 @@ for (const type of ['dragleave', 'drop']) {
 $('#fileDrop').addEventListener('drop', async (event) => {
   const file = event.dataTransfer?.files?.[0];
   if (!file) return;
+  if (/^(image|video)\//.test(file.type)) {
+    // Un média lâché n'importe où rejoint le module Médias (EF-16.2), pas l'import texte.
+    if ($('#importDlg').open) $('#importDlg').close();
+    setMode('media');
+    await importMediaFiles([file]);
+    return;
+  }
   $('#importText').value = await file.text();
   analyzeImport();
 });

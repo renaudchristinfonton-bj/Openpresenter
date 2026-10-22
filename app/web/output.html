@@ -62,7 +62,7 @@
 // Un seul moteur de rendu pour l'éditeur et la sortie (A-10 / ENF-42).
 import { mountScene, applyAutoFit, SCENE_CSS, STAGE_WIDTH, STAGE_HEIGHT } from '/shared/render/engine.mjs';
 import { contentFromPayload } from '/shared/render/content.mjs';
-import { sceneFromPreset } from '/shared/scene.mjs';
+import { fallbackSceneFor } from '/shared/scene.mjs';
 
 (() => {
   const params = new URLSearchParams(location.search);
@@ -132,7 +132,7 @@ import { sceneFromPreset } from '/shared/scene.mjs';
     if (!scene) {
       // Aucune scène définie : on retombe sur le preset de la sortie plutôt que
       // d'afficher un écran noir (le culte ne s'arrête pas pour un fichier).
-      scene = sceneFromPreset({
+      scene = fallbackSceneFor({
         id: `scn_fallback_${kind}`,
         name: `Repli — ${kind}`,
         kind,
@@ -145,7 +145,7 @@ import { sceneFromPreset } from '/shared/scene.mjs';
     return scene;
   }
 
-  function assetsFor(scene) {
+  function assetsFor(scene, content) {
     // Les calques ne connaissent que des identifiants : l'URL est construite ici.
     const map = {};
     const walk = (layers) => {
@@ -156,7 +156,43 @@ import { sceneFromPreset } from '/shared/scene.mjs';
       }
     };
     walk(scene?.layers);
+    // Le média diffusé (module Médias) n'appartient pas à la scène : son URL est
+    // construite avec le même jeton, jamais devinée par le navigateur.
+    if (content?.assetId) map[content.assetId] = withToken(`/api/assets/${content.assetId}`);
     return map;
+  }
+
+  // ---------------------------------------------------------------------
+  // Minuteur (EF-18) : la sortie calcule elle-même le temps restant
+  // ---------------------------------------------------------------------
+  function timerRemainingMs(payload = {}) {
+    if (payload.mode === 'down' && payload.endsAt) {
+      return new Date(payload.endsAt).getTime() - Date.now();
+    }
+    if (payload.mode === 'up' && payload.startedAt) {
+      return (Number(payload.remainingMs) || 0) + (Date.now() - new Date(payload.startedAt).getTime());
+    }
+    return Number(payload.remainingMs) || 0;
+  }
+
+  function timerText(payload = {}) {
+    const pad = (value) => String(value).padStart(2, '0');
+    let ms;
+    if (payload.mode === 'down' && payload.endsAt) {
+      ms = new Date(payload.endsAt).getTime() - Date.now();
+    } else if (Number.isFinite(Number(payload.remainingMs))) {
+      ms = Number(payload.remainingMs);
+    } else {
+      return payload.timer || '';
+    }
+    if (payload.mode === 'up' && payload.startedAt) {
+      ms = Date.now() - new Date(payload.startedAt).getTime();
+    }
+    const total = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
   // ---------------------------------------------------------------------
@@ -173,13 +209,29 @@ import { sceneFromPreset } from '/shared/scene.mjs';
     currentKind = kind;
     const scene = await loadScene(kind);
     const content = contentFromPayload(message.payload || {}, kind);
+    if (kind === 'timer') {
+      const payload = message.payload || {};
+      const left = timerRemainingMs(payload);
+      content.timer = timerText(left);
+      // Seuils : blanc → orange → rouge, calculés ici et non envoyés seconde
+      // par seconde (EF-18.3, EF-18.9).
+      const warn = Number(payload.warnAtMs);
+      const critical = Number(payload.criticalAtMs);
+      const down = payload.mode !== 'up';
+      if (down && Number.isFinite(critical) && critical >= 0 && left <= critical) {
+        content.accent = '#ef5360';
+        content.blink = true;
+      } else if (down && Number.isFinite(warn) && warn >= 0 && left <= warn) {
+        content.accent = '#f5b942';
+      }
+    }
     const transparent = output?.transparent ?? false;
 
     // `mountScene` insère **et** ajuste : c'est exactement ce que fait l'éditeur.
     const result = mountScene(stage, {
       scene,
       content,
-      assets: assetsFor(scene),
+      assets: assetsFor(scene, content),
       transparent,
       editing: false
     });
@@ -193,6 +245,19 @@ import { sceneFromPreset } from '/shared/scene.mjs';
     bar.style.width = total > 1 ? `${Math.round((index / total) * 100)}%` : '0';
     if (debug) logDebug(message);
   }
+
+  // Une seule horloge pour toutes les sorties : on ne redessine que si le
+  // texte affiché change (aucun clignotement, aucun trafic réseau).
+  let lastTimerText = '';
+  setInterval(() => {
+    if (!current || current.kind !== 'timer') return;
+    const payload = current.payload || {};
+    if (!payload.endsAt && payload.mode !== 'up') return;
+    const next = `${timerText(payload)}|${timerRemainingMs(payload) <= 0 ? 'x' : ''}`;
+    if (next === lastTimerText) return;
+    lastTimerText = next;
+    render(current);
+  }, 500);
 
   function logDebug(message) {
     const el = $('#debug');

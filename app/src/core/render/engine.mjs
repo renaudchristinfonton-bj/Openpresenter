@@ -258,9 +258,11 @@ function renderText(layer, content) {
   </div>`;
 }
 
-function renderImage(layer, { assets, editing }) {
+function renderImage(layer, { assets, editing, content }) {
   const box = layerBox(layer);
-  const url = layer.assetId ? assets?.[layer.assetId] || null : null;
+  // `assetSource: 'content'` : l'image suit le média diffusé (module Médias, EF-16).
+  const assetId = layer.assetSource === 'content' ? content?.assetId : layer.assetId;
+  const url = assetId ? assets?.[assetId] || null : null;
   const radius = Array.isArray(layer.radiusPerCorner) && layer.radiusPerCorner.length === 4
     ? layer.radiusPerCorner.map((r) => `${n(r)}px`).join(' ')
     : `${n(layer.radius)}px`;
@@ -274,7 +276,9 @@ function renderImage(layer, { assets, editing }) {
   }
 
   // `fit` : contain | cover | stretch ; `crop` : recadrage en % du cadre.
-  const fit = layer.fit === 'stretch' ? 'fill' : layer.fit || 'contain';
+  // Une scène de média (`assetSource: 'content'`) suit le cadre choisi au studio.
+  const wantedFit = layer.assetSource === 'content' && content?.fit ? content.fit : layer.fit;
+  const fit = wantedFit === 'stretch' ? 'fill' : wantedFit || 'contain';
   const offsetX = n(layer.offsetX);
   const offsetY = n(layer.offsetY);
   const scale = n(layer.scale, 100) / 100;
@@ -282,9 +286,15 @@ function renderImage(layer, { assets, editing }) {
   // `crop` = marges en % du cadre, retirées par débordement négatif (EF-09.24).
   const crop = layer.crop && typeof layer.crop === 'object' ? layer.crop : null;
 
+  const isVideo = content?.assetKind === 'video' || (/\.(mp4|webm|mov|m4v|ogv)(\?|$)/i.test(url));
+  const tag = isVideo ? 'video' : 'img';
+  const videoAttrs = isVideo
+    ? ` ${editing ? 'controls' : 'autoplay muted loop'} playsinline`
+    : ' alt="" draggable="false"';
+
   return `<div ${attrs({ ...commonAttrs(layer, box), 'data-layer-name': layer.name })}>
     <div class="op-image-frame" style="${styleAttr({ 'border-radius': radius })}">
-      <img class="op-image" src="${escapeHtml(url)}" alt="" draggable="false" style="${styleAttr({
+      <${tag} class="op-image" src="${escapeHtml(url)}"${videoAttrs} style="${styleAttr({
         width: '100%',
         height: '100%',
         'object-fit': fit,
@@ -292,7 +302,7 @@ function renderImage(layer, { assets, editing }) {
         transform: `translate(${offsetX}%, ${offsetY}%) ${flip}`,
         'border-radius': radius,
         ...(crop ? { position: 'absolute', top: `-${n(crop.top)}%`, left: `-${n(crop.left)}%` } : {})
-      })}">
+      })}"></${tag}>
     </div>
   </div>`;
 }
@@ -348,7 +358,8 @@ export function renderScene({ scene, content = {}, assets = {}, transparent, edi
     .filter(Boolean)
     .join('\n');
 
-  const html = `<div class="op-scene${editing ? ' op-editing' : ''}" data-scene-id="${escapeHtml(scene.id || '')}"
+  const blink = content.blink === true ? ' op-blink' : '';
+  const html = `<div class="op-scene${editing ? ' op-editing' : ''}${blink}" data-scene-id="${escapeHtml(scene.id || '')}"
     data-kind="${escapeHtml(scene.kind || '')}"
     data-transparent="${isTransparent ? '1' : '0'}"
     style="${styleAttr({
@@ -357,7 +368,9 @@ export function renderScene({ scene, content = {}, assets = {}, transparent, edi
       // Sortie alpha : la scène elle-même n'a pas de fond, sinon OBS compose
       // sur un rectangle noir (EF-09.9).
       background: isTransparent ? 'transparent' : scene.bgColor || '#05060a',
-      '--op-accent': scene.accentColor || '#f5b942',
+      // Un contenu peut imposer sa couleur d'accent : le minuteur passe à
+      // l'orange puis au rouge selon ses seuils (EF-18.9).
+      '--op-accent': content.accent || scene.accentColor || '#f5b942',
       '--op-text': scene.textColor || '#ffffff'
     })}">${layers}
 ${renderPartsHint(scene, content)}</div>`;
@@ -442,6 +455,10 @@ function defaultMeasure(root) {
 
 export const SCENE_CSS = `
 .op-scene{position:relative;overflow:hidden;transform-origin:top left}
+/* Zone critique du minuteur : clignotement doux, jamais une alternance brutale (EF-18.9). */
+.op-scene.op-blink{animation:op-blink 1.8s ease-in-out infinite}
+@keyframes op-blink{0%,100%{opacity:1}50%{opacity:.62}}
+@media (prefers-reduced-motion:reduce){.op-scene.op-blink{animation:none}}
 .op-layer{position:absolute;box-sizing:border-box}
 .op-bg-media,.op-bg-fill,.op-bg-tint{position:absolute;inset:0;width:100%;height:100%}
 .op-bg-media{object-fit:cover}

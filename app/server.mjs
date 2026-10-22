@@ -29,7 +29,7 @@ import {
   readOutputs, writeOutputs, readVerses, writeVerses
 } from './src/core/library.mjs';
 import {
-  importStream, importBuffer, readIndex, findAsset, kindPath,
+  importStream, importBuffer, readIndex, findAsset, kindPath, publicAsset,
   integrityReport, recountRefs, purgeOrphans
 } from './src/core/assets.mjs';
 import { buildExport, importArchive, saveExport } from './src/core/exporter.mjs';
@@ -247,7 +247,7 @@ async function serveShared(req, res, rel) {
   // Liste blanche : uniquement des modules purs, sans `node:*`, partagés entre
   // le serveur, l'éditeur et la page de sortie (ENF-42).
   const allowed = [
-    'books.mjs', 'split.mjs', 'ids.mjs', 'scene.mjs', 'looks.mjs', 'history.mjs',
+    'books.mjs', 'split.mjs', 'ids.mjs', 'scene.mjs', 'looks.mjs', 'history.mjs', 'overlay.mjs',
     'bible/reference.mjs', 'bible/navigation.mjs',
     'songs/parser.mjs', 'songs/arrangement.mjs',
     'render/engine.mjs', 'render/content.mjs', 'render/autofit.mjs', 'render/contrast.mjs'
@@ -469,8 +469,16 @@ async function handleApi(req, res, url, pathname) {
     if (method === 'GET') return sendJSON(res, 200, (await readSessionState()) || {});
     if (method === 'PUT' || method === 'POST') {
       const body = await readJsonBody(req);
-      await writeSessionState(body);
-      return sendJSON(res, 200, { ok: true });
+      // Fusion : le minuteur du studio, l'antenne et le plan partagent ce fichier.
+      // Écrire l'un ne doit jamais effacer les autres (EF-18.8).
+      const previous = (await readSessionState()) || {};
+      const merged = { ...previous };
+      for (const [key, value] of Object.entries(body || {})) {
+        if (value === null || value === undefined) delete merged[key];
+        else merged[key] = value;
+      }
+      await writeSessionState(merged);
+      return sendJSON(res, 200, { ok: true, session: merged });
     }
   }
 
@@ -558,12 +566,37 @@ async function handleApi(req, res, url, pathname) {
     }
     if (segments[1] === 'clear' && method === 'POST') {
       const body = await readJsonBody(req);
-      return sendJSON(res, 200, await live.clear(RELAY, { targets: body.targets }));
+      return sendJSON(res, 200, await live.clear(RELAY, { targets: body.targets, kind: body.kind }));
     }
   }
 
   // --- bible -------------------------------------------------------------
   if (segments[0] === 'bible') return handleBible(req, res, url, segments, method);
+
+  // --- médias (EF-16) : ce que le module Médias peut afficher --------------
+  if (segments[0] === 'media' && method === 'GET' && !segments[1]) {
+    const idx = await readIndex();
+    const needle = String(url.searchParams.get('q') || '').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const items = Object.values(idx.assets || {})
+      .map((entry) => publicAsset(entry))
+      .filter((entry) => /^(image|video|pdf|presentation)$/.test(String(entry.kind || ''))
+        || /^(image\/|video\/|application\/pdf)/.test(String(entry.mime || '')))
+      .map((entry) => ({
+        assetId: entry.assetId,
+        name: (entry.originalName || entry.path || 'média').split('/').pop(),
+        kind: entry.kind,
+        mime: entry.mime,
+        bytes: entry.bytes,
+        importedAt: entry.importedAt,
+        thumb: entry.thumb ? `/api/assets/${entry.sha256}/thumb` : null,
+        url: `/api/assets/${entry.sha256}`
+      }))
+      .filter((entry) => !needle || `${entry.name}`.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(needle))
+      .sort((a, b) => String(b.importedAt || '').localeCompare(String(a.importedAt || '')));
+    return sendJSON(res, 200, { items, total: items.length });
+  }
 
   // --- assets ------------------------------------------------------------
   if (segments[0] === 'assets') {

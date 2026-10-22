@@ -71,17 +71,30 @@ export async function show(relay, { targets, kind, payload, origin = 'studio' })
   return { delivered, refused, seq };
 }
 
-export async function clear(relay, { targets } = {}) {
+/**
+ * Coupe ce qui est à l'antenne.
+ * @param {object} params
+ * @param {string[]} [params.targets] sorties concernées (toutes par défaut)
+ * @param {string} [params.kind] ne coupe que ce type de contenu : un habillage
+ *   ou un minuteur qui s'arrête ne doit jamais éteindre le verset affiché (EF-19, EF-18).
+ */
+export async function clear(relay, { targets, kind } = {}) {
   const ids = targets?.length ? targets : [...state.keys()];
   const cleared = [];
+  const kept = [];
   for (const id of ids) {
+    const current = state.get(id);
+    if (kind && current && current.kind !== kind) {
+      kept.push(id);
+      continue;
+    }
     state.delete(id);
     relay?.publish(channelFor(id), { t: 'clear', seq: ++seq, ts: Date.now() });
     cleared.push(id);
   }
-  relay?.broadcast(STUDIO_CHANNEL, { t: 'live:cleared', targets: cleared, ts: Date.now() });
+  relay?.broadcast(STUDIO_CHANNEL, { t: 'live:cleared', targets: cleared, kind: kind || null, ts: Date.now() });
   scheduleSave();
-  return { cleared };
+  return { cleared, kept };
 }
 
 function scheduleSave() {

@@ -127,6 +127,41 @@
   .box a{color:var(--txt2);text-decoration:none;font-size:12px;display:block;padding:3px 0}
   .box a:hover{color:var(--accent)}
 
+  /* Profils (EF-20) */
+  .profiles{padding:14px 16px 0;display:grid;gap:10px;flex:0 0 auto}
+  .profiles-head{display:flex;align-items:center;gap:10px}
+  .profiles-head h2{margin:0;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3)}
+  .profile-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .pcard{
+    border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:10px 12px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .pcard.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .pcard h3{margin:0;font-size:13px;display:flex;align-items:center;gap:7px}
+  .pcard h3 .pdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .pcard .kind{margin-left:auto;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+  .pcard p{margin:0;font-size:11px;color:var(--txt3);min-height:26px}
+  .pcard .meta{font-family:var(--mono);font-size:11px;color:var(--txt2)}
+  .pcard .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .pcard .acts .btn{flex:0 0 auto}
+
+  /* Dialogue de profil */
+  dialog{border:1px solid var(--line2);border-radius:12px;background:var(--bg2);color:var(--txt);
+    padding:0;width:min(560px,92vw);font:inherit}
+  dialog::backdrop{background:#000a}
+  dialog[open]{display:flex;flex-direction:column}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .dlg-head h3{margin:0;font-size:13.5px}
+  .dlg-body{padding:14px;display:grid;gap:10px;grid-template-columns:1fr 1fr;max-height:70vh;overflow:auto}
+  .dlg-body label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--txt3)}
+  .dlg-body label:first-child,.dlg-body label:nth-child(4),.dlg-sub,.checks{grid-column:1/-1}
+  .dlg-body input,.dlg-body select{background:#07080d;border:1px solid var(--line2);color:var(--txt);
+    border-radius:6px;padding:6px 8px;font:inherit;font-size:12px}
+  .dlg-sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-top:4px}
+  .checks{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--txt2)}
+  .checks label{flex-direction:row;align-items:center;gap:6px;color:var(--txt2)}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--line)}
+
   .toast{
     position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;
     background:#141a24;border:1px solid var(--line2);font-size:12px;
@@ -157,13 +192,53 @@
   <span class="item">⌚ <span class="val" id="clock">—</span></span>
   <span class="item">📶 <span class="val" id="lan">local</span></span>
   <span class="item">🖥 <span id="online">0 sortie en ligne</span></span>
+  <span class="item">🎛 <span class="val" id="activeProfile">—</span> <span class="tag">profil actif</span></span>
   <span class="spacer"></span>
   <span class="tag" id="runtime"></span>
 </div>
 
+<section class="profiles" aria-label="Profils">
+  <div class="profiles-head">
+    <h2>Profils</h2>
+    <span class="spacer"></span>
+    <button class="btn sm" id="captureProfile" title="Enregistrer la configuration actuelle comme profil">＋ Enregistrer cette configuration</button>
+  </div>
+  <div class="profile-grid" id="profileGrid"></div>
+</section>
+
 <main>
   <div class="grid" id="cards"></div>
 </main>
+
+<dialog id="profileDlg" aria-labelledby="profileDlgTitle">
+  <div class="dlg-head">
+    <h3 id="profileDlgTitle">Modifier le profil</h3>
+    <span class="spacer"></span>
+    <button class="btn sm" id="profileDlgClose" aria-label="Fermer">✕</button>
+  </div>
+  <div class="dlg-body">
+    <label>Nom<input id="profileName" type="text" maxlength="80"></label>
+    <label>Type
+      <select id="profileKind">
+        <option value="church">Église</option>
+        <option value="conference">Conférence</option>
+        <option value="stream">Stream</option>
+        <option value="school">École</option>
+        <option value="custom">Personnalisé</option>
+      </select>
+    </label>
+    <label>Couleur<input id="profileColor" type="color"></label>
+    <label>Description<input id="profileDescription" type="text" maxlength="240"></label>
+    <div class="dlg-sub">Sorties du profil</div>
+    <div id="profileOutputs" class="checks"></div>
+    <div class="dlg-sub">Looks du profil</div>
+    <div id="profileLooks" class="checks"></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="profileCancel">Annuler</button>
+    <button class="btn primary" id="profileSave">Enregistrer</button>
+  </div>
+</dialog>
 
 <div class="main-action">
   <button class="studio" id="openStudio">🎬 Ouvrir le Studio Unifié</button>
@@ -553,12 +628,179 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// Profils (EF-20) : appliquer, enregistrer, dupliquer, exporter, modifier
+// ---------------------------------------------------------------------------
+let profiles = [];
+let activeProfileId = null;
+let editingProfile = null;
+
+const PROFILE_KIND_LABELS = {
+  church: 'Église', conference: 'Conférence', stream: 'Stream', school: 'École', custom: 'Personnalisé'
+};
+
+async function loadProfiles() {
+  try {
+    const data = await fetch(withToken('/api/profiles'), { cache: 'no-store' }).then((r) => r.json());
+    profiles = data.profiles || [];
+    activeProfileId = data.active || null;
+  } catch {
+    profiles = [];
+    activeProfileId = null;
+  }
+  paintProfiles();
+}
+
+function paintProfiles() {
+  const active = profiles.find((profile) => profile.id === activeProfileId) || null;
+  $('#activeProfile').textContent = active ? active.name : (profiles.length ? 'aucun' : '—');
+  const grid = $('#profileGrid');
+  if (!profiles.length) {
+    grid.innerHTML = '<div class="pcard"><h3>Aucun profil</h3><p>Enregistrez la configuration actuelle pour en créer un.</p></div>';
+    return;
+  }
+  grid.innerHTML = profiles.map((profile) => `
+    <div class="pcard ${profile.active ? 'active' : ''}" data-id="${esc(profile.id)}">
+      <h3><span class="pdot" style="background:${esc(profile.color)}"></span>${esc(profile.name)}
+        <span class="kind">${esc(PROFILE_KIND_LABELS[profile.kind] || profile.kind)}</span></h3>
+      <p>${esc(profile.description || '—')}</p>
+      <div class="meta">${profile.outputs} sortie(s) · ${profile.looks} look(s)${profile.active ? ' · actif' : ''}</div>
+      <div class="acts">
+        <button class="btn sm primary" data-act="apply" ${profile.active ? 'disabled' : ''}>Appliquer</button>
+        <button class="btn sm" data-act="edit">Modifier</button>
+        <button class="btn sm" data-act="duplicate">Dupliquer</button>
+        <button class="btn sm" data-act="export">Exporter</button>
+        <button class="btn sm" data-act="delete" ${profile.active ? 'disabled' : ''}>Supprimer</button>
+      </div>
+    </div>`).join('');
+
+  for (const card of grid.querySelectorAll('.pcard')) {
+    const id = card.dataset.id;
+    card.addEventListener('click', async (event) => {
+      const act = event.target.closest('[data-act]')?.dataset.act;
+      if (!act) return;
+      if (act === 'apply') await applyProfile(id);
+      else if (act === 'edit') await editProfile(id);
+      else if (act === 'duplicate') await duplicateProfile(id);
+      else if (act === 'export') { location.href = withToken(`/api/profiles/${encodeURIComponent(id)}/export`); }
+      else if (act === 'delete') await removeProfile(id);
+    });
+  }
+}
+
+/** Une seule action : appliquer. Si quelque chose est à l'antenne, on demande d'abord. */
+async function applyProfile(id, force = false) {
+  const profile = profiles.find((entry) => entry.id === id);
+  const res = await fetch(withToken(`/api/profiles/${encodeURIComponent(id)}/apply`), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ force })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 409 && data?.error?.code === 'LIVE_CONFIRM') {
+    if (!force && confirm(data.error.message.replace(/^TXT:\s*/, ''))) return applyProfile(id, true);
+    return;
+  }
+  if (!res.ok) {
+    toast(data?.error?.message || 'Profil non appliqué.', 'err');
+    return;
+  }
+  toast(`Profil « ${profile?.name || id} » appliqué · ${data.outputs.created.length + data.outputs.updated.length} sortie(s) · ${data.looks.available.length} look(s)`);
+  await load();
+  await loadProfiles();
+}
+
+async function duplicateProfile(id) {
+  const res = await fetch(withToken(`/api/profiles/${encodeURIComponent(id)}/duplicate`), { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { toast(data?.error?.message || 'Duplication refusée.', 'err'); return; }
+  toast(`« ${data.profile.name} » créé.`);
+  await loadProfiles();
+}
+
+async function removeProfile(id) {
+  const profile = profiles.find((entry) => entry.id === id);
+  if (!confirm(`Supprimer le profil « ${profile?.name || id} » ?\nLes scènes et looks restent dans le projet.`)) return;
+  const res = await fetch(withToken(`/api/profiles/${encodeURIComponent(id)}`), { method: 'DELETE' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { toast(data?.error?.message || 'Suppression refusée.', 'err'); return; }
+  toast('Profil supprimé.');
+  await loadProfiles();
+}
+
+async function captureCurrent() {
+  const name = prompt('Nom du nouveau profil :', 'Ma configuration');
+  if (!name) return;
+  const res = await fetch(withToken('/api/profiles/capture'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { toast(data?.error?.message || 'Enregistrement refusé.', 'err'); return; }
+  toast(`Profil « ${data.profile.name} » enregistré.`);
+  await loadProfiles();
+}
+
+async function editProfile(id) {
+  const res = await fetch(withToken(`/api/profiles/${encodeURIComponent(id)}`), { cache: 'no-store' });
+  if (!res.ok) { toast('Profil introuvable.', 'err'); return; }
+  const profile = await res.json();
+  editingProfile = profile;
+  $('#profileName').value = profile.name || '';
+  $('#profileKind').value = profile.kind || 'custom';
+  $('#profileColor').value = profile.color || '#f5b942';
+  $('#profileDescription').value = profile.description || '';
+  $('#profileOutputs').innerHTML = (profile.outputs || []).map((entry, index) => `
+    <label><input type="checkbox" data-output="${index}" checked> ${esc(entry.name)} <span class="tag">${esc(entry.ref)}</span></label>`).join('');
+  let looks = [];
+  try { looks = (await fetch(withToken('/api/looks'), { cache: 'no-store' }).then((r) => r.json())).items || []; } catch { looks = []; }
+  const chosen = new Set(profile.looks || []);
+  $('#profileLooks').innerHTML = looks.map((look) => `
+    <label><input type="checkbox" data-look="${esc(look.id)}" ${chosen.has(look.id) ? 'checked' : ''}> ${esc(look.name)}</label>`).join('')
+    || '<span class="tag">aucun look enregistré</span>';
+  $('#profileDlg').showModal();
+}
+
+async function saveProfileEdits() {
+  if (!editingProfile) return;
+  const kept = [...$('#profileOutputs').querySelectorAll('input[data-output]:checked')]
+    .map((input) => editingProfile.outputs[Number(input.dataset.output)]);
+  const looks = [...$('#profileLooks').querySelectorAll('input[data-look]:checked')].map((input) => input.dataset.look);
+  const body = {
+    ...editingProfile,
+    name: $('#profileName').value.trim() || editingProfile.name,
+    kind: $('#profileKind').value,
+    color: $('#profileColor').value,
+    description: $('#profileDescription').value.trim(),
+    outputs: kept,
+    looks,
+    defaultLook: looks.includes(editingProfile.defaultLook) ? editingProfile.defaultLook : (looks[0] || null)
+  };
+  const res = await fetch(withToken(`/api/profiles/${encodeURIComponent(editingProfile.id)}`), {
+    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { toast(data?.error?.message || 'Enregistrement refusé.', 'err'); return; }
+  $('#profileDlg').close();
+  editingProfile = null;
+  toast('Profil enregistré.');
+  await loadProfiles();
+}
+
+$('#captureProfile').addEventListener('click', captureCurrent);
+$('#profileSave').addEventListener('click', saveProfileEdits);
+$('#profileCancel').addEventListener('click', () => { editingProfile = null; $('#profileDlg').close(); });
+$('#profileDlgClose').addEventListener('click', () => { editingProfile = null; $('#profileDlg').close(); });
+
 // ---------------------------------------------------------------------------
 // Démarrage
 // ---------------------------------------------------------------------------
 (async () => {
   try {
     await load();
+    await loadProfiles();
     startClock();
     connect();
     // Rafraîchissement discret : l'accueil reste juste même sans WebSocket.

@@ -43,6 +43,11 @@ import {
 } from './src/core/bible/service.mjs';
 import { parseReference, parseVerseRange, MESSAGES } from './src/core/bible/reference.mjs';
 import { previewBible, importBibleXml, removeBible, renameBible } from './src/core/bible/importer.mjs';
+import {
+  listProfiles, getProfile, saveProfile, applyProfile, captureProfile,
+  duplicateProfile, removeProfile, exportProfile, importProfile, toSummary,
+  allLooks, getLook
+} from './src/core/profiles.mjs';
 import { BOOKS } from './src/core/books.mjs';
 import { parseSongText, importSummary } from './src/core/songs/parser.mjs';
 import { buildSongSelection } from './src/core/songs/arrangement.mjs';
@@ -103,7 +108,8 @@ const STATUS_BY_CODE = {
   LOCKED: 503,
   UNSUPPORTED_SOURCE: 400,
   INVALID_JSON: 422,
-  FORBIDDEN: 403
+  FORBIDDEN: 403,
+  LIVE_CONFIRM: 409
 };
 
 function fail(res, err) {
@@ -453,6 +459,29 @@ async function handleApi(req, res, url, pathname) {
       await writeSessionState(body);
       return sendJSON(res, 200, { ok: true });
     }
+  }
+
+  // --- profils (EF-20) ---------------------------------------------------
+  if (segments[0] === 'profiles') return handleProfiles(req, res, url, segments, method);
+
+  // --- catalogue des looks (livrés + projet) ------------------------------
+  // `GET /api/library/looks` reste la liste des looks **enregistrés** ; cette route
+  // ajoute les looks livrés, qui peuvent être appliqués sans être copiés sur disque.
+  if (segments[0] === 'looks' && method === 'GET') {
+    if (!segments[1]) {
+      const looks = await allLooks();
+      return sendJSON(res, 200, {
+        items: looks.map((look) => ({
+          id: look.id,
+          name: look.name,
+          description: look.description || '',
+          kinds: Object.keys(look.scenes || {}).map((key) => key.split(':')[0])
+        }))
+      });
+    }
+    const look = await getLook(segments[1]);
+    if (!look) throw Object.assign(new Error("Ce look n'existe plus."), { code: 'NOT_FOUND' });
+    return sendJSON(res, 200, look);
   }
 
   // --- objets métier -----------------------------------------------------
@@ -842,6 +871,113 @@ async function handleResources(req, res, segments, method) {
   }
   if (method === 'DELETE') {
     return sendJSON(res, 200, await remove(type, id));
+  }
+
+  throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+}
+
+// ---------------------------------------------------------------------------
+// Profils (EF-20)
+// ---------------------------------------------------------------------------
+
+async function handleProfiles(req, res, url, segments, method) {
+  const id = segments[1];
+
+  if (method === 'GET' && !id) {
+    const project = await readProject();
+    return sendJSON(res, 200, {
+      profiles: await listProfiles(),
+      active: project?.settings?.activeProfileId || null
+    });
+  }
+
+  // « Enregistrer la configuration actuelle comme profil » (EF-20.4).
+  if (method === 'POST' && id === 'capture') {
+    const body = await readJsonBody(req);
+    const profile = await captureProfile({
+      name: typeof body.name === 'string' ? body.name : undefined,
+      kind: typeof body.kind === 'string' ? body.kind : 'custom',
+      color: body.color,
+      icon: body.icon
+    });
+    const saved = await saveProfile(profile);
+    RELAY?.broadcast('op_project', {
+      t: 'project:changed', resource: `library/profiles/${saved.id}`, rev: saved.rev, ts: Date.now()
+    });
+    return sendJSON(res, 201, { profile: saved, summary: toSummary(saved, null) });
+  }
+
+  if (method === 'POST' && id === 'import') {
+    const body = await readJsonBody(req);
+    const result = await importProfile(body.bundle || body, { mode: body.mode === 'merge' ? 'merge' : 'copy' });
+    RELAY?.broadcast('op_project', {
+      t: 'project:changed', resource: `library/profiles/${result.profile.id}`, rev: result.profile.rev, ts: Date.now()
+    });
+    return sendJSON(res, result.created ? 201 : 200, result);
+  }
+
+  // Création libre : l'identifiant est proposé par le serveur.
+  if (!id) {
+    if (method !== 'POST') {
+      throw Object.assign(new Error('Identifiant manquant.'), { code: 'VALIDATION', path: 'id' });
+    }
+    const body = await readJsonBody(req);
+    const saved = await saveProfile({ ...body, id: body.id });
+    RELAY?.broadcast('op_project', {
+      t: 'project:changed', resource: `profiles/${saved.id}`, rev: saved.rev, ts: Date.now()
+    });
+    return sendJSON(res, 201, { profile: saved, summary: toSummary(saved, null) });
+  }
+
+  if (method === 'GET' && segments[2] === 'export') {
+    const bundle = await exportProfile(id);
+    const name = bundle.profile.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'profil';
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'content-disposition': `attachment; filename="${name}.opprofile.json"`,
+      'cache-control': 'no-store'
+    });
+    return res.end(JSON.stringify(bundle, null, 2));
+  }
+
+  if (method === 'GET') {
+    const profile = await getProfile(id);
+    if (!profile) throw Object.assign(new Error("Ce profil n'existe pas."), { code: 'NOT_FOUND' });
+    return sendJSON(res, 200, profile);
+  }
+
+  // Application d'un profil (§ 13.5). `onAir` est calculé ici : l'interface n'a pas
+  // à savoir ce qui est diffusé pour demander la confirmation.
+  if (method === 'POST' && segments[2] === 'apply') {
+    const body = await readJsonBody(req);
+    const onAir = Object.keys(live.snapshot() || {}).length > 0;
+    const report = await applyProfile(id, { force: body.force === true, onAir });
+    await log('info', 'profile.apply', `profil « ${report.profile.name} » appliqué`, {
+      created: report.outputs.created, updated: report.outputs.updated, disabled: report.outputs.disabled
+    });
+    RELAY?.broadcast('op_project', {
+      t: 'project:changed', resource: 'outputs', rev: 0, ts: Date.now()
+    });
+    return sendJSON(res, 200, report);
+  }
+
+  if (method === 'POST' && segments[2] === 'duplicate') {
+    const copy = await duplicateProfile(id);
+    return sendJSON(res, 201, { profile: copy, summary: toSummary(copy, null) });
+  }
+
+  if (method === 'PUT' || method === 'POST') {
+    const body = await readJsonBody(req);
+    const saved = await saveProfile({ ...body, id });
+    RELAY?.broadcast('op_project', {
+      t: 'project:changed', resource: `library/profiles/${id}`, rev: saved.rev, ts: Date.now()
+    });
+    return sendJSON(res, method === 'POST' ? 201 : 200, { profile: saved, summary: toSummary(saved, null) });
+  }
+
+  if (method === 'DELETE') {
+    return sendJSON(res, 200, await removeProfile(id));
   }
 
   throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });

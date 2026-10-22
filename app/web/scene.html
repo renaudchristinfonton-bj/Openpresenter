@@ -796,7 +796,7 @@ async function loadLooks() {
   const select = $('#looks');
   if (!select) return;
   try {
-    const res = await fetch('/api/library/looks', { cache: 'no-store' });
+    const res = await fetch('/api/looks', { cache: 'no-store' });
     const data = await res.json();
     const items = data.items || [];
     select.innerHTML = `<option value="">Looks…</option>` + items.map((look) =>
@@ -845,7 +845,7 @@ async function applyLook(id) {
   const output = currentOutput();
   const kind = $('#kind').value;
   try {
-    const res = await fetch(`/api/library/looks/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    const res = await fetch(`/api/looks/${encodeURIComponent(id)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Look introuvable.');
     const look = await res.json();
     const entry = look.scenes?.[kind] || Object.values(look.scenes || {})[0];

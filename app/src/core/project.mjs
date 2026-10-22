@@ -52,7 +52,7 @@ export function defaultProject(name) {
       port: 8788,
       lanToken: randomToken(),
       lanTokenEnabled: true,
-      activeProfileId: null,
+      activeProfileId: 'prof_eglise',
       activeEventId: null,
       defaultBibleId: null,
       maxAssetWarnBytes: 500 * 1024 * 1024,

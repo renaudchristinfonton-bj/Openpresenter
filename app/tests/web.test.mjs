@@ -92,3 +92,37 @@ test('aucune page n’embarque de ressource distante (A-01)', async () => {
     assert.deepEqual(externals, [], `${page} : ${externals.join(', ')}`);
   }
 });
+
+test('chaque élément cité par le script existe bien dans la page', async () => {
+  // Un `$('#x')` orphelin ne lève une erreur qu'au clic, en plein direct : c'est
+  // le genre de détail que ce contrôle attrape avant l'utilisateur.
+  for (const page of PAGES) {
+    const html = await fs.readFile(path.join(WEB, page), 'utf8');
+    const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+    const code = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
+    const cited = new Set([...code.matchAll(/\$\('#([^']+)'\)/g)].map((m) => m[1]));
+    const missing = [...cited].filter((id) => !ids.has(id));
+    assert.deepEqual(missing, [], `${page} : éléments inexistants ${missing.join(', ')}`);
+  }
+});
+
+test('les modules du studio sont tous atteignables au clavier', async () => {
+  const html = await fs.readFile(path.join(WEB, 'studio.html'), 'utf8');
+  const tabs = [...html.matchAll(/<button class="mode[^"]*"[^>]*data-mode="([a-z]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(tabs, ['bible', 'songs', 'announcements', 'media', 'lowerthird', 'timer']);
+  // Chaque module a son panneau ; les identifiants courts sont historiques.
+  const PANELS = {
+    bible: 'mod-bible', songs: 'mod-songs', announcements: 'mod-ann',
+    media: 'mod-media', lowerthird: 'mod-lt', timer: 'mod-timer'
+  };
+  for (const module of tabs) {
+    assert.ok(html.includes(`id="${PANELS[module]}"`), `panneau manquant : ${module}`);
+  }
+  for (const shortcut of ['Alt+1', 'Alt+2', 'Alt+3', 'Alt+4', 'Alt+5', 'Alt+6']) {
+    assert.ok(html.includes(shortcut), `raccourci affiché manquant : ${shortcut}`);
+  }
+  // Chaque onglet est branché : sans clic ni touche, le module n'existe pas.
+  for (const button of ['modeBible', 'modeSongs', 'modeAnn', 'modeMedia', 'modeLt', 'modeTimer']) {
+    assert.match(html, new RegExp(`\\$\\('#${button}'\\)\\.addEventListener\\('click'`), `onglet non câblé : ${button}`);
+  }
+});

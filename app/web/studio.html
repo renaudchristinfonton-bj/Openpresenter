@@ -1704,7 +1704,6 @@ function previewLtSoon(now = false) {
     $('#ltEcho').textContent = payload.title || payload.body
       ? `${payload.title}${payload.body ? ' — ' + payload.body : ''}`
       : '—';
-    rememberLt();
     if (ltLive) broadcastLt(true);   // on air : la correction est immédiate (EF-19.4)
     else previewLt();
   };

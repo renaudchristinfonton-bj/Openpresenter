@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — Plan de déroulement</title>
+<style>
+  :root{
+    --bg:#07080d; --bg2:#0d1017; --bg3:#121722; --line:#1c2230; --line2:#28303f;
+    --txt:#e8eaf0; --txt2:#a3abbd; --txt3:#6e7789;
+    --accent:#f5b942; --ok:#34d399; --err:#ef5360;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--txt);font:13px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100vh}
+  header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;border-bottom:1px solid var(--line);background:var(--bg2)}
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#e08a12);display:grid;place-items:center;font-weight:800;color:#1a1206;font-size:12px}
+  .title{font-weight:700;font-size:13.5px}
+  .title small{display:block;font-weight:400;font-size:10.5px;color:var(--txt3)}
+  .spacer{flex:1}
+  a.btn,.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:7px;border:1px solid var(--line2);
+    background:var(--bg3);color:var(--txt);font:650 12px/1 "Inter",system-ui,sans-serif;cursor:pointer;text-decoration:none}
+  a.btn:hover,.btn:hover{background:#1e2331}
+  .btn.sm{padding:4px 8px;font-size:10.5px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#17110a;font-weight:800}
+  .btn.danger{background:#2a1014;border-color:#ef536055;color:#ff9aa2}
+
+  main{flex:1 0 auto;display:grid;grid-template-columns:minmax(320px,1.1fr) minmax(300px,1fr);gap:0;min-height:0}
+  @media (max-width:860px){main{grid-template-columns:1fr}}
+  .cues{border-right:1px solid var(--line);overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .cue{display:grid;grid-template-columns:30px 1fr auto;gap:9px;align-items:center;border:1px solid transparent;
+    border-radius:8px;padding:7px 9px;cursor:pointer;background:#0a0d14}
+  .cue:hover{border-color:var(--line2)}
+  .cue.cur{border-color:var(--accent);background:#171208}
+  .cue.done{opacity:.55}
+  .cue .n{font-family:var(--mono);font-size:11px;color:var(--txt3);text-align:right}
+  .cue .lbl{font-size:13px}
+  .cue .kind{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-left:7px}
+  .cue .dur{font-family:var(--mono);font-size:11px;color:var(--txt2)}
+  .cue.skipped .lbl{text-decoration:line-through;color:var(--txt3)}
+  .cue .flag{font-size:10px;color:var(--accent);margin-left:6px}
+
+  .now{border-left:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:12px;overflow:auto;background:#080a11}
+  .panel{border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+  .panel h2{margin:0;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3)}
+  .panel .big{font-size:17px;font-weight:700}
+  .panel .txt{font-size:12px;color:var(--txt2);white-space:pre-wrap;max-height:120px;overflow:auto}
+  .panel.next{opacity:.9}
+  .panel.after{opacity:.7}
+  .note-banner{border:1px dashed var(--accent);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--accent);display:none}
+  .note-banner.on{display:block}
+
+  footer{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--line);background:var(--bg2)}
+  footer .btn.advance{padding:10px 18px;font-size:13px}
+  .hint{font-size:11px;color:var(--txt3)}
+  .toast{position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);
+    font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:380px;white-space:pre-wrap}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
+
+  dialog{border:1px solid var(--line2);border-radius:12px;background:var(--bg2);color:var(--txt);padding:0;width:min(600px,94vw)}
+  dialog::backdrop{background:#000a}
+  dialog[open]{display:flex;flex-direction:column}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .dlg-head h3{margin:0;font-size:13.5px}
+  .dlg-body{padding:14px;display:flex;flex-direction:column;gap:10px}
+  textarea{background:#07080d;border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:9px 10px;
+    font:12px/1.5 var(--mono);min-height:170px;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .report{border:1px solid var(--line2);border-radius:8px;padding:9px 11px;background:#05060a;font-size:11.5px;
+    max-height:220px;overflow:auto;white-space:pre-wrap;font-family:var(--mono)}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--line)}
+  .empty{padding:24px;text-align:center;color:var(--txt3);font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">OP</span>
+  <div class="title" id="planTitle">Plan de déroulement <small id="planSub">chargement…</small></div>
+  <span class="spacer"></span>
+  <button class="btn" id="addCue" title="Ajouter une étape">＋ Étape</button>
+  <button class="btn" id="importPlan" title="Importer un déroulé (Ctrl+I)">⬆ Importer</button>
+  <a class="btn" id="printPlan" href="#" target="_blank" rel="noopener">🖨 Imprimer</a>
+  <button class="btn" id="resetPlan" title="Revenir à la première étape">↺ Réinitialiser</button>
+  <a class="btn" href="/events.html">Événements</a>
+  <a class="btn" href="/studio.html">Studio</a>
+</header>
+
+<main>
+  <div class="cues" id="cueList" role="listbox" aria-label="Étapes du plan">
+    <div class="empty">Choisissez un événement depuis la page Événements.</div>
+  </div>
+  <div class="now">
+    <div class="note-banner" id="noteBanner"></div>
+    <div class="panel">
+      <h2>En cours</h2>
+      <div class="big" id="nowLabel">—</div>
+      <div class="txt" id="nowText"></div>
+    </div>
+    <div class="panel next">
+      <h2>Suivant</h2>
+      <div class="big" id="nextLabel">—</div>
+    </div>
+    <div class="panel after">
+      <h2>Après</h2>
+      <div id="afterLabel">—</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <button class="btn sm" id="first" title="Début (Début)">⏮</button>
+  <button class="btn sm" id="back" title="Reculer (←)">◀</button>
+  <button class="btn primary advance" id="advance" title="Avancer (Espace)">▶ AVANCER</button>
+  <button class="btn sm" id="next" title="Étape suivante (→)">▶</button>
+  <button class="btn sm" id="last" title="Dernière étape">⏭</button>
+  <button class="btn sm danger" id="cut" title="Couper (Échap)">■ Couper</button>
+  <span class="hint"><b>Espace</b> / <b>→</b> avancer · <b>←</b> reculer · <b>Échap</b> couper · <b>Ctrl+I</b> importer</span>
+  <span class="spacer"></span>
+  <span class="hint" id="estimate"></span>
+</footer>
+
+<dialog id="importDlg" aria-labelledby="importTitle">
+  <div class="dlg-head">
+    <h3 id="importTitle">Importer un déroulé</h3>
+    <span class="spacer"></span>
+    <span class="hint">une ligne = une étape</span>
+  </div>
+  <div class="dlg-body">
+    <textarea id="importText" spellcheck="false" placeholder="Accueil
+Grâce infinie
+Jean 3:16-18
+# Offrande
+Prédication"></textarea>
+    <div class="report" id="importReport" hidden></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="importCancel">Annuler</button>
+    <button class="btn" id="importAnalyze">Analyser</button>
+    <button class="btn" id="importAppend" disabled>Ajouter à la fin</button>
+    <button class="btn primary" id="importReplace" disabled>Remplacer</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (selector) => document.querySelector(selector);
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const params = new URLSearchParams(location.search);
+const eventId = params.get('event') || '';
+const token = params.get('t') || '';
+const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : '');
+
+const KIND_LABELS = {
+  note: 'note', bible: 'verset', song: 'chant', media: 'média',
+  announcement: 'annonce', lowerthird: 'habillage', timer: 'minuteur', blank: 'noir'
+};
+
+let event = null;
+let cues = [];
+let view = { index: -1, current: null, next: null, after: null, total: 0 };
+let busy = false;
+
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = `toast show ${kind}`;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.className = 'toast'; }, 2600);
+}
+
+async function api(url, options = {}) {
+  const res = await fetch(withToken(url), {
+    cache: 'no-store',
+    headers: options.body ? { 'content-type': 'application/json' } : undefined,
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+const fmtDuration = (seconds) => {
+  if (!seconds) return '0 min';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  return `${hours ? hours + ' h ' : ''}${minutes} min`;
+};
+
+// ---------------------------------------------------------------------------
+// Rendu
+// ---------------------------------------------------------------------------
+function paintCues() {
+  const list = $('#cueList');
+  if (!cues.length) {
+    list.innerHTML = '<div class="empty">Aucune étape. Utilisez « ＋ Étape » ou « ⬆ Importer ».</div>';
+    return;
+  }
+  list.innerHTML = cues.map((cue, index) => `
+    <div class="cue ${index === view.index ? 'cur' : ''} ${index < view.index ? 'done' : ''} ${cue.skipped ? 'skipped' : ''}"
+         data-index="${index}" role="option" aria-selected="${index === view.index}" tabindex="0">
+      <span class="n">${index + 1}</span>
+      <span class="lbl">${esc(cue.label || '(sans titre)')}<span class="kind">${KIND_LABELS[cue.kind] || cue.kind}</span>
+        ${cue.skipped ? '<span class="flag">⏭ sautée</span>' : ''}</span>
+      <span class="dur">${cue.durationSec ? fmtDuration(cue.durationSec) : ''}</span>
+    </div>`).join('');
+  for (const row of list.querySelectorAll('.cue')) {
+    const go = () => jumpTo(Number(row.dataset.index));
+    row.addEventListener('click', go);
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); }
+    });
+  }
+}
+
+function paintNow() {
+  const current = view.current;
+  $('#nowLabel').textContent = current ? current.label || '(sans titre)' : '—';
+  $('#nowText').textContent = current?.notes || '';
+  $('#nextLabel').textContent = view.next ? view.next.label || '(sans titre)' : '—';
+  $('#afterLabel').textContent = view.after ? view.after.label || '(sans titre)' : '—';
+  $('#estimate').textContent = `${view.total} étape(s) · ${fmtDuration(view.estimatedSec)}`;
+}
+
+function paintTitle() {
+  if (!event) {
+    $('#planTitle').firstChild.textContent = 'Plan de déroulement ';
+    $('#planSub').textContent = 'aucun événement sélectionné';
+    return;
+  }
+  const date = new Date(event.startsAt);
+  const day = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const time = Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  document.title = `OpenPresenter — ${event.name}`;
+  $('#planTitle').firstChild.textContent = `Plan · ${event.name} `;
+  $('#planSub').textContent = [day, time, fmtDuration(view.estimatedSec)].filter(Boolean).join(' · ');
+  $('#printPlan').href = withToken(`/api/events/${encodeURIComponent(event.id)}/plan/print`);
+}
+
+function paint() {
+  paintCues();
+  paintNow();
+  paintTitle();
+}
+
+// ---------------------------------------------------------------------------
+// Pilotage (EF-23.3 → EF-23.10)
+// ---------------------------------------------------------------------------
+async function advance(delta) {
+  if (!event || busy) return;
+  busy = true;
+  try {
+    const { res, data } = await api(`/api/events/${event.id}/plan/advance`, { method: 'POST', body: { delta } });
+    if (!res.ok) { toast(data?.error?.message || 'Commande refusée.', 'err'); return; }
+    view = data.view;
+    paint();
+    if (data.atEnd) toast('Fin du plan.');
+    if (data.note) {
+      const banner = $('#noteBanner');
+      banner.textContent = `Repère · ${view.current?.label || ''}`;
+      banner.classList.add('on');
+      setTimeout(() => banner.classList.remove('on'), 2600);
+    }
+  } finally {
+    busy = false;
+  }
+}
+
+async function jumpTo(index) {
+  if (!event || busy) return;
+  busy = true;
+  try {
+    const { res, data } = await api(`/api/events/${event.id}/plan/advance`, { method: 'POST', body: { toIndex: index } });
+    if (!res.ok) { toast(data?.error?.message || 'Commande refusée.', 'err'); return; }
+    if (data.atStart) return;
+    view = data.view;
+    paint();
+  } finally {
+    busy = false;
+  }
+}
+
+async function cut() {
+  const { res, data } = await api('/api/live/clear', { method: 'POST', body: {} });
+  if (!res.ok) { toast(data?.error?.message || 'Coupure refusée.', 'err'); return; }
+  toast('Sorties coupées.');
+}
+
+async function resetPlan() {
+  if (!event) return;
+  const { res } = await api(`/api/events/${event.id}/plan/reset`, { method: 'POST' });
+  if (!res.ok) { toast('Réinitialisation refusée.', 'err'); return; }
+  await loadPlan();
+  toast('Plan revenu à la première étape.');
+}
+
+// ---------------------------------------------------------------------------
+// Ajout et import (EF-23.14 → EF-23.16)
+// ---------------------------------------------------------------------------
+async function addCue() {
+  if (!event) { toast('Choisissez d’abord un événement.', 'err'); return; }
+  const label = prompt('Repère (laissez vide pour un verset ou un chant) :', '');
+  if (label === null) return;
+  let cue = { kind: 'note', label: label || 'Nouvelle étape' };
+  if (!label) {
+    const kind = prompt('Type : verset, chant, annonce, media, blank, note', 'note');
+    if (!kind) return;
+    const normalised = kind.trim().toLowerCase();
+    if (normalised === 'verset') {
+      const ref = prompt('Référence (ex. Jean 3:16) :', '');
+      if (!ref) return;
+      const parse = await api(`/api/bible/parse?ref=${encodeURIComponent(ref)}`);
+      if (!parse.res.ok || !parse.data.parsed) { toast(parse.data?.error?.message || 'Référence inconnue.', 'err'); return; }
+      const p = parse.data.parsed;
+      cue = {
+        kind: 'bible',
+        label: ref,
+        payload: {
+          bibleId: parse.data.bibleId || null,
+          ref: `${p.bookNum}-${p.chapter}-${p.first || 1}${p.last && p.last > (p.first || 1) ? `..${p.bookNum}-${p.chapter}-${p.last}` : ''}`
+        }
+      };
+    } else if (['note', 'blank', 'media', 'annonce', 'announcement'].includes(normalised)) {
+      cue = { kind: normalised === 'annonce' ? 'announcement' : normalised, label: label || normalised };
+    } else {
+      toast('Type non reconnu.', 'err');
+      return;
+    }
+  }
+  const next = [...cues, cue];
+  const { res, data } = await api(`/api/events/${event.id}/plan`, { method: 'PUT', body: { cues: next } });
+  if (!res.ok) { toast(data?.error?.message || 'Ajout refusé.', 'err'); return; }
+  await loadPlan();
+}
+
+function openImport() {
+  if (!event) { toast('Choisissez d’abord un événement.', 'err'); return; }
+  $('#importText').value = '';
+  $('#importReport').hidden = true;
+  $('#importReplace').disabled = true;
+  $('#importAppend').disabled = true;
+  $('#importDlg').showModal();
+  setTimeout(() => $('#importText').focus(), 30);
+}
+
+async function analyseImport() {
+  const text = $('#importText').value;
+  if (!text.trim()) { toast('Collez le déroulé à importer.', 'err'); return; }
+  const { res, data } = await api(`/api/events/${event.id}/plan/import`, {
+    method: 'POST', body: { text, mode: 'preview' }
+  });
+  if (!res.ok) { toast(data?.error?.message || 'Analyse refusée.', 'err'); return; }
+  $('#importReport').hidden = false;
+  $('#importReport').textContent = data.report.map((entry) =>
+    `${entry.line.padEnd(28, ' ')} → ${entry.kind.padEnd(5, ' ')} (${entry.detail})`).join('\n');
+  $('#importReplace').disabled = data.cues.length === 0;
+  $('#importAppend').disabled = data.cues.length === 0;
+}
+
+async function applyImport(mode) {
+  const text = $('#importText').value;
+  const { res, data } = await api(`/api/events/${event.id}/plan/import`, {
+    method: 'POST', body: { text, mode }
+  });
+  if (!res.ok) { toast(data?.error?.message || 'Import refusé.', 'err'); return; }
+  $('#importDlg').close();
+  await loadPlan();
+  toast(`${data.cues} étape(s) dans le plan.`);
+}
+
+// ---------------------------------------------------------------------------
+// Chargement
+// ---------------------------------------------------------------------------
+async function loadPlan() {
+  if (!eventId) { paint(); return; }
+  const [eventRes, planRes] = await Promise.all([
+    api(`/api/events/${encodeURIComponent(eventId)}`),
+    api(`/api/events/${encodeURIComponent(eventId)}/plan`)
+  ]);
+  if (!eventRes.res.ok) { toast('Événement introuvable.', 'err'); return; }
+  event = eventRes.data;
+  cues = planRes.data.cues || [];
+  view = planRes.data.view || { index: -1, total: 0 };
+  paint();
+}
+
+$('#advance').addEventListener('click', () => advance(1));
+$('#next').addEventListener('click', () => advance(1));
+$('#back').addEventListener('click', () => advance(-1));
+$('#first').addEventListener('click', () => jumpTo(0));
+$('#last').addEventListener('click', () => jumpTo(cues.length - 1));
+$('#cut').addEventListener('click', cut);
+$('#resetPlan').addEventListener('click', resetPlan);
+$('#addCue').addEventListener('click', addCue);
+$('#importPlan').addEventListener('click', openImport);
+$('#importCancel').addEventListener('click', () => $('#importDlg').close());
+$('#importAnalyze').addEventListener('click', analyseImport);
+$('#importReplace').addEventListener('click', () => applyImport('replace'));
+$('#importAppend').addEventListener('click', () => applyImport('append'));
+
+document.addEventListener('keydown', (event_) => {
+  if ($('#importDlg').open) {
+    if (event_.key === 'Escape') { event_.preventDefault(); $('#importDlg').close(); }
+    if (event_.key === 'Enter' && (event_.ctrlKey || event_.metaKey)) { event_.preventDefault(); analyseImport(); }
+    return;
+  }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event_.target.tagName);
+  if (typing) return;
+  if ((event_.ctrlKey || event_.metaKey) && event_.key.toLowerCase() === 'i') {
+    event_.preventDefault();
+    openImport();
+    return;
+  }
+  // Une seule touche en direct : Espace ou → avance, ← recule, Échap coupe.
+  if (event_.key === ' ' || event_.key === 'ArrowRight' || event_.key === 'PageDown') {
+    event_.preventDefault();
+    advance(1);
+    return;
+  }
+  if (event_.key === 'ArrowLeft' || event_.key === 'PageUp') {
+    event_.preventDefault();
+    advance(-1);
+    return;
+  }
+  if (event_.key === 'Escape') {
+    event_.preventDefault();
+    cut();
+  }
+});
+
+(async () => {
+  try {
+    if (!eventId) {
+      paint();
+      toast('Aucun événement : ouvrez-en un depuis la page Événements.', 'err');
+      return;
+    }
+    await loadPlan();
+  } catch {
+    toast('Serveur injoignable — relancez OpenPresenter.', 'err');
+  }
+})();
+</script>
+</body>
+</html>

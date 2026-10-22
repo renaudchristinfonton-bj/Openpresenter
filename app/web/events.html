@@ -320,6 +320,7 @@ function paintEvents() {
         <div class="sub">${esc(profileName(event.profileId))}${event.recurrence ? ' · récurrent' : ''}</div>
         <div class="acts">
           <button class="btn sm primary" data-act="open">Ouvrir</button>
+          <a class="btn sm" data-act="plan" href="/plan.html?event=${encodeURIComponent(event.id)}">Plan</a>
           <button class="btn sm" data-act="edit">Modifier</button>
           <button class="btn sm" data-act="duplicate">Dupliquer</button>
           ${event.recurrence ? '<button class="btn sm" data-act="occurrences">Générer 4 dates</button>' : ''}

@@ -114,6 +114,21 @@ Le studio réunit désormais Bible, chants et annonces derrière un seul champ d
 | `app/src/core/bible/formats.mjs` | détection Beblia / Zefania / OSIS / USFX, sans dépendance |
 | `app/src/core/bible/importer.mjs` | import avec prévisualisation, copie de la source, index de versets |
 
+### Profils, événements et plan de déroulement
+
+Trois profils prêts à l'emploi (église, conférence, stream) s'appliquent en une action ;
+les organisations, lieux et événements se gèrent sur une page dédiée, et le déroulé se
+conduit à une touche.
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-2-ORGANISATION.md`](docs/PHASE-2-ORGANISATION.md) | profils (EF-20), organisations (EF-21), événements (EF-22), plan (EF-23) |
+| `app/src/core/profiles.mjs` | profils livrés, looks, application atomique, capture, export/import |
+| `app/src/core/events.mjs` | organisations, lieux, récurrence, historique |
+| `app/src/core/plan.mjs` | import texte/Planning Center, impression, position de lecture |
+| `app/web/events.html` | organisations, lieux et événements |
+| `app/web/plan.html` | conduite du déroulé (Espace, flèches, Échap) |
+
 ---
 
 ## Pourquoi ce projet

@@ -47,7 +47,10 @@ import {
   normalizeOrg, removeOrg } from './src/core/events.mjs';
 import {
   normalizeEvent, duplicateEvent, materializeOccurrences, appendHistory,
-  historyCsv, eventOverview, openEvent } from './src/core/events.mjs';
+  historyCsv, eventOverview, openEvent, planDuration } from './src/core/events.mjs';
+import {
+  parsePlanText, parsePlanningCenter, planToText, readPlanPosition, savePlanPosition,
+  clampIndex, planView, normalizeCues, refToRange } from './src/core/plan.mjs';
 import {
   listProfiles, getProfile, saveProfile, applyProfile, captureProfile,
   duplicateProfile, removeProfile, exportProfile, importProfile, toSummary,
@@ -956,6 +959,133 @@ async function handleEvents(req, res, url, segments, method) {
   }
   if (!id) throw Object.assign(new Error('Identifiant manquant.'), { code: 'VALIDATION', path: 'id' });
 
+  // --- plan de déroulement (EF-23) ---------------------------------------
+  if (method === 'GET' && segments[2] === 'plan' && segments[3] === 'print') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const org = event.orgId ? await get('orgs', event.orgId) : null;
+    const place = org && event.placeId ? (org.places || []).find((p) => p.id === event.placeId) : null;
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(planToText(event, { org, place }));
+  }
+
+  if (method === 'GET' && segments[2] === 'plan') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const cues = event.plan?.cues || [];
+    const position = await readPlanPosition();
+    const index = position.eventId === id ? position.index : -1;
+    return sendJSON(res, 200, {
+      eventId: id,
+      cues,
+      view: planView(cues, index),
+      position,
+      estimatedSec: planDuration(cues)
+    });
+  }
+
+  if (method === 'PUT' && segments[2] === 'plan') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const body = await readJsonBody(req);
+    const cues = normalizeCues(body.cues);
+    const saved = await put('events', id, {
+      ...event, rev: (event.rev || 1) + 1, plan: { id: event.plan?.id || `plan_${Date.now().toString(36)}`, cues }
+    });
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `events/${id}`, rev: saved.rev, ts: Date.now() });
+    return sendJSON(res, 200, { event: saved, estimatedSec: planDuration(cues) });
+  }
+
+  if (method === 'POST' && segments[2] === 'plan' && segments[3] === 'import') {
+    const body = await readJsonBody(req);
+    const songs = await list('songs');
+    const bibles = await listBibles();
+    let parsed;
+    if (body.source === 'planning-center') {
+      parsed = parsePlanningCenter(body.payload ?? body, { songs });
+    } else {
+      parsed = parsePlanText(body.text || '', { songs, bibles });
+    }
+    if (body.mode === 'preview' || !body.mode) {
+      return sendJSON(res, 200, { preview: true, ...parsed });
+    }
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const cues = body.mode === 'append'
+      ? normalizeCues([...(event.plan?.cues || []), ...parsed.cues])
+      : normalizeCues(parsed.cues);
+    const saved = await put('events', id, { ...event, rev: (event.rev || 1) + 1, plan: { id: event.plan?.id || `plan_${Date.now().toString(36)}`, cues } });
+    return sendJSON(res, 200, { event: saved, report: parsed.report, cues: cues.length, estimatedSec: planDuration(cues) });
+  }
+
+  if (method === 'POST' && segments[2] === 'plan' && segments[3] === 'advance') {
+    const body = await readJsonBody(req);
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const cues = event.plan?.cues || [];
+    if (!cues.length) {
+      return sendJSON(res, 200, {
+        atEnd: true, message: 'TXT: Fin du plan.', index: 0, total: 0, delivered: []
+      });
+    }
+    const position = await readPlanPosition();
+    const start = position.eventId === id ? clampIndex(cues, position.index) : -1;
+    let index = Number.isInteger(body.toIndex) ? clampIndex(cues, body.toIndex) : start;
+    if (!Number.isInteger(body.toIndex)) {
+      const direction = body.delta === -1 ? -1 : 1;
+      index = start + direction;
+      // Une étape sautée (`skipped`) est franchie sans s'y arrêter (EF-23.7).
+      while (index >= 0 && index < cues.length && cues[index].skipped) index += direction;
+      if (index < 0) index = start < 0 ? -1 : 0;
+      if (index >= cues.length) {
+        return sendJSON(res, 200, {
+          atEnd: true, message: 'TXT: Fin du plan.', index: start, total: cues.length,
+          view: planView(cues, start), delivered: []
+        });
+      }
+    }
+
+    const cue = cues[index] || null;
+    if (!cue) {
+      await savePlanPosition(id, -1);
+      return sendJSON(res, 200, { index: -1, atStart: true, view: planView(cues, -1), total: cues.length, delivered: [] });
+    }
+    let delivered = [];
+    let note = false;
+    if (cue.kind === 'note') {
+      // EF-23.8 : le libellé s'affiche dans le studio, rien ne va à l'antenne.
+      note = true;
+      RELAY?.broadcast(live.STUDIO_CHANNEL, {
+        t: 'plan:note', eventId: id, index, label: cue.label, ts: Date.now()
+      });
+    } else if (cue.kind === 'blank') {
+      await live.clear(RELAY, { targets: body.targets });
+    } else {
+      const payload = await resolvePlanPayload(cue, body.targets);
+      if (payload) {
+        const result = await live.show(RELAY, {
+          targets: payload.targets, kind: payload.kind, payload: payload.payload, origin: 'plan'
+        });
+        delivered = result.delivered;
+      }
+    }
+    await savePlanPosition(id, index);
+    RELAY?.broadcast('op_project', { t: 'plan:position', eventId: id, index, ts: Date.now() });
+    return sendJSON(res, 200, {
+      index,
+      note,
+      delivered,
+      view: planView(cues, index),
+      total: cues.length,
+      message: note ? `TXT: ${cue.label}` : null
+    });
+  }
+
+  if (method === 'POST' && segments[2] === 'plan' && segments[3] === 'reset') {
+    await savePlanPosition(id, 0);
+    return sendJSON(res, 200, { eventId: id, index: 0 });
+  }
+
   if (method === 'GET' && segments[2] === 'history.csv') {
     const event = await get('events', id);
     if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
@@ -1041,6 +1171,105 @@ async function handleEvents(req, res, url, segments, method) {
     return sendJSON(res, 200, { id, removed: true, cues });
   }
   throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+}
+
+
+/** Traduit une étape en message diffusé (EF-23, § 14.4.1). */
+async function resolvePlanPayload(cue, targets) {
+  const wanted = Array.isArray(cue.payload?.outputs) && cue.payload.outputs.length
+    ? cue.payload.outputs.map(String)
+    : targets;
+  const pick = async (kind) => {
+    const outputs = await readOutputs();
+    const eligible = outputs.outputs.filter((output) => output.enabled !== false && output.receives?.[kind]);
+    const chosen = wanted && wanted.length
+      ? eligible.filter((output) => wanted.includes(output.id))
+      : eligible;
+    return chosen.map((output) => output.id);
+  };
+
+  if (cue.kind === 'bible') {
+    const range = refToRange(cue.payload?.ref);
+    if (!range) return null;
+    const bible = await resolveBible(cue.payload?.bibleId, PROJECT);
+    if (!bible) return null;
+    const selection = await buildBibleSelection({
+      bible, bookNum: range.bookNum, chapter: range.chapter, first: range.first, last: range.last
+    });
+    const item = selection.items[0];
+    if (!item) return null;
+    return {
+      kind: 'bible',
+      targets: await pick('bible'),
+      payload: {
+        reference: selection.label,
+        text: item.text,
+        badge: bible.abbreviation || bible.shortName || '',
+        partIndex: item.partIndex,
+        partCount: item.partCount,
+        verse: item.verse
+      }
+    };
+  }
+
+  if (cue.kind === 'song') {
+    const song = cue.payload?.songId ? await get('songs', cue.payload.songId) : null;
+    if (!song) return null;
+    const selection = buildSongSelection(song, { arrangementId: cue.payload?.arrangementId || null });
+    const item = selection.items.find((entry) => entry.text);
+    if (!item) return null;
+    return {
+      kind: 'songs',
+      targets: await pick('songs'),
+      payload: { reference: song.title, text: item.text, badge: arrangementLabel(song, selection), sectionId: item.sectionId }
+    };
+  }
+
+  if (cue.kind === 'announcement') {
+    const announcement = cue.payload?.announcementId ? await get('announcements', cue.payload.announcementId) : null;
+    if (!announcement) return null;
+    return {
+      kind: 'announcements',
+      targets: await pick('announcements'),
+      payload: { title: announcement.title, text: announcement.body || announcement.text || '' }
+    };
+  }
+
+  if (cue.kind === 'media') {
+    const asset = cue.payload?.assetId ? await findAsset(cue.payload.assetId) : null;
+    return {
+      kind: 'media',
+      targets: await pick('media'),
+      payload: {
+        assetId: cue.payload?.assetId || null,
+        mediaName: asset?.name || cue.label,
+        mediaKind: asset?.kind || null
+      }
+    };
+  }
+
+  if (cue.kind === 'lowerthird') {
+    return {
+      kind: 'lowerthird',
+      targets: await pick('lowerthird'),
+      payload: { title: cue.payload?.title || cue.label, text: cue.payload?.text || '' }
+    };
+  }
+
+  if (cue.kind === 'timer') {
+    return {
+      kind: 'timer',
+      targets: await pick('timer'),
+      payload: { action: cue.payload?.action || 'start', minutes: cue.payload?.minutes || null, label: cue.label }
+    };
+  }
+
+  return null;
+}
+
+function arrangementLabel(song, selection) {
+  const arrangements = song.arrangements || [];
+  return arrangements.find((entry) => entry.id === selection.arrangementId)?.name || '';
 }
 
 // ---------------------------------------------------------------------------

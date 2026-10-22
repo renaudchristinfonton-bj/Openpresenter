@@ -487,7 +487,7 @@ async function handleApi(req, res, url, pathname) {
           id: look.id,
           name: look.name,
           description: look.description || '',
-          kinds: Object.keys(look.scenes || {}).map((key) => key.split(':')[0])
+          kinds: [...new Set(Object.keys(look.scenes || {}).map((key) => key.split(':')[0]))]
         }))
       });
     }

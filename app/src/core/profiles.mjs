@@ -438,9 +438,15 @@ export async function applyProfile(id, { force = false, onAir = false } = {}) {
         copiedScenes.push(copy.id);
         // La variante « bandeau » va aux sorties en bandeau, la variante pleine
         // largeur aux autres : une sortie ne reçoit jamais la scène de l'autre format.
-        const targets = next.outputs.filter((outputEntry) => mentioned.has(outputEntry.id)
-          && outputEntry.receives?.[kind]
-          && (variant === 'bottom' ? outputEntry.preset === 'bottom' : outputEntry.preset !== 'bottom'));
+        const candidates = next.outputs.filter((outputEntry) => mentioned.has(outputEntry.id)
+          && outputEntry.receives?.[kind]);
+        const exact = candidates.filter((outputEntry) =>
+          (variant === 'bottom' ? outputEntry.preset === 'bottom' : outputEntry.preset !== 'bottom'));
+        // Repli : un type sans variante adaptée (ex. chant sur un bandeau) reçoit la
+        // scène du look plutôt que de garder une scène d'un autre profil.
+        const targets = exact.length
+          ? exact
+          : (variant === 'bottom' ? [] : candidates.filter((outputEntry) => !outputEntry.scenesByKind?.[kind]));
         for (const outputEntry of targets) {
           outputEntry.scenesByKind = { ...(outputEntry.scenesByKind || {}), [kind]: copy.id };
         }

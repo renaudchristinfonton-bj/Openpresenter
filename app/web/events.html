@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — Organisations et événements</title>
+<style>
+  :root{
+    --bg:#07080d; --bg2:#0d1017; --bg3:#121722; --line:#1c2230; --line2:#28303f;
+    --txt:#e8eaf0; --txt2:#a3abbd; --txt3:#6e7789;
+    --accent:#f5b942; --ok:#34d399; --err:#ef5360;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{background:var(--bg);color:var(--txt);font:13px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;border-bottom:1px solid var(--line);background:var(--bg2)}
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#e08a12);display:grid;place-items:center;font-weight:800;color:#1a1206;font-size:12px}
+  .title{font-weight:700;font-size:13.5px}
+  .title small{display:block;font-weight:400;font-size:10.5px;color:var(--txt3)}
+  .spacer{flex:1}
+  a.btn,.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:7px;border:1px solid var(--line2);
+    background:var(--bg3);color:var(--txt);font:650 12px/1 "Inter",system-ui,sans-serif;cursor:pointer;text-decoration:none}
+  a.btn:hover,.btn:hover{background:#1e2331}
+  .btn.sm{padding:4px 8px;font-size:10.5px;font-weight:600}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#17110a;font-weight:800}
+  .btn.danger{background:#2a1014;border-color:#ef536055;color:#ff9aa2}
+  .btn:disabled{opacity:.45;cursor:default}
+
+  main{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1.35fr);gap:16px;padding:16px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  section.col{border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  h2{margin:0;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3);display:flex;align-items:center;gap:8px}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .card{border:1px solid var(--line);border-radius:8px;background:#0a0d14;padding:9px 11px;display:flex;flex-direction:column;gap:5px}
+  .card.sel{border-color:var(--accent)}
+  .card h3{margin:0;font-size:13px;display:flex;align-items:center;gap:7px}
+  .card .meta{font-family:var(--mono);font-size:11px;color:var(--txt2)}
+  .card .sub{font-size:11px;color:var(--txt3)}
+  .card .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .tag{padding:2px 7px;border-radius:999px;border:1px solid var(--line2);font-size:10px;color:var(--txt3)}
+  .tag.live{border-color:#ef536055;color:#ffb3b8;background:#ef53600f}
+
+  form{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:9px;grid-template-columns:1fr 1fr}
+  form[hidden]{display:none}
+  form h3{grid-column:1/-1;margin:0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3)}
+  label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--txt3)}
+  label.wide{grid-column:1/-1}
+  input,select,textarea{background:#07080d;border:1px solid var(--line2);color:var(--txt);border-radius:6px;padding:6px 8px;font:inherit;font-size:12px}
+  textarea{min-height:56px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  .form-acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+  .places{grid-column:1/-1;display:flex;flex-direction:column;gap:6px}
+  .place-row{display:grid;grid-template-columns:1fr 76px 1fr auto;gap:6px;align-items:center}
+  .days{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+  .days label{flex-direction:row;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:6px;padding:3px 7px;cursor:pointer}
+  .txt-msg{white-space:pre-wrap;font-family:var(--mono);font-size:11px}
+  .hint{font-size:11px;color:var(--txt3)}
+  .empty{font-size:12px;color:var(--txt3);padding:8px 0}
+  .toast{position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);
+    font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:380px;white-space:pre-wrap}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">OP</span>
+  <div class="title">Organisations et événements <small id="subtitle">chargement…</small></div>
+  <span class="spacer"></span>
+  <a class="btn" href="/">← Accueil</a>
+  <a class="btn" href="/studio.html">Studio</a>
+</header>
+
+<main>
+  <section class="col" aria-label="Organisations">
+    <h2>Organisations <span class="spacer"></span><button class="btn sm" id="newOrg">＋ Nouvelle</button></h2>
+    <div class="list" id="orgList"><div class="empty">Aucune organisation. Un événement peut exister sans organisation.</div></div>
+    <form id="orgForm" hidden>
+      <h3 id="orgFormTitle">Nouvelle organisation</h3>
+      <label class="wide">Nom<input id="orgName" type="text" maxlength="120" required></label>
+      <label>Type
+        <select id="orgKind">
+          <option value="church">Église</option>
+          <option value="association">Association</option>
+          <option value="school">École</option>
+          <option value="company">Entreprise</option>
+          <option value="other">Autre</option>
+        </select>
+      </label>
+      <label>Adresse<input id="orgAddress" type="text" maxlength="200"></label>
+      <label>Téléphone<input id="orgPhone" type="text" maxlength="40"></label>
+      <label>E-mail<input id="orgEmail" type="email" maxlength="120"></label>
+      <div class="places">
+        <span class="hint">Lieux — écrans séparés par des virgules</span>
+        <div id="placeRows"></div>
+        <button class="btn sm" type="button" id="addPlace">＋ Ajouter un lieu</button>
+      </div>
+      <div class="form-acts">
+        <button class="btn" type="button" id="orgCancel">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="col" aria-label="Événements">
+    <h2>Événements <span class="spacer"></span><button class="btn sm" id="newEvent">＋ Nouvel événement</button></h2>
+    <div class="list" id="eventList"><div class="empty">Aucun événement.</div></div>
+    <form id="eventForm" hidden>
+      <h3 id="eventFormTitle">Nouvel événement</h3>
+      <label class="wide">Nom<input id="evName" type="text" maxlength="120" required></label>
+      <label>Début<input id="evStart" type="datetime-local" required></label>
+      <label>Fin<input id="evEnd" type="datetime-local"></label>
+      <label>Organisation<select id="evOrg"><option value="">— aucune —</option></select></label>
+      <label>Lieu<select id="evPlace"><option value="">— aucun —</option></select></label>
+      <label>Profil<select id="evProfile"><option value="">— profil actif —</option></select></label>
+      <label>Couleur<input id="evColor" type="color" value="#f5b942"></label>
+      <label class="wide">Description<textarea id="evDescription" maxlength="600"></textarea></label>
+      <label>Récurrence
+        <select id="evFreq">
+          <option value="">Aucune</option>
+          <option value="daily">Quotidienne</option>
+          <option value="weekly">Hebdomadaire</option>
+          <option value="monthly">Mensuelle</option>
+        </select>
+      </label>
+      <label>Jusqu'au<input id="evUntil" type="date"></label>
+      <div class="days" id="evDays" hidden>
+        <label><input type="checkbox" value="MO"> lun</label>
+        <label><input type="checkbox" value="TU"> mar</label>
+        <label><input type="checkbox" value="WE"> mer</label>
+        <label><input type="checkbox" value="TH"> jeu</label>
+        <label><input type="checkbox" value="FR"> ven</label>
+        <label><input type="checkbox" value="SA"> sam</label>
+        <label><input type="checkbox" value="SU"> dim</label>
+      </div>
+      <div class="form-acts">
+        <button class="btn" type="button" id="eventCancel">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (selector) => document.querySelector(selector);
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const token = new URLSearchParams(location.search).get('t') || '';
+const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : '');
+
+let orgs = [];
+let events = { today: [], upcoming: [], past: [] };
+let profiles = [];
+let editingOrg = null;
+let editingEvent = null;
+
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = `toast show ${kind}`;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.className = 'toast'; }, 3200);
+}
+
+async function api(url, options = {}) {
+  const res = await fetch(withToken(url), {
+    cache: 'no-store',
+    headers: options.body ? { 'content-type': 'application/json' } : undefined,
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+const fmtDate = (iso) => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+};
+const fmtTime = (iso) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+};
+const fmtDuration = (seconds) => {
+  if (!seconds) return '—';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  return `${hours ? hours + ' h ' : ''}${minutes} min`;
+};
+
+// ---------------------------------------------------------------------------
+// Organisations (EF-21)
+// ---------------------------------------------------------------------------
+function paintOrgs() {
+  const list = $('#orgList');
+  if (!orgs.length) {
+    list.innerHTML = '<div class="empty">Aucune organisation. Un événement peut exister sans organisation.</div>';
+  } else {
+    list.innerHTML = orgs.map((org) => `
+      <div class="card ${editingOrg?.id === org.id ? 'sel' : ''}" data-id="${esc(org.id)}">
+        <h3>${esc(org.name)} <span class="tag">${esc(orgKindLabel(org.kind))}</span></h3>
+        <div class="sub">${esc(org.contact?.address || '—')}</div>
+        <div class="meta">${(org.places || []).length} lieu(x)${(org.places || []).length
+          ? ' · ' + org.places.map((place) => esc(`${place.name}${place.screens?.length ? ' (' + place.screens.join(', ') + ')' : ''}`)).join(' · ')
+          : ''}</div>
+        <div class="acts">
+          <button class="btn sm" data-act="edit">Modifier</button>
+          <button class="btn sm danger" data-act="delete">Supprimer</button>
+        </div>
+      </div>`).join('');
+  }
+  for (const card of list.querySelectorAll('.card')) {
+    const id = card.dataset.id;
+    card.addEventListener('click', async (event) => {
+      const act = event.target.closest('[data-act]')?.dataset.act;
+      const org = orgs.find((entry) => entry.id === id);
+      if (!act || !org) return;
+      if (act === 'edit') openOrgForm(org);
+      if (act === 'delete') await deleteOrg(org);
+    });
+  }
+  // Les sélecteurs d'événement suivent la liste.
+  const select = $('#evOrg');
+  select.innerHTML = '<option value="">— aucune —</option>'
+    + orgs.map((org) => `<option value="${esc(org.id)}">${esc(org.name)}</option>`).join('');
+  paintPlacesForOrg($('#evOrg').value, editingEvent?.placeId);
+}
+
+function orgKindLabel(kind) {
+  return ({ church: 'Église', association: 'Association', school: 'École', company: 'Entreprise', other: 'Autre' })[kind] || kind;
+}
+
+function placeRow(place = {}) {
+  const row = document.createElement('div');
+  row.className = 'place-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Nom du lieu" maxlength="80" value="${esc(place.name || '')}" data-field="name">
+    <input type="number" min="0" placeholder="Places" value="${place.capacity ?? ''}" data-field="capacity">
+    <input type="text" placeholder="Écrans (virgules)" value="${esc((place.screens || []).join(', '))}" data-field="screens">
+    <button class="btn sm danger" type="button" aria-label="Retirer ce lieu">✕</button>`;
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  return row;
+}
+
+function openOrgForm(org = null) {
+  editingOrg = org;
+  $('#orgForm').hidden = false;
+  $('#orgFormTitle').textContent = org ? 'Modifier l’organisation' : 'Nouvelle organisation';
+  $('#orgName').value = org?.name || '';
+  $('#orgKind').value = org?.kind || 'church';
+  $('#orgAddress').value = org?.contact?.address || '';
+  $('#orgPhone').value = org?.contact?.phone || '';
+  $('#orgEmail').value = org?.contact?.email || '';
+  $('#placeRows').innerHTML = '';
+  for (const place of org?.places || []) $('#placeRows').append(placeRow(place));
+  if (!org?.places?.length) $('#placeRows').append(placeRow());
+  paintOrgs();
+  $('#orgName').focus();
+}
+
+async function saveOrg(event) {
+  event.preventDefault();
+  const places = [...$('#placeRows').querySelectorAll('.place-row')].map((row) => {
+    const name = row.querySelector('[data-field="name"]').value.trim();
+    const capacity = row.querySelector('[data-field="capacity"]').value;
+    const screens = row.querySelector('[data-field="screens"]').value.split(',').map((s) => s.trim()).filter(Boolean);
+    return name ? { name, capacity: capacity ? Number(capacity) : null, screens } : null;
+  }).filter(Boolean);
+  const body = {
+    name: $('#orgName').value,
+    kind: $('#orgKind').value,
+    contact: { address: $('#orgAddress').value, phone: $('#orgPhone').value, email: $('#orgEmail').value },
+    places: places.map((place, index) => ({ ...place, ...(editingOrg?.places?.[index]?.id ? { id: editingOrg.places[index].id } : {}) }))
+  };
+  const { res, data } = editingOrg
+    ? await api(`/api/orgs/${editingOrg.id}`, { method: 'PUT', body })
+    : await api('/api/orgs', { method: 'POST', body });
+  if (!res.ok) { toast(data?.error?.message || 'Enregistrement refusé.', 'err'); return; }
+  editingOrg = null;
+  $('#orgForm').hidden = true;
+  toast(`Organisation « ${data.name} » enregistrée.`);
+  await load();
+}
+
+async function deleteOrg(org) {
+  if (!confirm(`Supprimer « ${org.name} » ?\nLes événements liés restent, sans organisation.`)) return;
+  const { res, data } = await api(`/api/orgs/${org.id}`, { method: 'DELETE' });
+  if (!res.ok) { toast(data?.error?.message || 'Suppression refusée.', 'err'); return; }
+  toast(`Organisation supprimée${data.detachedEvents ? ` · ${data.detachedEvents} événement(s) détaché(s)` : ''}.`);
+  await load();
+}
+
+// ---------------------------------------------------------------------------
+// Événements (EF-22)
+// ---------------------------------------------------------------------------
+function paintEvents() {
+  const list = $('#eventList');
+  const groups = [];
+  if (events.today.length) groups.push(['Aujourd’hui', events.today]);
+  if (events.upcoming.length) groups.push(['À venir', events.upcoming]);
+  if (events.past.length) groups.push(['Passés', events.past]);
+  if (!groups.length) {
+    list.innerHTML = '<div class="empty">Aucun événement. Créez-en un pour préparer un déroulé.</div>';
+    return;
+  }
+  list.innerHTML = groups.map(([label, items]) => `
+    <h2 style="margin-top:6px">${label}</h2>
+    ${items.map((event) => `
+      <div class="card" data-id="${esc(event.id)}">
+        <h3><span class="dot" style="background:${esc(event.color)}"></span>${esc(event.name)}
+          ${event.status === 'live' ? '<span class="tag live">en cours</span>' : ''}
+          ${event.status === 'past' ? '<span class="tag">passé</span>' : ''}</h3>
+        <div class="meta">${fmtDate(event.startsAt)} · ${fmtTime(event.startsAt)} – ${fmtTime(event.endsAt)} ·
+          ${event.cues} étape(s) · ${fmtDuration(event.durationSec)}</div>
+        <div class="sub">${esc(profileName(event.profileId))}${event.recurrence ? ' · récurrent' : ''}</div>
+        <div class="acts">
+          <button class="btn sm primary" data-act="open">Ouvrir</button>
+          <button class="btn sm" data-act="edit">Modifier</button>
+          <button class="btn sm" data-act="duplicate">Dupliquer</button>
+          ${event.recurrence ? '<button class="btn sm" data-act="occurrences">Générer 4 dates</button>' : ''}
+          ${event.history?.length ? `<button class="btn sm" data-act="csv">Historique CSV</button>` : ''}
+          <button class="btn sm danger" data-act="delete">Supprimer</button>
+        </div>
+      </div>`).join('')}`).join('');
+  for (const card of list.querySelectorAll('.card')) {
+    const id = card.dataset.id;
+    card.addEventListener('click', async (pattern) => {
+      const act = pattern.target.closest('[data-act]')?.dataset.act;
+      if (!act) return;
+      const event = [...events.today, ...events.upcoming, ...events.past].find((entry) => entry.id === id);
+      if (!event) return;
+      if (act === 'open') await openEvent(event);
+      if (act === 'edit') openEventForm(event);
+      if (act === 'duplicate') await duplicateEvent(event);
+      if (act === 'occurrences') await generateOccurrences(event);
+      if (act === 'csv') location.href = withToken(`/api/events/${encodeURIComponent(id)}/history.csv`);
+      if (act === 'delete') await deleteEvent(event);
+    });
+  }
+}
+
+function profileName(id) {
+  if (!id) return 'profil actif';
+  return profiles.find((profile) => profile.id === id)?.name || id;
+}
+
+function toLocalInput(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function paintPlacesForOrg(orgId, selected) {
+  const org = orgs.find((entry) => entry.id === orgId);
+  const select = $('#evPlace');
+  select.innerHTML = '<option value="">— aucun —</option>'
+    + (org?.places || []).map((place) => `<option value="${esc(place.id)}"${place.id === selected ? ' selected' : ''}>${esc(place.name)}</option>`).join('');
+}
+
+function openEventForm(event = null) {
+  editingEvent = event;
+  $('#eventForm').hidden = false;
+  $('#eventFormTitle').textContent = event ? 'Modifier l’événement' : 'Nouvel événement';
+  $('#evName').value = event?.name || '';
+  $('#evStart').value = toLocalInput(event?.startsAt || new Date().toISOString());
+  $('#evEnd').value = toLocalInput(event?.endsAt || new Date(Date.now() + 90 * 60_000).toISOString());
+  $('#evOrg').value = event?.orgId || '';
+  paintPlacesForOrg(event?.orgId || '', event?.placeId);
+  $('#evProfile').value = event?.profileId || '';
+  $('#evColor').value = event?.color || '#f5b942';
+  $('#evDescription').value = event?.description || '';
+  $('#evFreq').value = event?.recurrence?.freq || '';
+  $('#evDays').hidden = ($('#evFreq').value !== 'weekly');
+  $('#evUntil').value = event?.recurrence?.until ? toLocalInput(event.recurrence.until).slice(0, 10) : '';
+  for (const box of $('#evDays').querySelectorAll('input')) {
+    box.checked = Boolean(event?.recurrence?.byDay?.includes(box.value));
+  }
+  $('#evName').focus();
+}
+
+async function saveEvent(submitEvent) {
+  submitEvent.preventDefault();
+  const freq = $('#evFreq').value;
+  const body = {
+    name: $('#evName').value,
+    startsAt: new Date($('#evStart').value).toISOString(),
+    endsAt: $('#evEnd').value ? new Date($('#evEnd').value).toISOString() : null,
+    orgId: $('#evOrg').value || null,
+    placeId: $('#evPlace').value || null,
+    profileId: $('#evProfile').value || null,
+    color: $('#evColor').value,
+    description: $('#evDescription').value,
+    recurrence: freq ? {
+      freq,
+      byDay: [...$('#evDays').querySelectorAll('input:checked')].map((box) => box.value),
+      until: $('#evUntil').value ? new Date(`${$('#evUntil').value}T23:59:00`).toISOString() : null
+    } : null
+  };
+  const url = editingEvent ? `/api/events/${editingEvent.id}` : '/api/events';
+  const { res, data } = await api(url, { method: editingEvent ? 'PUT' : 'POST', body: { ...body, force: true } });
+  if (!res.ok) { toast(data?.error?.message || 'Enregistrement refusé.', 'err'); return; }
+  editingEvent = null;
+  $('#eventForm').hidden = true;
+  toast(`Événement « ${data.name} » enregistré.`);
+  await load();
+}
+
+async function openEvent(event) {
+  const { res, data } = await api(`/api/events/${event.id}/open`, { method: 'POST' });
+  if (!res.ok) { toast(data?.error?.message || 'Ouverture refusée.', 'err'); return; }
+  if (data.needsProfile) {
+    const apply = confirm(`Cet événement utilise le profil « ${profileName(event.profileId)} ».\nL'appliquer maintenant ?`);
+    if (apply) {
+      await api(`/api/profiles/${encodeURIComponent(event.profileId)}/apply`, { method: 'POST', body: { force: true } });
+    }
+  }
+  location.href = '/studio.html';
+}
+
+async function duplicateEvent(event) {
+  const { res, data } = await api(`/api/events/${event.id}/duplicate`, { method: 'POST' });
+  if (!res.ok) { toast(data?.error?.message || 'Duplication refusée.', 'err'); return; }
+  toast(`« ${data.name} » créé.`);
+  await load();
+}
+
+async function generateOccurrences(event) {
+  const { res, data } = await api(`/api/events/${event.id}/occurrences`, { method: 'POST', body: { count: 4 } });
+  if (!res.ok) { toast(data?.error?.message || 'Génération refusée.', 'err'); return; }
+  toast(`${data.created.length} date(s) ajoutée(s).`);
+  await load();
+}
+
+async function deleteEvent(event) {
+  const first = await api(`/api/events/${event.id}`, { method: 'DELETE' });
+  if (first.res.status === 409) {
+    const message = first.data?.error?.message?.replace(/^TXT:\s*/, '') || 'Supprimer cet événement ?';
+    if (!confirm(message)) return;
+    const second = await api(`/api/events/${event.id}`, { method: 'DELETE', body: { confirm: true } });
+    if (!second.res.ok) { toast(second.data?.error?.message || 'Suppression refusée.', 'err'); return; }
+    toast('Événement supprimé.');
+    await load();
+    return;
+  }
+  if (!first.res.ok) { toast(first.data?.error?.message || 'Suppression refusée.', 'err'); return; }
+  await load();
+}
+
+// ---------------------------------------------------------------------------
+// Chargement
+// ---------------------------------------------------------------------------
+async function load() {
+  const [orgData, eventData, profileData, project] = await Promise.all([
+    api('/api/orgs').then(({ data }) => data).catch(() => ({ items: [] })),
+    api('/api/events').then(({ data }) => data).catch(() => ({ today: [], upcoming: [], past: [] })),
+    api('/api/profiles').then(({ data }) => data).catch(() => ({ profiles: [] })),
+    api('/api/project').then(({ data }) => data).catch(() => ({}))
+  ]);
+  orgs = orgData.items || [];
+  events = { today: eventData.today || [], upcoming: eventData.upcoming || [], past: eventData.past || [] };
+  profiles = profileData.profiles || [];
+  $('#subtitle').textContent = `${project.name || 'projet'} · ${orgs.length} organisation(s) · `
+    + `${events.today.length + events.upcoming.length + events.past.length} événement(s)`;
+  $('#evProfile').innerHTML = '<option value="">— aucun —</option>'
+    + profiles.map((profile) => `<option value="${esc(profile.id)}">${esc(profile.name)}</option>`).join('');
+  paintOrgs();
+  paintEvents();
+}
+
+$('#newOrg').addEventListener('click', () => openOrgForm(null));
+$('#orgCancel').addEventListener('click', () => { editingOrg = null; $('#orgForm').hidden = true; paintOrgs(); });
+$('#orgForm').addEventListener('submit', saveOrg);
+$('#addPlace').addEventListener('click', () => $('#placeRows').append(placeRow()));
+
+$('#newEvent').addEventListener('click', () => openEventForm(null));
+$('#eventCancel').addEventListener('click', () => { editingEvent = null; $('#eventForm').hidden = true; });
+$('#eventForm').addEventListener('submit', saveEvent);
+$('#evOrg').addEventListener('change', () => paintPlacesForOrg($('#evOrg').value));
+$('#evFreq').addEventListener('change', () => { $('#evDays').hidden = $('#evFreq').value !== 'weekly'; });
+
+(async () => {
+  try {
+    await load();
+  } catch {
+    toast('Serveur injoignable — relancez OpenPresenter.', 'err');
+  }
+})();
+</script>
+</body>
+</html>

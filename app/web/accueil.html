@@ -244,6 +244,7 @@
   <button class="studio" id="openStudio">🎬 Ouvrir le Studio Unifié</button>
   <div class="alt-links">
     <a href="/scene.html">Éditeur de scènes</a>
+    <a href="/events.html">Événements et organisations</a>
     <a href="/o/out_full?kind=bible" target="_blank" rel="noopener">Sortie plein écran</a>
     <a href="/socle.html">Diagnostic du socle</a>
     <a href="/api/export" download>Exporter le projet</a>
@@ -254,6 +255,11 @@
   <div class="box">
     <h2>Bibliothèque en bref</h2>
     <div class="counts" id="counts">…</div>
+  </div>
+  <div class="box">
+    <h2>Aujourd’hui</h2>
+    <div class="counts" id="todayEvents">…</div>
+    <a href="/events.html">📅 Organisations et événements</a>
   </div>
   <div class="box">
     <h2>Projet</h2>
@@ -330,6 +336,10 @@ async function load() {
     $('#lan').after(tag);
   }
 
+  const agenda = await fetch(withToken('/api/events'), { cache: 'no-store' })
+    .then((r) => r.json()).catch(() => ({ today: [], upcoming: [] }));
+  paintAgenda(agenda);
+
   outputs = (outs.outputs || []).filter((output) => output.enabled !== false);
   channels = live.channels || {};
   paintCards();
@@ -337,6 +347,25 @@ async function load() {
   await loadScenes();
   paintPreviews();
   loadCounts();
+}
+
+/** Événement du jour et prochain rendez-vous (EF-22.5). */
+function paintAgenda(agenda) {
+  const box = $('#todayEvents');
+  if (!box) return;
+  const today = agenda.today || [];
+  const next = (agenda.upcoming || [])[0];
+  const time = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (today.length) {
+    box.innerHTML = today.map((event) => `<span>📅 <b>${esc(event.name)}</b> · ${time(event.startsAt)}${
+      event.cues ? ` · ${event.cues} étape(s)` : ''}</span>`).join('');
+  } else if (next) {
+    box.innerHTML = `<span>Prochain : <b>${esc(next.name)}</b> · ${
+      new Date(next.startsAt).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })
+    } ${time(next.startsAt)}</span>`;
+  } else {
+    box.innerHTML = '<span class="tag">aucun événement prévu</span>';
+  }
 }
 
 async function sceneFor(outputId, kind) {

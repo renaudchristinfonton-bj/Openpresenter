@@ -44,6 +44,11 @@ import {
 import { parseReference, parseVerseRange, MESSAGES } from './src/core/bible/reference.mjs';
 import { previewBible, importBibleXml, removeBible, renameBible } from './src/core/bible/importer.mjs';
 import {
+  normalizeOrg, removeOrg } from './src/core/events.mjs';
+import {
+  normalizeEvent, duplicateEvent, materializeOccurrences, appendHistory,
+  historyCsv, eventOverview, openEvent } from './src/core/events.mjs';
+import {
   listProfiles, getProfile, saveProfile, applyProfile, captureProfile,
   duplicateProfile, removeProfile, exportProfile, importProfile, toSummary,
   allLooks, getLook
@@ -464,6 +469,10 @@ async function handleApi(req, res, url, pathname) {
   // --- profils (EF-20) ---------------------------------------------------
   if (segments[0] === 'profiles') return handleProfiles(req, res, url, segments, method);
 
+  // --- organisations et événements (EF-21, EF-22) ------------------------
+  if (segments[0] === 'orgs') return handleOrgs(req, res, segments, method);
+  if (segments[0] === 'events') return handleEvents(req, res, url, segments, method);
+
   // --- catalogue des looks (livrés + projet) ------------------------------
   // `GET /api/library/looks` reste la liste des looks **enregistrés** ; cette route
   // ajoute les looks livrés, qui peuvent être appliqués sans être copiés sur disque.
@@ -527,6 +536,16 @@ async function handleApi(req, res, url, pathname) {
         targets, kind: body.kind, payload: body.payload || {}, origin: body.origin || 'studio'
       });
       await log('info', 'live.show', `${body.kind} diffusé`, { delivered: result.delivered.length, refused: result.refused.length });
+      // EF-22.6 : si un événement est ouvert, chaque diffusion entre dans son historique.
+      const activeEventId = PROJECT?.settings?.activeEventId;
+      if (activeEventId && body.origin !== 'plan-preview') {
+        const payload = body.payload || {};
+        await appendHistory(activeEventId, {
+          label: String(payload.reference || payload.title || payload.label || body.kind).slice(0, 160),
+          kind: body.kind,
+          outputs: result.delivered
+        }).catch(() => {});
+      }
       return sendJSON(res, 200, result);
     }
     if (segments[1] === 'clear' && method === 'POST') {
@@ -877,6 +896,154 @@ async function handleResources(req, res, segments, method) {
 }
 
 // ---------------------------------------------------------------------------
+// Organisations et lieux (EF-21)
+// ---------------------------------------------------------------------------
+
+async function handleOrgs(req, res, segments, method) {
+  const id = segments[1];
+
+  if (method === 'GET' && !id) {
+    return sendJSON(res, 200, { items: await list('orgs') });
+  }
+  if (method === 'POST' && !id) {
+    const body = await readJsonBody(req);
+    const org = normalizeOrg(body);
+    const saved = await put('orgs', org.id, org);
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `orgs/${saved.id}`, rev: saved.rev, ts: Date.now() });
+    return sendJSON(res, 201, saved);
+  }
+  if (!id) throw Object.assign(new Error('Identifiant manquant.'), { code: 'VALIDATION', path: 'id' });
+
+  if (method === 'GET') {
+    const org = await get('orgs', id);
+    if (!org) throw Object.assign(new Error("Cette organisation n'existe plus."), { code: 'NOT_FOUND' });
+    const events = (await list('events')).filter((event) => event.orgId === id);
+    return sendJSON(res, 200, { ...org, events: events.map((event) => ({ id: event.id, name: event.name, startsAt: event.startsAt })) });
+  }
+  if (method === 'PUT' || method === 'POST') {
+    const body = await readJsonBody(req);
+    const existing = await get('orgs', id);
+    const org = normalizeOrg({ ...(existing || {}), ...body, id });
+    const saved = await put('orgs', id, org);
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `orgs/${id}`, rev: saved.rev, ts: Date.now() });
+    return sendJSON(res, 200, saved);
+  }
+  if (method === 'DELETE') {
+    const result = await removeOrg(id);
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `orgs/${id}`, rev: 0, removed: true, ts: Date.now() });
+    return sendJSON(res, 200, result);
+  }
+  throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+}
+
+// ---------------------------------------------------------------------------
+// Événements (EF-22)
+// ---------------------------------------------------------------------------
+
+async function handleEvents(req, res, url, segments, method) {
+  const id = segments[1];
+
+  if (method === 'GET' && !id) {
+    return sendJSON(res, 200, await eventOverview());
+  }
+  if (method === 'POST' && !id) {
+    const body = await readJsonBody(req);
+    const event = normalizeEvent({ ...body, id: null });
+    const saved = await put('events', event.id, event);
+    await log('info', 'event.create', `événement « ${event.name} » créé`, { id: event.id });
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `events/${event.id}`, rev: 1, ts: Date.now() });
+    return sendJSON(res, 201, saved);
+  }
+  if (!id) throw Object.assign(new Error('Identifiant manquant.'), { code: 'VALIDATION', path: 'id' });
+
+  if (method === 'GET' && segments[2] === 'history.csv') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    res.writeHead(200, {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="historique-${id}.csv"`,
+      'cache-control': 'no-store'
+    });
+    return res.end(historyCsv(event));
+  }
+
+  if (method === 'GET') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    return sendJSON(res, 200, event);
+  }
+
+  if (method === 'POST' && segments[2] === 'open') {
+    const result = await openEvent(id);
+    // Le serveur garde le projet en mémoire : il doit voir l'événement ouvert,
+    // sinon les diffusions suivantes ne seraient pas journalisées (EF-22.6).
+    PROJECT = await readProject();
+    return sendJSON(res, 200, result);
+  }
+
+  if (method === 'POST' && segments[2] === 'duplicate') {
+    const body = await readJsonBody(req);
+    const copy = await duplicateEvent(id, { startsAt: body.startsAt });
+    return sendJSON(res, 201, copy);
+  }
+
+  if (method === 'POST' && segments[2] === 'occurrences') {
+    const body = await readJsonBody(req);
+    const result = await materializeOccurrences(id, { count: Math.min(24, Number(body.count) || 4) });
+    return sendJSON(res, 201, result);
+  }
+
+  if (method === 'POST' && segments[2] === 'history') {
+    const body = await readJsonBody(req);
+    return sendJSON(res, 201, await appendHistory(id, body));
+  }
+
+  if (method === 'PUT' || method === 'POST') {
+    const body = await readJsonBody(req);
+    const existing = await get('events', id);
+    if (!existing) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    // EF-22.8 : un événement passé est en lecture seule, sauf « Modifier quand même ».
+    if (eventOverview && new Date(existing.endsAt) < new Date() && body.force !== true
+      && !['duplicate', 'occurrences', 'history', 'open'].includes(segments[2])) {
+      return sendJSON(res, 409, {
+        error: {
+          code: 'PAST_EVENT',
+          message: "TXT: Cet événement est passé.\n\n"
+            + '     Il est en lecture seule pour protéger son historique.\n'
+            + '     Utilisez « Modifier quand même » pour le corriger.'
+        },
+        readOnly: true,
+        event: existing
+      });
+    }
+    const merged = normalizeEvent({ ...structuredClone(existing), ...body, id, force: undefined });
+    const saved = await put('events', id, merged);
+    RELAY?.broadcast('op_project', { t: 'project:changed', resource: `events/${id}`, rev: saved.rev, ts: Date.now() });
+    return sendJSON(res, 200, saved);
+  }
+
+  if (method === 'DELETE') {
+    const event = await get('events', id);
+    if (!event) throw Object.assign(new Error("Cet événement n'existe plus."), { code: 'NOT_FOUND' });
+    const body = await readJsonBody(req).catch(() => ({}));
+    const cues = event.plan?.cues?.length || 0;
+    if (body.confirm !== true) {
+      return sendJSON(res, 409, {
+        error: {
+          code: 'DELETE_CONFIRM',
+          message: `TXT: Supprimer « ${event.name} » ?\n\n     Cet événement contient ${cues} étape(s) de plan.\n     Son historique de diffusion sera également supprimé.\n\n     [Supprimer]      [Annuler]`
+        },
+        requiresConfirmation: true,
+        cues
+      });
+    }
+    await remove('events', id);
+    return sendJSON(res, 200, { id, removed: true, cues });
+  }
+  throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+}
+
+// ---------------------------------------------------------------------------
 // Profils (EF-20)
 // ---------------------------------------------------------------------------
 
@@ -953,6 +1120,7 @@ async function handleProfiles(req, res, url, segments, method) {
     const body = await readJsonBody(req);
     const onAir = Object.keys(live.snapshot() || {}).length > 0;
     const report = await applyProfile(id, { force: body.force === true, onAir });
+    PROJECT = await readProject();
     await log('info', 'profile.apply', `profil « ${report.profile.name} » appliqué`, {
       created: report.outputs.created, updated: report.outputs.updated, disabled: report.outputs.disabled
     });

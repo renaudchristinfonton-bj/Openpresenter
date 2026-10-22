@@ -21,7 +21,7 @@ import {
 import {
   ensureProject, readProject, writeProject, patchSettings, checkFormat,
   acquireLock, releaseLock, heartbeatLock, cleanupTemps, readSessionState,
-  writeSessionState, backupNow, readLock
+  writeSessionState, backupNow, readLock, seedSampleSongs
 } from './src/core/project.mjs';
 import { readJson, writeJson, exists } from './src/core/json-store.mjs';
 import {
@@ -29,7 +29,7 @@ import {
   readOutputs, writeOutputs, readVerses, writeVerses
 } from './src/core/library.mjs';
 import {
-  importStream, readIndex, findAsset, kindPath,
+  importStream, importBuffer, readIndex, findAsset, kindPath,
   integrityReport, recountRefs, purgeOrphans
 } from './src/core/assets.mjs';
 import { buildExport, importArchive, saveExport } from './src/core/exporter.mjs';
@@ -43,6 +43,8 @@ import {
 } from './src/core/bible/service.mjs';
 import { parseReference, parseVerseRange, MESSAGES } from './src/core/bible/reference.mjs';
 import { BOOKS } from './src/core/books.mjs';
+import { parseSongText, importSummary } from './src/core/songs/parser.mjs';
+import { buildSongSelection } from './src/core/songs/arrangement.mjs';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -227,6 +229,7 @@ async function serveShared(req, res, rel) {
   const allowed = [
     'books.mjs', 'split.mjs', 'ids.mjs', 'scene.mjs', 'looks.mjs', 'history.mjs',
     'bible/reference.mjs', 'bible/navigation.mjs',
+    'songs/parser.mjs', 'songs/arrangement.mjs',
     'render/engine.mjs', 'render/content.mjs', 'render/autofit.mjs', 'render/contrast.mjs'
   ];
   const clean = path.relative(root, target).split(path.sep).join('/');
@@ -504,6 +507,81 @@ async function handleApi(req, res, url, pathname) {
     }
   }
 
+  // --- chants : analyse et import (EF-15.1 → EF-15.7) --------------------
+  if (segments[0] === 'songs') {
+    if (segments[1] === 'parse' && method === 'POST') {
+      // Aperçu **sans écriture** : l'opérateur valide avant d'importer.
+      const body = await readJsonBody(req);
+      const text = typeof body.text === 'string' ? body.text
+        : typeof body.content === 'string' ? body.content : '';
+      if (!text.trim()) {
+        throw Object.assign(new Error('Collez le texte du chant ou choisissez un fichier.'), { code: 'VALIDATION', path: 'text' });
+      }
+      if (text.length > 2_000_000) {
+        throw Object.assign(new Error('Ce chant dépasse la taille maximale autorisée.'), { code: 'TOO_LARGE' });
+      }
+      const song = parseSongText(text, { filename: body.filename || '' });
+      return sendJSON(res, 200, { song, summary: importSummary(song) });
+    }
+
+    // Deux chants d'exemple, à la demande (bouton « chants d'exemple »).
+    if (segments[1] === 'samples' && method === 'POST') {
+      await seedSampleSongs();
+      return sendJSON(res, 201, { items: await list('songs') });
+    }
+
+    if (segments[1] === 'import' && method === 'POST') {
+      const body = await readJsonBody(req);
+      const text = typeof body.text === 'string' ? body.text
+        : typeof body.content === 'string' ? body.content : '';
+      if (!text.trim()) {
+        throw Object.assign(new Error('Aucun contenu à importer.'), { code: 'VALIDATION', path: 'text' });
+      }
+      const parsed = parseSongText(text, { filename: body.filename || '' });
+      // EF-15.2 : le fichier d'origine est conservé dans `assets/songs/`.
+      let sourceAssetId = null;
+      if (body.keepSource !== false) {
+        try {
+          const { asset } = await importBuffer(Buffer.from(text, 'utf8'), {
+            name: body.filename || `${parsed.title || 'chant'}.txt`,
+            mime: 'text/plain',
+            kind: 'song'
+          });
+          sourceAssetId = asset?.assetId || null;
+        } catch {
+          // L'asset est un confort, jamais un blocage d'import.
+        }
+      }
+      const id = body.id && /^sng_[a-z0-9_]{2,40}$/.test(body.id) ? body.id : songId(parsed.title);
+      const song = {
+        ...parsed,
+        id,
+        rev: 1,
+        ...(sourceAssetId ? { sourceAssetId } : {})
+      };
+      const saved = await put('songs', id, song);
+      await log('info', 'songs.import', 'chant importé', { id, sections: song.sections.length, format: song.format });
+      RELAY?.broadcast('op_project', {
+        t: 'project:changed', resource: `library/songs/${id}`, rev: saved.rev, ts: Date.now()
+      });
+      return sendJSON(res, 201, { song: saved, summary: importSummary(saved) });
+    }
+
+    // `GET /api/songs/<id>/selection` : ce que le studio affiche et diffuse.
+    if (method === 'GET' && segments[1] && segments[2] === 'selection') {
+      const song = await get('songs', segments[1]);
+      if (!song) throw Object.assign(new Error("Ce chant n'existe plus."), { code: 'NOT_FOUND' });
+      const settings = splitSettings(url);
+      const selection = buildSongSelection(song, {
+        arrangementId: url.searchParams.get('arrangement') || null,
+        settings
+      });
+      selection.label = song.title;
+      selection.songId = song.id;
+      return sendJSON(res, 200, selection);
+    }
+  }
+
   // --- recherche ---------------------------------------------------------
   if (segments[0] === 'search' && method === 'GET') {
     return sendJSON(res, 200, await search(url.searchParams.get('q') || '', url.searchParams.get('kinds')));
@@ -711,6 +789,20 @@ const SPLIT_DEFAULTS = {
   splitMode: 'auto', splitBy: 'words', maxWordsPerScreen: 25,
   maxCharsPerScreen: 165, maxLinesPerScreen: 3, minWordsPerPart: 3, balanceParts: true
 };
+
+/** Identifiant de chant stable et lisible : `sng_grace_infinie_a1b2`. */
+function songId(title) {
+  const slug = slugify(title).slice(0, 24).replace(/_+$/, '') || 'chant';
+  return `sng_${slug}_${crypto.randomBytes(3).toString('hex')}`;
+}
+
+function slugify(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 
 function splitSettings(url) {
   const settings = { ...SPLIT_DEFAULTS };

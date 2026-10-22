@@ -116,6 +116,73 @@
   .out .ty{font-family:var(--mono);font-size:9px;color:var(--txt3)}
   .out.on{border-color:#f5b94266;background:#f5b94210}
 
+  /* Un module occupe tout le volet et garde ses zones défilantes. */
+  .module{display:flex;flex-direction:column;min-height:0;flex:1}
+  .module[hidden]{display:none}
+
+  /* Onglets de modules (EF-06.6 / maquette MAQ-03) */
+  .modes{display:flex;gap:4px;background:#05060a;border:1px solid var(--line2);border-radius:8px;padding:3px}
+  .mode{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:0;border-radius:6px;
+    background:transparent;color:var(--txt3);font:650 11.5px/1 "Inter",system-ui,sans-serif;cursor:pointer;
+  }
+  .mode:hover{color:var(--txt2)}
+  .mode.on{background:#f5b94214;color:var(--accent)}
+  .mode kbd{font-family:var(--mono);font-size:9px;color:var(--txt3);font-weight:400}
+  .mode.on kbd{color:#f5b94299}
+
+  /* Chants */
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{min-width:0}
+  .search{
+    flex:1;background:#05060a;border:1px solid var(--line2);border-radius:7px;
+    color:var(--txt);font:13px/1.3 "Inter",system-ui,sans-serif;padding:9px 11px;
+  }
+  .search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #f5b94214}
+  .songs{flex:0 0 auto;max-height:34vh;overflow:auto;border-top:1px solid var(--line)}
+  .song{padding:8px 12px;border-bottom:1px solid #1a1e28;cursor:pointer;display:flex;gap:9px;align-items:center}
+  .song:hover{background:#ffffff06}
+  .song.on{background:#f5b94212;box-shadow:inset 2px 0 0 var(--accent)}
+  .song .t{flex:1;font-size:12.5px}
+  .song .a{font-size:10.5px;color:var(--txt3)}
+  .song .k{font-family:var(--mono);font-size:9px;color:var(--txt3)}
+  .conductor{flex:1;overflow:auto;min-height:0}
+  .step{display:flex;gap:9px;align-items:center;padding:8px 12px;border-bottom:1px solid #1a1e28;cursor:pointer}
+  .step:hover{background:#ffffff06}
+  .step.cur{background:#f5b94212;box-shadow:inset 2px 0 0 var(--accent)}
+  .step .n{font-family:var(--mono);font-size:10px;color:var(--txt3);min-width:14px}
+  .step .nm{flex:1;font-size:12.5px}
+  .step .ty{font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px;border:1px solid var(--line2)}
+  .quick{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap;background:#07080d}
+  .arrangement{display:flex;gap:6px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+  .arrangement select{
+    flex:1;background:var(--bg3);border:1px solid var(--line2);color:var(--txt);
+    border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:inherit;
+  }
+  .lyrics{white-space:pre-wrap;font-size:12.5px;line-height:1.5;color:var(--txt2)}
+
+  /* Import */
+  dialog{
+    width:min(620px,92vw);border:1px solid var(--line2);border-radius:12px;padding:0;
+    background:var(--bg2);color:var(--txt);box-shadow:0 30px 80px #000c;
+  }
+  dialog::backdrop{background:#000a;backdrop-filter:blur(2px)}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .dlg-head h3{margin:0;font-size:13.5px}
+  .dlg-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line);background:#07080d}
+  dialog textarea{
+    width:100%;min-height:150px;resize:vertical;background:#05060a;border:1px solid var(--line2);
+    border-radius:8px;color:var(--txt);font:12px/1.5 var(--mono);padding:10px;
+  }
+  dialog textarea:focus{outline:none;border-color:var(--accent)}
+  .preview-box{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;background:#05060a;font-size:12px;line-height:1.6}
+  .preview-box b{color:var(--accent)}
+  .preview-box .warn{color:#ffce7a}
+  .preview-box .ok{color:var(--ok)}
+  .file-drop{border:1px dashed var(--line2);border-radius:8px;padding:10px;font-size:11.5px;color:var(--txt3);text-align:center}
+  .file-drop.over{border-color:var(--accent);color:var(--accent)}
+
   .toast{position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:340px}
   .toast.show{opacity:1;transform:none}
   .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
@@ -129,6 +196,10 @@
     <h1>Studio</h1>
     <div class="who" id="who">chargement…</div>
   </div>
+  <nav class="modes" role="tablist" aria-label="Modules">
+    <button class="mode on" id="modeBible" role="tab" aria-selected="true" data-mode="bible">Bible <kbd>Alt+1</kbd></button>
+    <button class="mode" id="modeSongs" role="tab" aria-selected="false" data-mode="songs">Chants <kbd>Alt+2</kbd></button>
+  </nav>
   <span class="spacer"></span>
   <span class="chip" id="ws"><span class="dot"></span> <span id="wsText">connexion</span></span>
   <a class="chip" href="/scene.html" title="Éditeur de scène (WYSIWYG)">Scène</a>
@@ -137,6 +208,7 @@
 
 <main>
   <section class="panel">
+   <div class="module" id="mod-bible">
     <h2>Bible — saisie clavier</h2>
 
     <div class="field-wrap">
@@ -162,6 +234,34 @@
         <span class="mono">Jean 3:16</span> · <span class="mono">Ps 23</span> · <span class="mono">1 Corinthiens 13:4-7</span>
       </div>
     </div>
+   </div>
+
+   <div class="module" id="mod-songs" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="songSearch" type="search" placeholder="Chant, auteur ou paroles…" aria-label="Rechercher un chant">
+        <button class="btn primary" id="songImport" title="Importer un chant (Ctrl+O)">＋ Importer</button>
+      </div>
+      <div class="hint">
+        <kbd>↑</kbd><kbd>↓</kbd> parcourir · <kbd>↵</kbd> diffuser · <kbd>Maj</kbd>+<kbd>→</kbd> sauter une section
+        · <kbd>1</kbd>…<kbd>9</kbd> aller à une étape · <kbd>Échap</kbd> couper
+      </div>
+    </div>
+    <h2>Sons <span class="spacer"></span><span class="chip" id="songCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="songList"></div>
+    <h2>Conducteur <span class="spacer"></span><span class="chip" id="songInfo" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="arrangement">
+      <label for="arrangement" style="font-size:11px;color:var(--txt3)">Ordre</label>
+      <select id="arrangement" aria-label="Arrangement"></select>
+      <button class="btn sm" id="addArrangement" title="Dupliquer l’ordre courant dans un nouvel arrangement">＋</button>
+    </div>
+    <div class="conductor" id="conductor"></div>
+    <div class="quick">
+      <button class="btn sm" id="qAppend" title="Ajouter un refrain à la fin">＋ Refrain à la fin</button>
+      <button class="btn sm" id="qRepeat" title="Répéter la section courante">↻ Répéter</button>
+      <button class="btn sm" id="qSkip" title="Sauter la section courante">⤼ Sauter</button>
+    </div>
+   </div>
   </section>
 
   <section class="stage-wrap">
@@ -186,6 +286,29 @@
   </section>
 </main>
 
+<dialog id="importDlg" aria-labelledby="importTitle">
+  <div class="dlg-head">
+    <h3 id="importTitle">Importer un chant</h3>
+    <span class="spacer"></span>
+    <span class="chip" id="importFormat">format détecté automatiquement</span>
+  </div>
+  <div class="dlg-body">
+    <div class="file-drop" id="fileDrop">
+      Déposez un fichier <span class="mono">.txt</span>, <span class="mono">.chordpro</span>, <span class="mono">.cho</span> ou <span class="mono">.xml</span> — ou collez les paroles ci-dessous.
+      <input type="file" id="fileInput" accept=".txt,.chordpro,.cho,.crd,.xml,text/plain" hidden>
+    </div>
+    <textarea id="importText" spellcheck="false" placeholder="{{title: Grâce infinie}}
+Couplet 1
+[G]Grâce infinie, quel doux [C]son…"></textarea>
+    <div id="importPreview" class="preview-box" hidden></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="importCancel">Annuler</button>
+    <button class="btn" id="importAnalyze">Analyser</button>
+    <button class="btn primary" id="importConfirm" disabled>Importer</button>
+  </div>
+</dialog>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -195,6 +318,13 @@ import { navigate, currentItem, actionForKey, isTypingTarget, positionLabel } fr
 import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
 import { contentFromPayload } from '/shared/render/content.mjs';
 import { sceneFromPreset } from '/shared/scene.mjs';
+// Chants : mêmes modules purs que le serveur (import, sections, arrangements).
+import { parseSongText, importSummary, SECTION_LABELS } from '/shared/songs/parser.mjs';
+import {
+  buildSongSelection, navigateSong, currentSongItem, songPositionLabel, atEnd,
+  switchArrangement, appendChorus, repeatCurrentStep, skipCurrentStep,
+  addArrangement, goToStep, activeArrangement
+} from '/shared/songs/arrangement.mjs';
 
 {
   const style = document.createElement('style');
@@ -346,15 +476,24 @@ async function sceneFor(kind) {
   return scene;
 }
 
-async function paintPreview(item) {
-  const screen = $('#screen');
-  if (!item?.text) {
-    screen.classList.add('idle');
+async function showOnStage(kind, content) {
+  if (!content) {
     $('#stage').replaceChildren();
     $('#preview').textContent = 'Aucun contenu à l’antenne';
+    $('#screen').classList.add('idle');
     return;
   }
-  const scene = await sceneFor('bible');
+  const scene = await sceneFor(kind);
+  mountScene($('#stage'), { scene, content, editing: false });
+  $('#screen').classList.remove('idle');
+  scaleStage();
+}
+
+async function paintPreview(item) {
+  if (!item?.text) {
+    await showOnStage('bible', null);
+    return;
+  }
   const content = contentFromPayload({
     text: item.text,
     reference: selection?.label,
@@ -362,9 +501,7 @@ async function paintPreview(item) {
     partCount: item.partCount,
     badge: selection?.bibleId === 'bible_sample_fr' ? 'LSG' : ''
   }, 'bible');
-  mountScene($('#stage'), { scene, content, editing: false });
-  screen.classList.remove('idle');
-  scaleStage();
+  await showOnStage('bible', content);
 }
 
 function paintOutputs() {
@@ -392,7 +529,251 @@ function paintAll() {
   paintParts();
 }
 
-function focusField() { $('#field').focus(); }
+function focusField() { if (mode === 'bible') $('#field').focus(); }
+
+// ---------------------------------------------------------------------------
+// Module Chants (EF-15) — la liste, le conducteur, la diffusion
+// ---------------------------------------------------------------------------
+let mode = 'bible';
+let songs = [];
+let currentSong = null;
+let songSelection = null;
+let songQuery = '';
+let importDraft = null;
+
+const SONG_SETTINGS = { maxWordsPerScreen: 20, minWordsPerPart: 3 };
+
+/** Insensible à la casse et aux accents (EF-15.21). */
+function fold(value) {
+  return String(value ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function songHaystack(song) {
+  return fold([
+    song.title, song.artist, song.composer,
+    ...(song.sections || []).map((section) => section.lines.join(' '))
+  ].join(' '));
+}
+
+function visibleSongs() {
+  const needle = fold(songQuery).trim();
+  if (!needle) return songs;
+  return songs.filter((song) => songHaystack(song).includes(needle));
+}
+
+function paintSongs() {
+  const list = $('#songList');
+  const items = visibleSongs();
+  $('#songCount').textContent = items.length === songs.length
+    ? `${songs.length} chant(s)`
+    : `${items.length} / ${songs.length}`;
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">${songs.length
+      ? 'Aucun chant ne correspond à la recherche.'
+      : `Aucun chant pour l’instant.<br>Cliquez sur <b>＋ Importer</b> et collez les paroles,
+         ou <button class="btn sm" id="sampleSongs" style="margin-top:8px">ajoutez deux chants d’exemple</button>.`}</div>`;
+    $('#sampleSongs')?.addEventListener('click', loadSampleSongs);
+    return;
+  }
+  list.innerHTML = items.map((song) => `
+    <div class="song ${song.id === currentSong?.id ? 'on' : ''}" data-id="${esc(song.id)}" role="button" tabindex="0">
+      <span class="t">${esc(song.title)}
+        <div class="a">${esc(song.artist || song.composer || '—')}</div>
+      </span>
+      <span class="k">${(song.sections || []).length} sect.</span>
+    </div>`).join('');
+  list.querySelectorAll('.song').forEach((el) => {
+    const open = () => loadSong(el.dataset.id);
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+    });
+  });
+}
+
+function paintConductor() {
+  const box = $('#conductor');
+  if (!songSelection) {
+    box.innerHTML = '<div class="empty-state">Choisissez un chant pour afficher son conducteur.</div>';
+    $('#songInfo').textContent = '';
+    return;
+  }
+  const current = currentSongItem(songSelection);
+  box.innerHTML = (songSelection.steps || []).map((step) => `
+    <div class="step ${current && current.step === step.step ? 'cur' : ''}" data-step="${step.step}" role="button" tabindex="0">
+      <span class="n">${step.step + 1}</span>
+      <span class="nm">${esc(step.name)}</span>
+      <span class="ty" style="color:${sectionColor(step.type)};border-color:${sectionColor(step.type)}55">
+        ${esc(SECTION_LABELS[step.type] || step.type)}
+      </span>
+    </div>`).join('');
+  box.querySelectorAll('.step').forEach((el) => {
+    el.addEventListener('click', () => goToSongStep(Number(el.dataset.step)));
+  });
+  const active = box.querySelector('.step.cur');
+  active?.scrollIntoView({ block: 'nearest' });
+  $('#songInfo').textContent = `${songSelection.arrangementName} · ${songSelection.steps.length} étapes`;
+}
+
+const SECTION_COLORS = {
+  verse: '#60a5fa', chorus: '#a78bfa', bridge: '#fb923c', prechorus: '#93c5fd',
+  intro: '#9ca3af', outro: '#9ca3af', tag: '#34d399', interlude: '#f5b942'
+};
+function sectionColor(type) { return SECTION_COLORS[type] || '#9ca3af'; }
+
+function paintArrangements() {
+  const select = $('#arrangement');
+  if (!currentSong) { select.innerHTML = ''; return; }
+  const active = activeArrangement(currentSong, songSelection?.arrangementId);
+  select.innerHTML = (currentSong.arrangements || []).map((arrangement) =>
+    `<option value="${esc(arrangement.id)}" ${arrangement.id === active.id ? 'selected' : ''}>${esc(arrangement.name)}</option>`).join('');
+}
+
+function paintStageBar() {
+  if (mode === 'songs') {
+    const item = currentSongItem(songSelection);
+    $('#refbar').textContent = currentSong?.title || '—';
+    $('#counter').textContent = item
+      ? `${songSelection.index + 1} / ${songSelection.items.length} · ${songPositionLabel(songSelection)}`
+      : '';
+    return;
+  }
+  // L'affichage Bible est géré par paintParts().
+}
+
+function paintSongsAll() {
+  paintSongs();
+  paintConductor();
+  paintArrangements();
+  paintStageBar();
+}
+
+async function loadSongs() {
+  try {
+    const res = await fetch('/api/library/songs', { cache: 'no-store' });
+    const data = await res.json();
+    songs = data.items || [];
+  } catch {
+    songs = [];
+  }
+  paintSongs();
+}
+
+async function loadSampleSongs() {
+  try {
+    const res = await fetch('/api/songs/samples', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Ajout impossible.');
+    await loadSongs();
+    toast('Deux chants d’exemple ajoutés.');
+    if (songs[0]) await loadSong(songs[0].id);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function loadSong(id, { arrangementId = null } = {}) {
+  const song = songs.find((item) => item.id === id) || null;
+  if (!song) return;
+  currentSong = song;
+  songSelection = buildSongSelection(song, { arrangementId, settings: SONG_SETTINGS });
+  paintSongsAll();
+  await paintSongPreview();
+  // Même règle que la Bible : choisir un contenu le diffuse s'il y a des cibles.
+  broadcastSong();
+}
+
+function paintSongPreview() {
+  const item = currentSongItem(songSelection);
+  if (!item) return showOnStage('songs', null);
+  return showOnStage('songs', contentFromPayload({
+    text: item.text,
+    title: currentSong?.title,
+    section: item.sectionName,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    step: item.step
+  }, 'songs'));
+}
+
+function goToSongStep(step) {
+  if (!songSelection) return;
+  songSelection = goToStep(songSelection, step + 1);
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+function moveSong(action) {
+  if (!songSelection) return;
+  const result = navigateSong(songSelection, action);
+  if (result.ended) { toast(result.message, 'warn'); return; }
+  if (!result.changed) return;
+  songSelection = result.selection;
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+/** Change d'arrangement sans perdre la position (EF-15.12). */
+function changeArrangement(arrangementId) {
+  if (!currentSong || !songSelection) return;
+  const result = switchArrangement(songSelection, currentSong, arrangementId, { settings: SONG_SETTINGS });
+  songSelection = result.selection;
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+/** Édite l'arrangement puis reconstruit immédiatement (EF-15.14). */
+function editArrangement(transform, message) {
+  if (!currentSong || !songSelection) return;
+  const before = currentSongItem(songSelection);
+  const outcome = transform(currentSong, songSelection);
+  if (!outcome.changed) {
+    toast(outcome.reason === 'no-chorus'
+      ? 'Ce chant n’a pas de refrain à ajouter.'
+      : 'Impossible de modifier cet arrangement.', 'err');
+    return;
+  }
+  currentSong = outcome.song;
+  songSelection = buildSongSelection(currentSong, {
+    arrangementId: songSelection.arrangementId,
+    settings: SONG_SETTINGS
+  });
+  // On reste sur la même section quand elle existe encore.
+  if (before) {
+    const same = songSelection.items.findIndex((item) => item.sectionId === before.sectionId);
+    if (same >= 0) songSelection = { ...songSelection, index: same };
+  }
+  paintSongsAll();
+  paintSongPreview();
+  if (message) toast(message);
+  broadcastSong();
+}
+
+function setMode(next) {
+  if (mode === next) return;
+  mode = next;
+  for (const button of document.querySelectorAll('.mode')) {
+    const on = button.dataset.mode === next;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  $('#mod-bible').hidden = next !== 'bible';
+  $('#mod-songs').hidden = next !== 'songs';
+  try { localStorage.setItem('op.studio.mode', next); } catch { /* stockage refusé */ }
+  // EF-06.7 : changer de module ne coupe jamais ce qui est à l'antenne.
+  if (next === 'bible') {
+    paintParts();
+    focusField();
+  } else {
+    paintSongsAll();
+    if (currentSong) paintSongPreview();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Actions
@@ -421,16 +802,34 @@ async function loadSelection(bookNum, chapter, first, last) {
   broadcast();
 }
 
-async function broadcast(force = false) {
+/** Envoie un contenu aux sorties cochées ; ne lève jamais d'exception à l'UI. */
+async function sendToOutputs(kind, payload, { force = false } = {}) {
+  if (!targets.size && !force) return;
+  if (!targets.size) toast('Aucune sortie cochée : diffusion vers les sorties par défaut.');
+  try {
+    const res = await fetch('/api/live/show', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ targets: [...targets], kind, payload })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Diffusion refusée.');
+    if (data.refused?.length) {
+      const filtered = data.refused.filter((r) => r.reason === 'filtered').length;
+      const label = kind === 'songs' ? 'les chants' : 'la Bible';
+      toast(filtered
+        ? `${filtered} sortie(s) ne reçoivent pas ${label}.`
+        : 'Diffusion partielle : vérifiez les sorties.', 'err');
+    }
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function broadcastBible(force = false) {
   const item = currentItem(selection);
   if (!item) return;
-  if (!targets.size) {
-    // Diffusion explicite sans case cochée : on retombe sur les sorties par défaut,
-    // décidées par le serveur. Un simple aperçu, lui, n'envoie rien.
-    if (!force) return;
-    toast('Aucune sortie cochée : diffusion vers les sorties par défaut.');
-  }
-  const payload = {
+  await sendToOutputs('bible', {
     text: item.text,
     reference: selection.label,
     partIndex: item.partIndex,
@@ -440,24 +839,29 @@ async function broadcast(force = false) {
     bookNum: item.bookNum,
     bibleId: selection.bibleId,
     sceneId: null
-  };
-  try {
-    const res = await fetch('/api/live/show', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ targets: [...targets], kind: 'bible', payload })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error?.message || 'Diffusion refusée.');
-    if (data.refused?.length) {
-      const filtered = data.refused.filter((r) => r.reason === 'filtered').length;
-      toast(filtered
-        ? `${filtered} sortie(s) ne reçoivent pas la Bible.`
-        : 'Diffusion partielle : vérifiez les sorties.', 'err');
-    }
-  } catch (err) {
-    toast(err.message, 'err');
-  }
+  }, { force });
+}
+
+/** Diffuse l'élément courant du module actif (bouton « Diffuser », Entrée). */
+async function broadcast(force = false) {
+  if (mode === 'songs') return broadcastSong(force);
+  return broadcastBible(force);
+}
+
+async function broadcastSong(force = false) {
+  const item = currentSongItem(songSelection);
+  if (!item) return;
+  await sendToOutputs('songs', {
+    text: item.text,
+    title: currentSong?.title || '',
+    section: item.sectionName,
+    sectionType: item.sectionType,
+    step: item.step,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    arrangementId: songSelection.arrangementId,
+    songId: currentSong?.id || ''
+  }, { force });
 }
 
 async function clearOutputs() {
@@ -472,6 +876,7 @@ async function clearOutputs() {
 }
 
 function move(action) {
+  if (mode === 'songs') return moveSong(action);
   if (!selection) return;
   const result = navigate(selection, action);
   if (result.chapter) {
@@ -490,6 +895,19 @@ function move(action) {
 // Clavier (une seule source : le module partagé de navigation)
 // ---------------------------------------------------------------------------
 document.addEventListener('keydown', (event) => {
+  // Raccourcis de modules (EF-06.6) et import, actifs partout.
+  if (event.altKey && (event.key === '1' || event.key === '2')) {
+    event.preventDefault();
+    setMode(event.key === '1' ? 'bible' : 'songs');
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
+    event.preventDefault();
+    openImport();
+    return;
+  }
+  if (mode === 'songs') { handleSongKey(event); return; }
+
   if (isTypingTarget(event.target) && event.target.tagName !== 'DIV') return;
   const s = entry.state;
 
@@ -566,6 +984,164 @@ document.addEventListener('keydown', (event) => {
 });
 
 // ---------------------------------------------------------------------------
+// Clavier du module Chants (§ 10.3)
+// ---------------------------------------------------------------------------
+function handleSongKey(event) {
+  const inSearch = event.target?.id === 'songSearch';
+
+  // Dans le champ de recherche, seules quelques touches sont détournées :
+  // tout le reste doit rester de la frappe (espaces compris).
+  if (inSearch) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const first = visibleSongs()[0];
+      if (first) loadSong(first.id).then(() => broadcastSong(true));
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      // Premier Échap : vide la recherche ; second : coupe l'antenne.
+      if ($('#songSearch').value) {
+        $('#songSearch').value = '';
+        songQuery = '';
+        paintSongs();
+      } else {
+        clearOutputs();
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveSong(event.key === 'ArrowDown' ? 'next' : 'prev');
+      return;
+    }
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    clearOutputs();
+    return;
+  }
+  if (isTypingTarget(event.target)) return;
+
+  if (event.key === 'Enter') { event.preventDefault(); broadcast(true); return; }
+  if (/^[1-9]$/.test(event.key)) {
+    event.preventDefault();
+    goToSongStep(Number(event.key) - 1);
+    return;
+  }
+
+  let action = null;
+  if (event.shiftKey) {
+    if (event.key === 'ArrowRight') action = 'sectionNext';
+    else if (event.key === 'ArrowLeft') action = 'sectionPrev';
+  } else if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(event.key)) {
+    action = 'next';
+  } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) {
+    action = 'prev';
+  }
+  if (!action) return;
+  event.preventDefault();
+  moveSong(action);
+}
+
+// ---------------------------------------------------------------------------
+// Import d'un chant (§ 10.1) : aperçu avant validation
+// ---------------------------------------------------------------------------
+function openImport() {
+  // Un second appel (Ctrl+O répété) ne doit pas lever d'exception.
+  if ($('#importDlg').open) { $('#importText').focus(); return; }
+  importDraft = null;
+  $('#importText').value = '';
+  $('#importPreview').hidden = true;
+  $('#importPreview').innerHTML = '';
+  $('#importFormat').textContent = 'format détecté automatiquement';
+  $('#importConfirm').disabled = true;
+  $('#importDlg').showModal();
+  setTimeout(() => $('#importText').focus(), 30);
+}
+
+function paintImportPreview(song) {
+  const summary = importSummary(song);
+  const box = $('#importPreview');
+  box.hidden = false;
+  const chords = summary.hasChords
+    ? `<span class="ok">oui</span> (${summary.chords.slice(0, 8).join(', ')}${summary.chords.length > 8 ? '…' : ''})`
+    : 'non';
+  const warnings = summary.warnings.length
+    ? `<div class="warn">⚠ ${summary.warnings.map(esc).join('<br>⚠ ')}</div>`
+    : '';
+  box.innerHTML = `
+    <div><b>${esc(summary.title)}</b> — ${esc(formatLabel(summary.format))}</div>
+    <div>Sections : ${summary.sections} · ${summary.sectionNames.map(esc).join(', ')}</div>
+    <div>Accords : ${chords}</div>
+    <div>Métadonnées : ${[
+      summary.metadata.artist && `auteur ${esc(summary.metadata.artist)}`,
+      summary.metadata.key && `tonalité ${esc(summary.metadata.key)}`,
+      summary.metadata.tempo && `tempo ${esc(summary.metadata.tempo)}`,
+      summary.metadata.ccli && `CCLI ${esc(summary.metadata.ccli)}`
+    ].filter(Boolean).join(' · ') || 'aucune'}</div>
+    ${warnings}`;
+  $('#importFormat').textContent = formatLabel(summary.format);
+  $('#importConfirm').disabled = summary.sections === 0;
+}
+
+function formatLabel(format) {
+  return ({ chordpro: 'ChordPro', opensong: 'OpenSong', ccli: 'CCLI / SongSelect', text: 'Texte brut' })[format] || format;
+}
+
+function readImportSource() {
+  return $('#importText').value || '';
+}
+
+/** Analyse (aucune écriture) : un aperçu est toujours montré avant import. */
+function analyzeImport() {
+  const text = readImportSource();
+  if (!text.trim()) {
+    toast('Collez les paroles du chant ou déposez un fichier.', 'err');
+    return;
+  }
+  try {
+    const filename = $('#fileInput').files?.[0]?.name || '';
+    importDraft = parseSongText(text, { filename });
+    paintImportPreview(importDraft);
+  } catch {
+    toast('Ce fichier n’a pas pu être lu. Vérifiez son contenu.', 'err');
+  }
+}
+
+async function confirmImport() {
+  if (!importDraft) { analyzeImport(); return; }
+  const button = $('#importConfirm');
+  button.disabled = true;
+  button.textContent = 'Import…';
+  try {
+    const res = await fetch('/api/songs/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        text: readImportSource(),
+        filename: $('#fileInput').value || '',
+        keepSource: true
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.song) throw new Error(data?.error?.message || 'Import refusé.');
+    $('#importDlg').close();
+    await loadSongs();
+    await loadSong(data.song.id);
+    toast(`« ${data.song.title} » importé.`);
+    broadcastSong(true);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Importer';
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Démarrage
 // ---------------------------------------------------------------------------
 async function boot() {
@@ -583,9 +1159,19 @@ async function boot() {
     targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
     paintOutputs();
     paintAll();
+    await loadSongs();
+
+    // EF-06.4 : le module actif est mémorisé entre les sessions.
+    let savedMode = 'bible';
+    try { savedMode = localStorage.getItem('op.studio.mode') || 'bible'; } catch { /* stockage refusé */ }
+    if (savedMode === 'songs') {
+      mode = 'bible';            // pour que setMode() applique le changement
+      setMode('songs');
+    } else {
+      focusField();
+    }
 
     connectWs();
-    focusField();
   } catch (err) {
     toast('Serveur injoignable — relancez OpenPresenter.', 'err');
   }
@@ -614,6 +1200,48 @@ function connectWs() {
 $('#field').addEventListener('click', () => {
   if (entry.state.mode !== STATE.BOOK) { entry.escape(); paintAll(); }
   focusField();
+});
+
+// --- Chants ---------------------------------------------------------------
+$('#modeBible').addEventListener('click', () => setMode('bible'));
+$('#modeSongs').addEventListener('click', () => setMode('songs'));
+$('#songImport').addEventListener('click', openImport);
+$('#songSearch').addEventListener('input', (event) => { songQuery = event.target.value; paintSongs(); });
+$('#arrangement').addEventListener('change', (event) => changeArrangement(event.target.value));
+$('#addArrangement').addEventListener('click', () => {
+  if (!currentSong) return;
+  currentSong = addArrangement(currentSong, `Version ${(currentSong.arrangements?.length || 1) + 1}`);
+  paintArrangements();
+  paintConductor();
+  toast('Arrangement ajouté. Modifiez son ordre avec les boutons du conducteur.');
+});
+$('#qAppend').addEventListener('click', () => editArrangement((song, sel) => appendChorus(song, sel.arrangementId), 'Refrain ajouté à la fin.'));
+$('#qRepeat').addEventListener('click', () => editArrangement((song, sel) => repeatCurrentStep(song, sel, sel.arrangementId), 'Section répétée.'));
+$('#qSkip').addEventListener('click', () => editArrangement((song, sel) => skipCurrentStep(song, sel, sel.arrangementId), 'Section sautée.'));
+
+// --- Import ---------------------------------------------------------------
+$('#importCancel').addEventListener('click', () => $('#importDlg').close());
+$('#importAnalyze').addEventListener('click', analyzeImport);
+$('#importConfirm').addEventListener('click', confirmImport);
+$('#fileDrop').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  $('#importText').value = text;
+  analyzeImport();
+});
+for (const type of ['dragenter', 'dragover']) {
+  $('#fileDrop').addEventListener(type, (event) => { event.preventDefault(); $('#fileDrop').classList.add('over'); });
+}
+for (const type of ['dragleave', 'drop']) {
+  $('#fileDrop').addEventListener(type, (event) => { event.preventDefault(); $('#fileDrop').classList.remove('over'); });
+}
+$('#fileDrop').addEventListener('drop', async (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) return;
+  $('#importText').value = await file.text();
+  analyzeImport();
 });
 $('#prev').onclick = () => move('prev');
 $('#next').onclick = () => move('next');

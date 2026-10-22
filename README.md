@@ -95,9 +95,11 @@ de style : l'aperçu du studio, l'éditeur `/scene.html` et la page `/o/<id>` ut
 | Où | Quoi |
 |---|---|
 | [`docs/PHASE-1-SCENE.md`](docs/PHASE-1-SCENE.md) | moteur, contrats, tests A-10→A-10h, ce qui reste |
+| [`docs/PHASE-1-CHANTS.md`](docs/PHASE-1-CHANTS.md) | import ChordPro/OpenSong, conducteur, raccourcis, tests EF-15 |
 | `app/src/core/scene.mjs` | modèle, presets, bornes de géométrie, opérations de calques |
 | `app/src/core/render/engine.mjs` | `renderScene()`, `mountScene()`, `SCENE_CSS` |
 | `app/web/scene.html` | éditeur WYSIWYG (glisser, redimensionner, historique, contraste) |
+| `app/src/core/songs/*.mjs` | import et conducteur des chants, partagés serveur/navigateur |
 
 ---
 

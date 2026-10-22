@@ -69,6 +69,22 @@ test('les balises des pages sont équilibrées', async () => {
   }
 });
 
+test('le studio expose le module Chants et son conducteur (ch. 06 § 6.3)', async () => {
+  const html = await fs.readFile(path.join(WEB, 'studio.html'), 'utf8');
+  // Onglets de modules avec leur raccourci.
+  assert.match(html, /data-mode="bible"/);
+  assert.match(html, /data-mode="songs"/);
+  assert.match(html, /Alt\+2/);
+  // Éléments attendus du module.
+  for (const id of ['mod-songs', 'songList', 'songSearch', 'conductor', 'arrangement', 'qAppend', 'qRepeat', 'qSkip', 'importDlg']) {
+    assert.match(html, new RegExp(`id="${id}"`), id);
+  }
+  // Le module partage le moteur de scène et les modules purs de chants.
+  assert.match(html, /from '\/shared\/songs\/parser\.mjs'/);
+  assert.match(html, /from '\/shared\/songs\/arrangement\.mjs'/);
+  assert.match(html, /from '\/shared\/render\/engine\.mjs'/);
+});
+
 test('aucune page n’embarque de ressource distante (A-01)', async () => {
   for (const page of PAGES) {
     const html = await fs.readFile(path.join(WEB, page), 'utf8');

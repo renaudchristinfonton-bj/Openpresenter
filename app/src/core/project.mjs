@@ -33,6 +33,8 @@ export async function ensureProject({ name } = {}) {
     await log('info', 'project.open', 'project.json créé', { projectId: project.id });
   }
   await seedDefaultScenes();
+  // Les chants d'exemple ne sont **pas** semés d'office : un projet vide doit
+  // rester vide (tests A-03/A-13). Le studio propose de les ajouter en un clic.
   return { created, project };
 }
 
@@ -117,6 +119,70 @@ export async function seedDefaultOutputs() {
  * Scènes livrées avec un projet : une par sortie et par type courant, câblées
  * dans `outputs.scenesByKind`. Un projet existant n'est jamais écrasé.
  */
+/**
+ * Deux chants d'exemple, libres de droits, pour découvrir le module Chants.
+ * Appelé **à la demande** (`POST /api/songs/samples`), jamais à la création :
+ * un projet neuf reste vide et n'est jamais complété dans le dos de personne.
+ */
+export async function seedSampleSongs() {
+  const dir = path.join(projectDir(), 'library', 'songs');
+  await fs.mkdir(dir, { recursive: true });
+  const { parseSongText } = await import('./songs/parser.mjs');
+
+  const samples = [
+    {
+      id: 'sng_grace_infinie',
+      text: `{title: Grâce infinie}
+{artist: John Newton}
+{key: G}
+{tempo: 72}
+
+Couplet 1
+[G]Grâce infinie, quel doux [C]son
+Qui a sauvé un misérable [G]comme moi
+J'étais perdu, mais je suis [D]retrouvé
+[C]J'étais aveugle, mais maintenant [G]je vois
+
+Couplet 2
+[G]C'est la grâce qui m'a [C]appris
+À craindre Dieu et [G]à croire
+Le jour où je [D]crus
+[C]La grâce m'a [G]sauvé
+
+Refrain
+[G]Ma grâce te suffit, [C]dit le Seigneur
+[G]Ma force s'accomplit dans la fai[D]blesse
+[C]Je me glorifierai plutôt dans mes [G]faiblesses`
+    },
+    {
+      id: 'sng_tu_es_saint',
+      text: `{title: Tu es saint}
+{artist: Traditionnel}
+{key: D}
+
+Couplet 1
+[G]Tu es saint, tu es [D]saint
+[Em]Tu es saint, Seigneur
+[C]Digne de louange
+
+Refrain
+[G]Saint, saint, [D]saint
+[Em]Dieu de l'univers
+[C]Toute la terre te [G]célèbre`
+    }
+  ];
+
+  let written = 0;
+  for (const sample of samples) {
+    const file = path.join(dir, `${sample.id}.json`);
+    if (await exists(file)) continue;
+    const parsed = parseSongText(sample.text, { filename: `${sample.id}.txt` });
+    await writeJson(file, { ...parsed, id: sample.id, rev: 1 });
+    written++;
+  }
+  return written > 0;
+}
+
 export async function seedDefaultScenes() {
   const { defaultScenes } = await import('./scene.mjs');
   const entries = defaultScenes();

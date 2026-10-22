@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — Accueil</title>
+<style>
+  :root{
+    --bg:#07080d; --bg2:#0d1017; --bg3:#121722; --line:#1c2230; --line2:#28303f;
+    --txt:#e8eaf0; --txt2:#a3abbd; --txt3:#6e7789;
+    --accent:#f5b942; --ok:#34d399; --err:#ef5360;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:var(--bg); color:var(--txt);
+    font:13px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+
+  /* Zone 1 — barre d'état (56 px) */
+  header{
+    display:flex; align-items:center; gap:12px; padding:0 16px; height:56px;
+    border-bottom:1px solid var(--line); background:var(--bg2); flex:0 0 auto;
+  }
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#e08a12);display:grid;place-items:center;font-weight:800;color:#1a1206;font-size:12px}
+  .project{font-weight:700;font-size:13.5px}
+  .project small{display:block;font-weight:400;font-size:10.5px;color:var(--txt3)}
+  .live{display:flex;align-items:center;gap:8px;padding:5px 11px;border-radius:999px;border:1px solid var(--line2);font-size:12px;color:var(--txt3)}
+  .live.on{border-color:#ef536055;background:#ef53600f;color:#ffb3b8}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--txt3)}
+  .live.on .dot{background:var(--err);box-shadow:0 0 0 4px #ef53601f}
+  .live b{font-weight:700;color:var(--txt)}
+  .live.on b{color:#ffd7da}
+  .targets{font-size:11px;color:var(--txt3)}
+  .spacer{flex:1}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:7px;
+    border:1px solid var(--line2);background:var(--bg3);color:var(--txt);
+    font:650 12px/1 "Inter",system-ui,sans-serif;cursor:pointer;text-decoration:none;
+  }
+  .btn:hover{background:#1e2331}
+  .btn.danger{background:#2a1014;border-color:#ef536055;color:#ff9aa2}
+  .btn.danger:disabled{opacity:.4;cursor:default}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#17110a;font-weight:800}
+  .btn.sm{padding:4px 8px;font-size:10.5px;font-weight:600}
+
+  /* Zone 2 — contexte (72 px) */
+  .context{
+    display:flex;align-items:center;gap:18px;padding:0 16px;height:60px;
+    border-bottom:1px solid var(--line);background:#080a11;flex:0 0 auto;font-size:11.5px;color:var(--txt2);
+  }
+  .context .item{display:flex;align-items:center;gap:7px}
+  .context .val{font-family:var(--mono);color:var(--txt)}
+  .context .tag{padding:2px 7px;border-radius:999px;border:1px solid var(--line2);font-size:10px;color:var(--txt3)}
+
+  /* Zone 3 — cartes de sortie */
+  main{flex:1 0 auto;padding:16px;display:flex;flex-direction:column;gap:16px;min-height:0}
+  .grid{
+    display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
+  }
+  .card{
+    border:1px solid var(--line);border-radius:12px;background:var(--bg2);
+    display:flex;flex-direction:column;overflow:hidden;min-width:0;
+  }
+  .card-head{display:flex;align-items:center;gap:8px;padding:10px 12px 8px}
+  .card-head .name{font-weight:700;font-size:13px}
+  .card-head .spec{font-family:var(--mono);font-size:9.5px;color:var(--txt3)}
+  .state{width:8px;height:8px;border-radius:50%;background:#3d4553}
+  .state.on{background:var(--ok)}
+  .state.off{background:var(--accent)}
+  .checker{
+    background-color:#0b0d13;
+    background-image:
+      linear-gradient(45deg,#151a24 25%,transparent 25%,transparent 75%,#151a24 75%),
+      linear-gradient(45deg,#151a24 25%,transparent 25%,transparent 75%,#151a24 75%);
+    background-size:18px 18px;background-position:0 0,9px 9px;
+  }
+  .preview{
+    position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);cursor:zoom-in;
+  }
+  .preview .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
+  .preview .empty{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#4b5464;font-size:11.5px;
+  }
+  .preview .zoom{
+    position:absolute;right:8px;bottom:8px;padding:3px 7px;border-radius:5px;
+    background:#000a;color:#cfd6e2;font-size:10px;opacity:0;transition:.15s;
+  }
+  .preview:hover .zoom{opacity:1}
+  .links{display:flex;flex-wrap:wrap;gap:5px;padding:9px 12px}
+  .chip{
+    border:1px solid var(--line2);border-radius:999px;background:var(--bg3);color:var(--txt2);
+    font:600 10.5px/1 "Inter",system-ui,sans-serif;padding:4px 8px;cursor:pointer;
+  }
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+  .chip.off{opacity:.45;text-decoration:line-through;cursor:help}
+  .card-actions{display:flex;gap:6px;padding:0 12px 11px;flex-wrap:wrap}
+
+  /* Zone 4 — action principale */
+  .main-action{
+    flex:0 0 auto;padding:14px 16px 20px;border-top:1px solid var(--line);
+    background:linear-gradient(180deg,#0a0c13,#07080d);
+    display:flex;flex-direction:column;align-items:center;gap:9px;
+  }
+  .studio{
+    height:60px;width:100%;max-width:720px;border-radius:12px;border:0;cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),#e08a12);color:#17110a;
+    font:800 19px/1 "Inter",system-ui,sans-serif;letter-spacing:.01em;
+    box-shadow:0 12px 40px #f5b94226;
+  }
+  .studio:hover{filter:brightness(1.04)}
+  .alt-links{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:11.5px}
+  .alt-links a{color:var(--txt3);text-decoration:none}
+  .alt-links a:hover{color:var(--accent)}
+
+  /* Sous la ligne de flottaison */
+  .below{padding:0 16px 28px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .box{border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:12px 14px}
+  .box h2{margin:0 0 8px;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3)}
+  .counts{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}
+  .counts b{font-family:var(--mono);color:var(--accent)}
+  .box a{color:var(--txt2);text-decoration:none;font-size:12px;display:block;padding:3px 0}
+  .box a:hover{color:var(--accent)}
+
+  .toast{
+    position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;
+    background:#141a24;border:1px solid var(--line2);font-size:12px;
+    opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:360px;
+  }
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
+
+  @media (max-width:760px){
+    .context{flex-wrap:wrap;height:auto;padding:8px 16px;gap:10px}
+    .studio{font-size:16px;height:54px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">OP</span>
+  <div class="project" id="projectName">OpenPresenter <small>chargement…</small></div>
+  <div class="live" id="livePill"><span class="dot"></span><span id="liveText">Rien à l’antenne</span></div>
+  <span class="targets" id="targets"></span>
+  <span class="spacer"></span>
+  <button class="btn danger" id="clearAll" disabled title="Tout couper (Échap)">⏹ Tout couper</button>
+</header>
+
+<div class="context">
+  <span class="item">⏱ <span class="val" id="elapsed">00:00:00</span> <span class="tag">depuis le début</span></span>
+  <span class="item">⌚ <span class="val" id="clock">—</span></span>
+  <span class="item">📶 <span class="val" id="lan">local</span></span>
+  <span class="item">🖥 <span id="online">0 sortie en ligne</span></span>
+  <span class="spacer"></span>
+  <span class="tag" id="runtime"></span>
+</div>
+
+<main>
+  <div class="grid" id="cards"></div>
+</main>
+
+<div class="main-action">
+  <button class="studio" id="openStudio">🎬 Ouvrir le Studio Unifié</button>
+  <div class="alt-links">
+    <a href="/scene.html">Éditeur de scènes</a>
+    <a href="/o/out_full?kind=bible" target="_blank" rel="noopener">Sortie plein écran</a>
+    <a href="/socle.html">Diagnostic du socle</a>
+    <a href="/api/export" download>Exporter le projet</a>
+  </div>
+</div>
+
+<section class="below">
+  <div class="box">
+    <h2>Bibliothèque en bref</h2>
+    <div class="counts" id="counts">…</div>
+  </div>
+  <div class="box">
+    <h2>Projet</h2>
+    <a href="/api/export" download>📦 Exporter le projet</a>
+    <a href="/socle.html">🧹 Intégrité et diagnostic</a>
+    <a href="/api/project" target="_blank" rel="noopener">🗂 Voir la configuration</a>
+  </div>
+  <div class="box">
+    <h2>Raccourcis</h2>
+    <a href="/studio.html"><b>Ctrl+K</b> — chercher un chant, un verset, un média</a>
+    <a href="/studio.html"><b>Alt+1 / Alt+2</b> — Bible / Chants</a>
+    <a href="/studio.html"><b>Échap</b> — couper toutes les sorties</a>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// L'aperçu de chaque sortie est le rendu réel : même moteur que la page de sortie.
+import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
+import { contentFromPayload, sampleFor } from '/shared/render/content.mjs';
+import { sceneFromPreset } from '/shared/scene.mjs';
+
+{
+  const style = document.createElement('style');
+  style.id = 'op-scene-css';
+  style.textContent = SCENE_CSS;
+  document.head.append(style);
+}
+
+const $ = (selector) => document.querySelector(selector);
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const KIND_LABELS = {
+  bible: 'Bible', songs: 'Chants', media: 'Médias',
+  announcements: 'Annonces', lowerthird: 'Habillage', timer: 'Minuteur', plan: 'Plan'
+};
+
+let outputs = [];
+let scenes = new Map();      // sceneId → scène
+let channels = {};           // outputId → message `show`
+let connected = {};          // outputId → nombre de pages connectées
+let startedAt = null;
+const token = new URLSearchParams(location.search).get('t') || '';
+
+const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : '');
+
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = `toast show ${kind}`;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.className = 'toast'; }, 2600);
+}
+
+// ---------------------------------------------------------------------------
+// Sorties et scènes
+// ---------------------------------------------------------------------------
+async function load() {
+  const [health, outs, live] = await Promise.all([
+    fetch(withToken('/api/health'), { cache: 'no-store' }).then((r) => r.json()),
+    fetch(withToken('/api/outputs'), { cache: 'no-store' }).then((r) => r.json()),
+    fetch(withToken('/api/live/state'), { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ channels: {} }))
+  ]);
+
+  $('#projectName').innerHTML = `${esc(health.projectName || 'OpenPresenter')}
+    <small>${health.readOnly ? 'lecture seule · ' : ''}port ${health.port} · ${esc(health.runtime || '')}</small>`;
+  const lan = (health.lan || [])[0];
+  $('#lan').textContent = lan ? `${lan.address}:${health.port}` : 'local';
+  if (health.lanToken) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = `code ${health.lanToken}`;
+    $('#lan').after(tag);
+  }
+
+  outputs = (outs.outputs || []).filter((output) => output.enabled !== false);
+  channels = live.channels || {};
+  paintCards();
+  paintLive();
+  await loadScenes();
+  paintPreviews();
+  loadCounts();
+}
+
+async function sceneFor(outputId, kind) {
+  const output = outputs.find((item) => item.id === outputId);
+  const sceneId = output?.scenesByKind?.[kind];
+  if (sceneId && scenes.has(sceneId)) return scenes.get(sceneId);
+  if (sceneId) {
+    try {
+      const res = await fetch(withToken(`/api/scenes/${encodeURIComponent(sceneId)}`), { cache: 'no-store' });
+      if (res.ok) {
+        const scene = await res.json();
+        scenes.set(sceneId, scene);
+        return scene;
+      }
+    } catch { /* repli */ }
+  }
+  return sceneFromPreset({
+    id: `scn_accueil_${kind}`,
+    name: `Repli — ${kind}`,
+    kind,
+    preset: output?.preset || 'full',
+    transparent: Boolean(output?.transparent)
+  });
+}
+
+async function loadScenes() {
+  // Les scènes sont lues une fois : les cartes n'attendent pas au clic.
+  const ids = new Set();
+  for (const output of outputs) {
+    for (const id of Object.values(output.scenesByKind || {})) ids.add(id);
+  }
+  await Promise.all([...ids].map(async (id) => {
+    if (scenes.has(id)) return;
+    try {
+      const res = await fetch(withToken(`/api/scenes/${encodeURIComponent(id)}`), { cache: 'no-store' });
+      if (res.ok) scenes.set(id, await res.json());
+    } catch { /* une scène absente ne bloque pas l'accueil */ }
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Cartes
+// ---------------------------------------------------------------------------
+function paintCards() {
+  const grid = $('#cards');
+  grid.innerHTML = outputs.map((output) => {
+    const receives = output.receives || {};
+    const chips = Object.keys(KIND_LABELS).map((kind) => {
+      const allowed = receives[kind] !== false;
+      const label = esc(KIND_LABELS[kind]);
+      if (!allowed) {
+        return `<span class="chip off" title="Cette sortie ne reçoit pas ${label.toLowerCase()}. Modifiez-le dans les réglages de la sortie.">${label}</span>`;
+      }
+      return `<button class="chip" data-copy="${esc(output.id)}" data-kind="${kind}" title="Copier le lien ${label}">${label}</button>`;
+    }).join('');
+    return `
+      <article class="card" data-output="${esc(output.id)}">
+        <div class="card-head">
+          <span class="state" data-state="${esc(output.id)}"></span>
+          <span class="name">${esc(output.name)}</span>
+          <span class="spacer"></span>
+          <span class="spec">${output.width}×${output.height} · ${esc(output.fit || 'contain')}${output.transparent ? ' · alpha' : ''}</span>
+        </div>
+        <div class="preview ${output.transparent ? 'checker' : ''}" data-preview="${esc(output.id)}" title="Ouvrir la sortie en grand">
+          <div class="op-stage" data-stage="${esc(output.id)}"></div>
+          <div class="empty" data-empty="${esc(output.id)}">Rien à l’antenne</div>
+          <span class="zoom">ouvrir ↗</span>
+        </div>
+        <div class="links">${chips}</div>
+        <div class="card-actions">
+          <button class="btn sm" data-copyall="${esc(output.id)}">Copier tout</button>
+          <a class="btn sm" href="/scene.html?output=${encodeURIComponent(output.id)}">Modifier les scènes</a>
+          <a class="btn sm" href="/o/${encodeURIComponent(output.id)}" target="_blank" rel="noopener">↗ Ouvrir</a>
+        </div>
+      </article>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-preview]').forEach((el) => {
+    el.addEventListener('click', () => {
+      window.open(`/o/${encodeURIComponent(el.dataset.preview)}${token ? `?t=${token}` : ''}`, '_blank', 'noopener');
+    });
+  });
+  grid.querySelectorAll('[data-copy]').forEach((el) => {
+    el.addEventListener('click', () => copyLink(el.dataset.copy, el.dataset.kind, el));
+  });
+  grid.querySelectorAll('[data-copyall]').forEach((el) => {
+    el.addEventListener('click', () => copyAll(el.dataset.copyall));
+  });
+}
+
+function linkFor(outputId, kind) {
+  const output = outputs.find((item) => item.id === outputId);
+  const origin = location.origin;
+  return `${origin}/o/${encodeURIComponent(outputId)}?kind=${kind}${output?.transparent ? '' : ''}`;
+}
+
+async function copyLink(outputId, kind, element) {
+  const url = linkFor(outputId, kind);
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(`Lien ${KIND_LABELS[kind] || kind} copié.`);
+    element.dataset.copied = '1';
+  } catch {
+    // Le presse-papiers peut être refusé hors HTTPS : on montre l'URL.
+    toast(url);
+  }
+}
+
+async function copyAll(outputId) {
+  const output = outputs.find((item) => item.id === outputId);
+  const lines = Object.entries(output.receives || {})
+    .filter(([, allowed]) => allowed)
+    .map(([kind]) => `${KIND_LABELS[kind] || kind}\t${linkFor(outputId, kind)}`);
+  const text = `${output.name}\n${lines.join('\n')}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Tous les liens de « ${output.name} » copiés.`);
+  } catch {
+    toast('Le presse-papiers est indisponible : ouvrez la sortie pour récupérer le lien.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Aperçus en direct (le même render que la sortie)
+// ---------------------------------------------------------------------------
+async function paintPreviews() {
+  for (const output of outputs) {
+    const stage = document.querySelector(`[data-stage="${output.id}"]`);
+    const empty = document.querySelector(`[data-empty="${output.id}"]`);
+    if (!stage) continue;
+    const message = channels[output.id];
+    const kind = message?.kind || 'bible';
+    const scene = await sceneFor(output.id, kind);
+    const content = message?.t === 'show'
+      ? contentFromPayload(message.payload || {}, kind)
+      : sampleFor(kind, 'short');
+    mountScene(stage, {
+      scene,
+      content,
+      transparent: Boolean(output.transparent),
+      editing: false
+    });
+    // EF-05.2d : rien à l'antenne → aperçu à 25 %, lisible mais discret.
+    stage.style.opacity = message?.t === 'show' ? '1' : '.25';
+    if (empty) empty.hidden = Boolean(message?.t === 'show');
+    scale(stage, output);
+  }
+}
+
+function scale(stage, output) {
+  const box = stage.parentElement;
+  if (!box) return;
+  const width = output?.width || 1920;
+  stage.style.transform = `scale(${box.clientWidth / width})`;
+}
+
+window.addEventListener('resize', () => {
+  for (const output of outputs) {
+    const stage = document.querySelector(`[data-stage="${output.id}"]`);
+    if (stage) scale(stage, output);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Zone 1 et 2 : état, horloge, sorties en ligne
+// ---------------------------------------------------------------------------
+function paintLive() {
+  const active = Object.entries(channels).filter(([, message]) => message?.t === 'show');
+  const pill = $('#livePill');
+  const text = $('#liveText');
+  const button = $('#clearAll');
+  if (!active.length) {
+    pill.classList.remove('on');
+    text.textContent = 'Rien à l’antenne';
+    $('#targets').textContent = '';
+    button.disabled = true;
+    return;
+  }
+  pill.classList.add('on');
+  const [firstId, first] = active[0];
+  const label = first.payload?.reference || first.payload?.title || first.payload?.text?.slice(0, 40) || 'contenu';
+  text.innerHTML = `EN DIRECT · <b>${esc(label)}</b>`;
+  $('#targets').textContent = `→ ${active.map(([id]) => outputs.find((o) => o.id === id)?.name || id).join(' · ')}`;
+  button.disabled = false;
+
+  // Les pastilles de carte suivent l'état réel.
+  for (const output of outputs) {
+    const dot = document.querySelector(`[data-state="${output.id}"]`);
+    if (!dot) continue;
+    dot.classList.toggle('on', Boolean(channels[output.id] && channels[output.id].t === 'show'));
+    dot.classList.toggle('off', output.enabled === false);
+  }
+}
+
+function startClock() {
+  const started = Object.values(channels)
+    .map((message) => message?.ts)
+    .filter(Boolean)
+    .sort((a, b) => a - b)[0];
+  startedAt = started || null;
+
+  const tick = () => {
+    const now = new Date();
+    $('#clock').textContent = now.toLocaleTimeString('fr-FR');
+    if (!startedAt) { $('#elapsed').textContent = '00:00:00'; return; }
+    const total = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const p = (value) => String(value).padStart(2, '0');
+    $('#elapsed').textContent = `${p(Math.floor(total / 3600))}:${p(Math.floor((total % 3600) / 60))}:${p(total % 60)}`;
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
+async function clearAll() {
+  try {
+    const res = await fetch(withToken('/api/live/clear'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!res.ok) throw new Error('Coupe refusée.');
+    channels = {};
+    paintLive();
+    paintPreviews();
+    toast('Toutes les sorties sont coupées.');
+  } catch {
+    toast('Impossible de couper les sorties. Vérifiez que le serveur tourne.', 'err');
+  }
+}
+
+async function loadCounts() {
+  try {
+    const [bibles, songs, scenesList] = await Promise.all([
+      fetch(withToken('/api/library/bibles'), { cache: 'no-store' }).then((r) => r.json()),
+      fetch(withToken('/api/library/songs'), { cache: 'no-store' }).then((r) => r.json()),
+      fetch(withToken('/api/scenes'), { cache: 'no-store' }).then((r) => r.json())
+    ]);
+    const assets = await fetch(withToken('/api/assets'), { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const mediaCount = assets ? Object.keys(assets.assets || {}).length : null;
+    $('#counts').innerHTML = [
+      `${(bibles.items || []).length} bible(s)`,
+      `${(songs.items || []).length} chant(s)`,
+      mediaCount === null ? null : `${mediaCount} média(s)`,
+      `${(scenesList.items || []).length} scène(s)`
+    ].filter(Boolean).map((text) => {
+      const [value, ...rest] = text.split(' ');
+      return `<span><b>${esc(value)}</b> ${esc(rest.join(' '))}</span>`;
+    }).join('');
+  } catch {
+    $('#counts').textContent = '—';
+  }
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  let socket;
+  try {
+    socket = new WebSocket(`${proto}://${location.host}/ws?channel=op_studio${token ? `&t=${encodeURIComponent(token)}` : ''}`);
+  } catch {
+    return;
+  }
+  socket.addEventListener('message', async (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+    if (message.t === 'live:state') {
+      // Une diffusion vient d'avoir lieu : on relit l'état exact.
+      const live = await fetch(withToken('/api/live/state'), { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+      if (!live) return;
+      channels = live.channels || {};
+      paintLive();
+      paintPreviews();
+    }
+  });
+  socket.addEventListener('close', () => setTimeout(connect, 2000));
+}
+
+$('#openStudio').addEventListener('click', () => { location.href = '/studio.html'; });
+$('#clearAll').addEventListener('click', clearAll);
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    if ($('#clearAll').disabled) return;
+    clearAll();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Démarrage
+// ---------------------------------------------------------------------------
+(async () => {
+  try {
+    await load();
+    startClock();
+    connect();
+    // Rafraîchissement discret : l'accueil reste juste même sans WebSocket.
+    setInterval(async () => {
+      const live = await fetch(withToken('/api/live/state'), { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+      if (!live) return;
+      const next = live.channels || {};
+      if (JSON.stringify(next) === JSON.stringify(channels)) return;
+      channels = next;
+      paintLive();
+      paintPreviews();
+    }, 4000);
+  } catch {
+    toast('Serveur injoignable — relancez OpenPresenter.', 'err');
+  }
+})();
+</script>
+</body>
+</html>

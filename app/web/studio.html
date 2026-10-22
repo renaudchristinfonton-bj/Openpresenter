@@ -161,6 +161,45 @@
   }
   .lyrics{white-space:pre-wrap;font-size:12.5px;line-height:1.5;color:var(--txt2)}
 
+  /* Recherche unifiée (EF-06.8 → EF-06.18) */
+  .palette{
+    width:min(680px,94vw);margin:12vh auto auto;border:1px solid var(--line2);border-radius:12px;
+    background:var(--bg2);color:var(--txt);padding:0;box-shadow:0 30px 90px #000d;
+  }
+  .palette::backdrop{background:#000b;backdrop-filter:blur(2px)}
+  .palette-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .palette-head input{
+    flex:1;background:transparent;border:0;outline:none;color:var(--txt);
+    font:16px/1.3 "Inter",system-ui,sans-serif;
+  }
+  .palette-head kbd{
+    font-family:var(--mono);font-size:10px;color:var(--txt3);
+    border:1px solid var(--line2);border-radius:4px;padding:1px 5px;
+  }
+  .filters{display:flex;gap:5px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .filter{
+    border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--txt3);
+    font:600 10.5px/1 "Inter",system-ui,sans-serif;padding:4px 9px;cursor:pointer;
+  }
+  .filter.on{border-color:var(--accent);color:var(--accent);background:#f5b94210}
+  .results{max-height:min(52vh,460px);overflow:auto}
+  .group-head{
+    padding:7px 14px 3px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);
+  }
+  .result{display:flex;gap:10px;align-items:flex-start;padding:7px 14px;cursor:pointer;border-left:2px solid transparent}
+  .result:hover{background:#ffffff06}
+  .result.hi{background:#f5b94214;border-left-color:var(--accent)}
+  .result .ico{font-size:13px;width:18px;text-align:center;opacity:.85}
+  .result .main{flex:1;min-width:0}
+  .result .t{font-size:12.5px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .s{font-size:10.5px;color:var(--txt3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .k{font-size:9px;color:var(--txt3);font-family:var(--mono)}
+  .palette-foot{
+    display:flex;gap:12px;padding:8px 14px;border-top:1px solid var(--line);
+    background:#07080d;font-size:10.5px;color:var(--txt3);flex-wrap:wrap;
+  }
+  .palette-foot b{color:var(--txt2);font-weight:600}
+
   /* Import */
   dialog{
     width:min(620px,92vw);border:1px solid var(--line2);border-radius:12px;padding:0;
@@ -182,6 +221,11 @@
   .preview-box .ok{color:var(--ok)}
   .file-drop{border:1px dashed var(--line2);border-radius:8px;padding:10px;font-size:11.5px;color:var(--txt3);text-align:center}
   .file-drop.over{border-color:var(--accent);color:var(--accent)}
+  #bibleFields{display:grid;grid-template-columns:1fr 96px 1fr;gap:8px;font-size:11px;color:var(--txt3)}
+  #bibleFields label{display:flex;flex-direction:column;gap:4px}
+  #bibleFields input{background:#07080d;border:1px solid var(--line2);color:var(--txt);border-radius:6px;padding:6px 8px;font:inherit;font-size:12px}
+  #bibleFields input:focus{outline:none;border-color:var(--accent)}
+  .txt-msg{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#ffce7a;line-height:1.6}
 
   .toast{position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:340px}
   .toast.show{opacity:1;transform:none}
@@ -199,6 +243,7 @@
   <nav class="modes" role="tablist" aria-label="Modules">
     <button class="mode on" id="modeBible" role="tab" aria-selected="true" data-mode="bible">Bible <kbd>Alt+1</kbd></button>
     <button class="mode" id="modeSongs" role="tab" aria-selected="false" data-mode="songs">Chants <kbd>Alt+2</kbd></button>
+    <button class="mode" id="modeAnn" role="tab" aria-selected="false" data-mode="announcements">Annonces <kbd>Alt+3</kbd></button>
   </nav>
   <span class="spacer"></span>
   <span class="chip" id="ws"><span class="dot"></span> <span id="wsText">connexion</span></span>
@@ -212,6 +257,11 @@
     <h2>Bible — saisie clavier</h2>
 
     <div class="field-wrap">
+      <div class="row" style="margin-bottom:8px">
+        <span class="chip" id="bibleVersion" title="Version utilisée pour la saisie et la diffusion">version —</span>
+        <span class="spacer"></span>
+        <button class="btn sm" id="bibleOpenImport" title="Importer une version biblique (.xml)">＋ Bible</button>
+      </div>
       <div class="field active" id="field" tabindex="0" role="combobox" aria-expanded="false" aria-label="Recherche de référence biblique">
         <span class="prefix" id="prefix" hidden>Jean ▸</span>
         <span class="typed" id="typed"></span>
@@ -234,6 +284,18 @@
         <span class="mono">Jean 3:16</span> · <span class="mono">Ps 23</span> · <span class="mono">1 Corinthiens 13:4-7</span>
       </div>
     </div>
+   </div>
+
+   <div class="module" id="mod-ann" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="annSearch" type="search" placeholder="Rechercher une annonce…" aria-label="Rechercher une annonce">
+        <button class="btn primary" id="annNew" title="Nouvelle annonce">＋ Nouvelle</button>
+      </div>
+      <div class="hint">Cliquez une annonce pour l’afficher sur les sorties cochées.</div>
+    </div>
+    <h2>Annonces <span class="spacer"></span><span class="chip" id="annCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="annList" style="max-height:none;flex:1"></div>
    </div>
 
    <div class="module" id="mod-songs" hidden>
@@ -285,6 +347,47 @@
     <div class="strip" id="outputs"></div>
   </section>
 </main>
+
+<dialog id="bibleDlg" aria-labelledby="bibleDlgTitle">
+  <div class="dlg-head">
+    <h3 id="bibleDlgTitle">Importer une version biblique</h3>
+    <span class="spacer"></span>
+    <span class="chip" id="bibleDlgFormat">format détecté automatiquement</span>
+  </div>
+  <div class="dlg-body">
+    <div class="file-drop" id="bibleDrop">
+      Déposez un fichier <span class="mono">.xml</span> (Beblia, Zefania, OSIS, USFX) — ou cliquez pour le choisir.
+      <input type="file" id="bibleFile" accept=".xml,application/xml,text/xml" hidden>
+    </div>
+    <div id="biblePreview" class="preview-box" hidden></div>
+    <div id="bibleFields" hidden>
+      <label>Nom affiché<input id="bibleName" type="text" maxlength="120" spellcheck="false"></label>
+      <label>Abréviation<input id="bibleAbbr" type="text" maxlength="6" spellcheck="false"></label>
+      <label>Licence<input id="bibleLicense" type="text" maxlength="120" placeholder="Domaine public"></label>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="bibleCancel">Annuler</button>
+    <button class="btn primary" id="bibleConfirm" disabled>Importer</button>
+  </div>
+</dialog>
+
+<dialog class="palette" id="palette" aria-label="Recherche unifiée">
+  <div class="palette-head">
+    <span aria-hidden="true">🔍</span>
+    <input id="paletteInput" type="text" placeholder="Tout chercher : chant, verset, média, annonce, look…"
+           autocomplete="off" spellcheck="false" aria-controls="paletteResults">
+    <kbd>Échap</kbd>
+  </div>
+  <div class="filters" id="paletteFilters"></div>
+  <div class="results" id="paletteResults" role="listbox" aria-label="Résultats"></div>
+  <div class="palette-foot">
+    <span><b>↑↓</b> naviguer</span>
+    <span><b>Entrée</b> diffuser</span>
+    <span><b>Maj+Entrée</b> aperçu</span>
+    <span><b>Échap</b> fermer</span>
+  </div>
+</dialog>
 
 <dialog id="importDlg" aria-labelledby="importTitle">
   <div class="dlg-head">
@@ -667,6 +770,7 @@ async function loadSampleSongs() {
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error?.message || 'Ajout impossible.');
     await loadSongs();
+    await loadAnnouncements();
     toast('Deux chants d’exemple ajoutés.');
     if (songs[0]) await loadSong(songs[0].id);
   } catch (err) {
@@ -764,21 +868,24 @@ function setMode(next) {
   }
   $('#mod-bible').hidden = next !== 'bible';
   $('#mod-songs').hidden = next !== 'songs';
+  $('#mod-ann').hidden = next !== 'announcements';
   try { localStorage.setItem('op.studio.mode', next); } catch { /* stockage refusé */ }
   // EF-06.7 : changer de module ne coupe jamais ce qui est à l'antenne.
   if (next === 'bible') {
     paintParts();
     focusField();
-  } else {
+  } else if (next === 'songs') {
     paintSongsAll();
     if (currentSong) paintSongPreview();
+  } else {
+    renderAnnouncements();
   }
 }
 
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
-async function loadSelection(bookNum, chapter, first, last) {
+async function loadSelection(bookNum, chapter, first, last, { preview = false } = {}) {
   const params = new URLSearchParams({ book: String(bookNum), chapter: String(chapter) });
   if (first) params.set('first', String(first));
   if (last) params.set('last', String(last));
@@ -799,7 +906,8 @@ async function loadSelection(bookNum, chapter, first, last) {
   paintAll();
   // Sélectionner une référence ne diffuse pas : seules les sorties cochées
   // reçoivent, et seulement quand la diffusion est demandée (Entrée / bouton).
-  broadcast();
+  // `Maj+Entrée` dans la recherche unifiée demande explicitement un aperçu.
+  if (!preview) broadcast();
 }
 
 /** Envoie un contenu aux sorties cochées ; ne lève jamais d'exception à l'UI. */
@@ -895,10 +1003,21 @@ function move(action) {
 // Clavier (une seule source : le module partagé de navigation)
 // ---------------------------------------------------------------------------
 document.addEventListener('keydown', (event) => {
-  // Raccourcis de modules (EF-06.6) et import, actifs partout.
-  if (event.altKey && (event.key === '1' || event.key === '2')) {
+  // Recherche unifiée : ouverte depuis n'importe où (EF-06.8).
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    setMode(event.key === '1' ? 'bible' : 'songs');
+    if (paletteOpen) closePalette(); else openPalette();
+    return;
+  }
+  // Le dialogue d'import de Bible capture la saisie : seuls Échap et la fermeture agissent.
+  if ($('#bibleDlg').open) {
+    if (event.key === 'Escape') { event.preventDefault(); $('#bibleDlg').close(); }
+    return;
+  }
+  // Raccourcis de modules (EF-06.6) et import, actifs partout.
+  if (event.altKey && ['1', '2', '3'].includes(event.key)) {
+    event.preventDefault();
+    setMode({ '1': 'bible', '2': 'songs', '3': 'announcements' }[event.key]);
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
@@ -1047,6 +1166,436 @@ function handleSongKey(event) {
 }
 
 // ---------------------------------------------------------------------------
+// Import d'une version biblique (§ 9.2) : prévisualisation avant validation
+// ---------------------------------------------------------------------------
+let bibleDraft = null;
+let bibleVersions = [];
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
+}
+
+function paintBibleVersion() {
+  const current = bibleVersions.find((entry) => entry.id === bibleId) || bibleVersions[0];
+  $('#bibleVersion').textContent = current
+    ? `${current.name}${current.abbreviation ? ' · ' + current.abbreviation : ''}`
+    : 'aucune version importée';
+}
+
+async function refreshBibleVersions() {
+  try {
+    const res = await fetch('/api/bible/versions', { cache: 'no-store' });
+    const data = await res.json();
+    bibleVersions = data.versions || [];
+  } catch {
+    bibleVersions = [];
+  }
+  paintBibleVersion();
+  if (!bibleId && bibleVersions.length) bibleId = bibleVersions[0].id;
+  return bibleVersions;
+}
+
+function openBibleImport() {
+  if ($('#bibleDlg').open) { $('#bibleFile').click(); return; }
+  bibleDraft = null;
+  $('#biblePreview').hidden = true;
+  $('#biblePreview').innerHTML = '';
+  $('#bibleFields').hidden = true;
+  $('#bibleDlgFormat').textContent = 'format détecté automatiquement';
+  $('#bibleConfirm').disabled = true;
+  $('#bibleFile').value = '';
+  $('#bibleDlg').showModal();
+}
+
+function bibleError(message) {
+  const box = $('#biblePreview');
+  box.hidden = false;
+  box.innerHTML = `<div class="txt-msg">${esc(message)}</div>`;
+  $('#bibleFields').hidden = true;
+  $('#bibleConfirm').disabled = true;
+  $('#bibleDlgFormat').textContent = 'format non reconnu';
+}
+
+/** Lecture + analyse **sans écriture** : l'opérateur voit avant de valider (EF-11.2). */
+async function previewBibleFile(file) {
+  if (!file) return;
+  $('#bibleDlgFormat').textContent = 'analyse…';
+  try {
+    const text = await file.text();
+    const res = await fetch('/api/bible/import/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, filename: file.name })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.preview) {
+      bibleError(data?.error?.message || 'Ce fichier n’est pas une Bible reconnue.');
+      return;
+    }
+    const preview = data.preview;
+    bibleDraft = { text, filename: file.name, preview };
+    const counts = preview.counts || {};
+    $('#biblePreview').hidden = false;
+    $('#biblePreview').innerHTML = `
+      <div><b>Bible détectée</b> — ${esc(preview.formatLabel)}</div>
+      <div>Livres : ${counts.books ?? '—'} · Chapitres : ${counts.chapters ?? '—'} · Versets : ${counts.verses ?? '—'}</div>
+      <div>Langue : ${esc(preview.language || 'non détectée')} · Taille : ${formatBytes(preview.sizeBytes)}</div>
+      ${preview.preview ? `<div>Aperçu — <span class="mono">${esc(preview.preview.reference)}</span><br>
+        « ${esc(preview.preview.text)} »</div>` : ''}`;
+    $('#bibleFields').hidden = false;
+    $('#bibleName').value = preview.name || '';
+    $('#bibleAbbr').value = (preview.name || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(Boolean)
+      .slice(0, 4).map((word) => word[0]).join('').toUpperCase() || 'BIB';
+    $('#bibleLicense').value = '';
+    $('#bibleDlgFormat').textContent = preview.formatLabel;
+    $('#bibleConfirm').disabled = false;
+    $('#bibleName').focus();
+  } catch {
+    bibleError('Ce fichier n’a pas pu être lu. Vérifiez son contenu.');
+  }
+}
+
+async function confirmBibleImport() {
+  if (!bibleDraft) return;
+  const button = $('#bibleConfirm');
+  button.disabled = true;
+  button.textContent = 'Import…';
+  try {
+    const res = await fetch('/api/bible/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        text: bibleDraft.text,
+        filename: bibleDraft.filename,
+        name: $('#bibleName').value.trim() || bibleDraft.preview.name,
+        abbreviation: $('#bibleAbbr').value.trim() || undefined,
+        license: $('#bibleLicense').value.trim() || undefined
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.bible) throw new Error(data?.error?.message || 'Import refusé.');
+    $('#bibleDlg').close();
+    bibleId = data.bible.id;                 // la version importée devient la version active
+    await refreshBibleVersions();
+    selection = null;                        // l'ancienne sélection vient d'une autre version
+    paintAll();
+    toast(data.created
+      ? `« ${data.bible.name} » importée (${data.bible.counts?.verses ?? '?'} versets).`
+      : `« ${data.bible.name} » est déjà dans ce projet.`);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Importer';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recherche unifiée (EF-06.8 → EF-06.18)
+// ---------------------------------------------------------------------------
+// Annonces : liste, création, diffusion (EF-17).
+let announcements = [];
+let annQuery = '';
+
+function renderAnnouncements() {
+  const needle = fold(annQuery).trim();
+  const items = needle
+    ? announcements.filter((item) => fold(`${item.title} ${item.body || ''}`).includes(needle))
+    : announcements;
+  $('#annCount').textContent = items.length === announcements.length
+    ? `${announcements.length} annonce(s)`
+    : `${items.length} / ${announcements.length}`;
+  const list = $('#annList');
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">${announcements.length
+      ? 'Aucune annonce ne correspond.'
+      : 'Aucune annonce.<br>Cliquez sur <b>＋ Nouvelle</b> pour en écrire une.'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map((item) => `
+    <div class="song" data-id="${esc(item.id)}" role="button" tabindex="0">
+      <span class="t">${esc(item.title)}
+        <div class="a">${esc((item.body || '').slice(0, 80))}</div>
+      </span>
+      <button class="btn sm" data-del="${esc(item.id)}" title="Supprimer">✕</button>
+    </div>`).join('');
+  for (const element of list.querySelectorAll('.song')) {
+    element.addEventListener('click', (event) => {
+      if (event.target.closest('[data-del]')) return;
+      showAnnouncement(element.dataset.id);
+    });
+  }
+  for (const button of list.querySelectorAll('[data-del]')) {
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await deleteAnnouncement(button.dataset.del);
+    });
+  }
+}
+
+async function loadAnnouncements() {
+  try {
+    const res = await fetch('/api/library/announcements', { cache: 'no-store' });
+    const data = await res.json();
+    announcements = data.items || [];
+  } catch {
+    announcements = [];
+  }
+  renderAnnouncements();
+}
+
+async function createAnnouncement() {
+  const title = prompt('Titre de l’annonce :');
+  if (!title) return;
+  const body = prompt('Texte affiché :', '') ?? '';
+  const id = `ann_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    const res = await fetch(`/api/library/announcements/${id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, rev: 1, title: title.slice(0, 120), body: body.slice(0, 2000), kind: 'text' })
+    });
+    if (!res.ok) throw new Error('Enregistrement refusé.');
+    await loadAnnouncements();
+    toast('Annonce enregistrée.');
+    showAnnouncement(id);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function deleteAnnouncement(id) {
+  const item = announcements.find((entry) => entry.id === id);
+  if (!item) return;
+  if (!confirm(`Supprimer « ${item.title} » ?`)) return;
+  try {
+    const res = await fetch(`/api/library/announcements/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Suppression refusée.');
+    await loadAnnouncements();
+    toast('Annonce supprimée.');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function showAnnouncement(id) {
+  const item = announcements.find((entry) => entry.id === id);
+  if (!item) return;
+  await showOnStage('announcements', contentFromPayload({
+    title: item.title,
+    text: item.body || '',
+    announcement: item.body || ''
+  }, 'announcements'));
+  await sendToOutputs('announcements', {
+    title: item.title,
+    text: item.body || '',
+    announcement: item.body || ''
+  }, { force: true });
+}
+
+const SEARCH_KINDS = [
+  { id: 'songs', label: 'Chants', icon: '🎤' },
+  { id: 'bibles', label: 'Versets', icon: '📖' },
+  { id: 'media', label: 'Médias', icon: '🖼️' },
+  { id: 'announcements', label: 'Annonces', icon: '📢' },
+  { id: 'looks', label: 'Looks', icon: '🎚️' }
+];
+const KIND_ICON = Object.fromEntries(SEARCH_KINDS.map((kind) => [kind.id, kind.icon]));
+
+let paletteOpen = false;
+let paletteFocusBack = null;
+let paletteItems = [];      // liste aplatie, tous groupes confondus
+let paletteIndex = 0;
+let paletteFilters = new Set();
+let paletteTimer = null;
+let paletteSequence = 0;
+
+function renderFilters() {
+  $('#paletteFilters').innerHTML = SEARCH_KINDS.map((kind) => `
+    <button class="filter ${paletteFilters.has(kind.id) ? 'on' : ''}" data-filter="${kind.id}">
+      ${kind.icon} ${kind.label}
+    </button>`).join('');
+  for (const button of $('#paletteFilters').querySelectorAll('[data-filter]')) {
+    button.addEventListener('click', () => {
+      const id = button.dataset.filter;
+      if (paletteFilters.has(id)) paletteFilters.delete(id); else paletteFilters.add(id);
+      renderFilters();
+      runSearch($('#paletteInput').value);
+    });
+  }
+}
+
+function openPalette(prefill = '') {
+  if (!paletteOpen) paletteFocusBack = document.activeElement;
+  paletteOpen = true;
+  $('#paletteInput').value = prefill;
+  renderFilters();
+  if (!$('#palette').open) $('#palette').showModal();
+  setTimeout(() => $('#paletteInput').focus(), 20);
+  if (prefill) runSearch(prefill);
+  else paintResults([], '');
+}
+
+function closePalette() {
+  paletteOpen = false;
+  if ($('#palette').open) $('#palette').close();
+  clearTimeout(paletteTimer);
+  // EF-06.13 : le focus revient à l'élément qui avait la main.
+  if (paletteFocusBack?.isConnected) paletteFocusBack.focus();
+}
+
+/** Débounce de 120 ms (EF-06.16) : une seule requête par rafale de frappe. */
+function scheduleSearch(value) {
+  clearTimeout(paletteTimer);
+  paletteTimer = setTimeout(() => runSearch(value), 120);
+}
+
+async function runSearch(value) {
+  const query = String(value || '').trim();
+  if (query.length < 2) { paintResults([], query); return; }
+  const sequence = ++paletteSequence;
+  const kinds = paletteFilters.size ? [...paletteFilters].join(',') : '';
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}${kinds ? `&kinds=${kinds}` : ''}`, { cache: 'no-store' });
+    const data = await res.json();
+    // Une réponse tardive ne doit pas écraser une frappe plus récente.
+    if (sequence !== paletteSequence) return;
+    paintResults(data.groups || [], query);
+  } catch {
+    if (sequence === paletteSequence) paintResults([], query, 'Recherche indisponible hors ligne.');
+  }
+}
+
+function paintResults(groups, query, error = '') {
+  const box = $('#paletteResults');
+  paletteItems = groups.flatMap((group) => group.items.map((item) => ({ ...item, groupKind: group.kind })));
+  paletteIndex = 0;
+
+  if (error) { box.innerHTML = `<div class="group-head">${esc(error)}</div>`; return; }
+  if (!query || query.trim().length < 2) {
+    box.innerHTML = '<div class="group-head">Tapez au moins deux lettres.</div>';
+    return;
+  }
+  if (!paletteItems.length) {
+    box.innerHTML = `<div class="group-head">Aucun résultat pour « ${esc(query)} ».</div>`;
+    return;
+  }
+
+  let cursor = 0;
+  box.innerHTML = groups.map((group) => `
+    <div class="group-head">${esc(group.label || group.kind)} (${group.count})</div>
+    ${group.items.map((item) => {
+      const index = cursor++;
+      return `<div class="result" role="option" data-index="${index}" aria-selected="false">
+        <span class="ico">${KIND_ICON[item.kind] || '•'}</span>
+        <span class="main">
+          <span class="t">${esc(item.title)}</span>
+          <span class="s">${esc(item.detail || item.subtitle || '')}</span>
+        </span>
+        <span class="k">${esc(item.title && item.kind === 'bibles' ? '' : '')}</span>
+      </div>`;
+    }).join('')}`).join('');
+
+  for (const element of box.querySelectorAll('.result')) {
+    element.addEventListener('mouseenter', () => { paletteIndex = Number(element.dataset.index); highlight(); });
+    element.addEventListener('click', () => activate(false));
+  }
+  highlight();
+}
+
+function highlight() {
+  const box = $('#paletteResults');
+  for (const element of box.querySelectorAll('.result')) {
+    const on = Number(element.dataset.index) === paletteIndex;
+    element.classList.toggle('hi', on);
+    element.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) element.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+/** Ouvre et diffuse (ou met en aperçu) l'élément en surbrillance (EF-06.11/12). */
+async function activate(preview) {
+  const item = paletteItems[paletteIndex];
+  if (!item) return;
+  closePalette();
+  try {
+    if (item.kind === 'songs') {
+      if (mode !== 'songs') setMode('songs');
+      await loadSongs();
+    await loadAnnouncements();
+      await loadSong(item.id, {});
+      if (preview) return;
+      await broadcastSong(true);
+      return;
+    }
+    if (item.kind === 'bibles') {
+      if (mode !== 'bibles') setMode('bible');
+      const payload = item.payload || {};
+      await loadSelection(payload.bookNum, payload.chapter, payload.verse, payload.verse, { preview });
+      return;
+    }
+    if (item.kind === 'announcements') {
+      await sendToOutputs('announcements', {
+        title: item.title, text: item.payload?.text || item.subtitle || ''
+      }, { force: !preview });
+      return;
+    }
+    if (item.kind === 'media') {
+      await sendToOutputs('media', {
+        title: item.title,
+        mediaName: item.title,
+        text: item.title,
+        assetId: item.payload?.assetId || null,
+        sha256: item.payload?.sha256 || null
+      }, { force: !preview });
+      return;
+    }
+    if (item.kind === 'looks') {
+      toast(`Look « ${item.title} » : ouvrez l’éditeur de scènes pour l’appliquer.`);
+      return;
+    }
+  } catch (err) {
+    toast(err?.message || 'Action impossible.', 'err');
+  }
+}
+
+function bindPalette() {
+  const input = $('#paletteInput');
+  input.addEventListener('input', (event) => scheduleSearch(event.target.value));
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (!paletteItems.length) return;
+      paletteIndex = Math.min(paletteItems.length - 1, paletteIndex + 1);
+      highlight();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      paletteIndex = Math.max(0, paletteIndex - 1);
+      highlight();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      activate(event.shiftKey);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closePalette();
+    }
+  });
+  $('#palette').addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closePalette();
+  });
+  // Un clic sur le fond ferme, sans propager au reste de la page.
+  $('#palette').addEventListener('click', (event) => {
+    if (event.target === $('#palette')) closePalette();
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Import d'un chant (§ 10.1) : aperçu avant validation
 // ---------------------------------------------------------------------------
 function openImport() {
@@ -1130,6 +1679,7 @@ async function confirmImport() {
     if (!res.ok || !data.song) throw new Error(data?.error?.message || 'Import refusé.');
     $('#importDlg').close();
     await loadSongs();
+    await loadAnnouncements();
     await loadSong(data.song.id);
     toast(`« ${data.song.title} » importé.`);
     broadcastSong(true);
@@ -1153,20 +1703,23 @@ async function boot() {
     ]);
     $('#who').textContent = `${health.projectName || 'projet'} · port ${health.port} · ${health.lanToken ? 'réseau ' + health.lanToken : 'local'}`;
     bibleId = versions.versions?.[0]?.id || null;
+    bibleVersions = versions.versions || [];
 
     outputs = outs.outputs || [];
     sceneCache.clear();
     targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
     paintOutputs();
+    paintBibleVersion();
     paintAll();
     await loadSongs();
+    await loadAnnouncements();
 
     // EF-06.4 : le module actif est mémorisé entre les sessions.
     let savedMode = 'bible';
     try { savedMode = localStorage.getItem('op.studio.mode') || 'bible'; } catch { /* stockage refusé */ }
-    if (savedMode === 'songs') {
+    if (savedMode !== 'bible' && ['songs', 'announcements'].includes(savedMode)) {
       mode = 'bible';            // pour que setMode() applique le changement
-      setMode('songs');
+      setMode(savedMode);
     } else {
       focusField();
     }
@@ -1218,6 +1771,28 @@ $('#addArrangement').addEventListener('click', () => {
 $('#qAppend').addEventListener('click', () => editArrangement((song, sel) => appendChorus(song, sel.arrangementId), 'Refrain ajouté à la fin.'));
 $('#qRepeat').addEventListener('click', () => editArrangement((song, sel) => repeatCurrentStep(song, sel, sel.arrangementId), 'Section répétée.'));
 $('#qSkip').addEventListener('click', () => editArrangement((song, sel) => skipCurrentStep(song, sel, sel.arrangementId), 'Section sautée.'));
+
+// --- Annonces -------------------------------------------------------------
+$('#modeAnn').addEventListener('click', () => setMode('announcements'));
+$('#annNew').addEventListener('click', createAnnouncement);
+$('#annSearch').addEventListener('input', (event) => { annQuery = event.target.value; renderAnnouncements(); });
+
+// --- Bible : import d'une version ----------------------------------------
+$('#bibleOpenImport').addEventListener('click', openBibleImport);
+$('#bibleCancel').addEventListener('click', () => $('#bibleDlg').close());
+$('#bibleConfirm').addEventListener('click', confirmBibleImport);
+$('#bibleDrop').addEventListener('click', () => $('#bibleFile').click());
+$('#bibleFile').addEventListener('change', () => previewBibleFile($('#bibleFile').files?.[0]));
+for (const type of ['dragover', 'dragleave', 'drop']) {
+  $('#bibleDrop').addEventListener(type, (event) => {
+    event.preventDefault();
+    $('#bibleDrop').classList.toggle('over', type === 'dragover');
+    if (type === 'drop') previewBibleFile(event.dataTransfer?.files?.[0]);
+  });
+}
+
+// --- Recherche unifiée ----------------------------------------------------
+bindPalette();
 
 // --- Import ---------------------------------------------------------------
 $('#importCancel').addEventListener('click', () => $('#importDlg').close());

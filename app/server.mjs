@@ -42,6 +42,7 @@ import {
   seedSampleBible, listBibles, resolveBible, buildBibleSelection, makeVerseCounter
 } from './src/core/bible/service.mjs';
 import { parseReference, parseVerseRange, MESSAGES } from './src/core/bible/reference.mjs';
+import { previewBible, importBibleXml, removeBible, renameBible } from './src/core/bible/importer.mjs';
 import { BOOKS } from './src/core/books.mjs';
 import { parseSongText, importSummary } from './src/core/songs/parser.mjs';
 import { buildSongSelection } from './src/core/songs/arrangement.mjs';
@@ -257,77 +258,137 @@ function normalize(s) {
   return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+/**
+ * Recherche unifiée (EF-06.8 → EF-06.18) : **uniquement** sur l'index local,
+ * aucun appel réseau. Insensible à la casse et aux accents, 50 résultats
+ * maximum par groupe, groupes vides omis.
+ */
 async function search(q, kinds) {
   const needle = normalize(q).trim();
   if (needle.length < 2) return { groups: [], total: 0 };
-  const wanted = (kinds ? String(kinds).split(',') : ['songs', 'bibles', 'media', 'announcements'])
-    .filter((k) => ['songs', 'bibles', 'media', 'announcements', 'looks'].includes(k));
-  const groups = [];
+  const ALL = ['songs', 'bibles', 'media', 'announcements', 'looks'];
+  const wanted = (kinds ? String(kinds).split(',') : ALL).filter((k) => ALL.includes(k));
   const LIMIT = 50;
+  const groups = [];
 
   if (wanted.includes('songs')) {
     const items = [];
     for (const song of await list('songs')) {
-      const hay = normalize(song.title + ' ' + (song.artist || '') + ' ' +
-        (song.sections || []).map((s) => s.lines?.join(' ')).join(' '));
-      if (hay.includes(needle)) {
-        items.push({
-          id: song.id, title: song.title, subtitle: song.artist || '',
-          kind: 'songs', url: `/api/library/songs/${song.id}`
-        });
-      }
       if (items.length >= LIMIT) break;
+      const hay = normalize([
+        song.title, song.artist, song.composer,
+        (song.sections || []).map((section) => (section.lines || []).join(' ')).join(' ')
+      ].join(' '));
+      if (!hay.includes(needle)) continue;
+      items.push({
+        id: song.id,
+        kind: 'songs',
+        title: song.title,
+        subtitle: song.artist || song.composer || '',
+        // Ligne de paroles qui a déclenché la correspondance (contexte utile).
+        detail: firstMatchingLine(song, needle),
+        url: `/api/library/songs/${song.id}`
+      });
     }
-    if (items.length) groups.push({ kind: 'songs', count: items.length, items });
+    if (items.length) groups.push({ kind: 'songs', label: 'Chants', count: items.length, items });
   }
 
   if (wanted.includes('bibles')) {
     const items = [];
-    outer:
     for (const bible of await list('bibles')) {
+      if (items.length >= LIMIT) break;
       const verses = await readVerses(bible.id);
+      const books = new Map((bible.books || []).map((book) => [book.num, book]));
       for (const chapter of verses?.chapters || []) {
-        for (const [i, text] of chapter.v.entries()) {
-          if (normalize(text).includes(needle)) {
-            const book = bible.books.find((b) => b.num === chapter.b);
-            items.push({
-              id: `${bible.id}-${chapter.b}-${chapter.c}-${i + 1}`,
-              title: `${book?.name || 'Livre'} ${chapter.c}:${i + 1}`,
-              subtitle: `${bible.abbreviation || bible.shortName || ''} · ${text.slice(0, 80)}`,
-              kind: 'bibles', url: `/api/bibles/${bible.id}/verses`
-            });
-            break outer;
-          }
-          if (items.length >= LIMIT) break outer;
+        for (const [i, text] of (chapter.v || []).entries()) {
+          if (items.length >= LIMIT) break;
+          if (!normalize(text).includes(needle)) continue;
+          const book = books.get(chapter.b);
+          const verseNum = i + 1;
+          items.push({
+            id: `${bible.id}-${chapter.b}-${chapter.c}-${verseNum}`,
+            kind: 'bibles',
+            title: `${book?.name || 'Livre'} ${chapter.c}:${verseNum}`,
+            subtitle: `${bible.abbreviation || bible.shortName || ''} · ${text.slice(0, 90)}`,
+            detail: text,
+            // De quoi construire une sélection sans relire tout le fichier.
+            payload: {
+              bibleId: bible.id,
+              bookNum: chapter.b,
+              bookName: book?.name || '',
+              chapter: chapter.c,
+              verse: verseNum,
+              text
+            },
+            url: `/api/bibles/${bible.id}/verses`
+          });
         }
       }
     }
-    if (items.length) groups.push({ kind: 'bibles', count: items.length, items });
+    if (items.length) groups.push({ kind: 'bibles', label: 'Versets', count: items.length, items });
   }
 
   if (wanted.includes('media')) {
     const idx = await readIndex();
     const items = Object.values(idx.assets)
-      .filter((a) => normalize(a.originalName || '').includes(needle))
+      .filter((asset) => normalize(asset.originalName || asset.path || '').includes(needle))
       .slice(0, LIMIT)
-      .map((a) => ({
-        id: a.assetId || a.sha256.slice(0, 12),
-        title: a.originalName || a.path,
-        subtitle: `${a.kind} · ${(a.bytes / 1024).toFixed(0)} Ko`,
-        kind: 'media', url: `/api/assets/${a.sha256}`
+      .map((asset) => ({
+        id: asset.assetId || asset.sha256.slice(0, 12),
+        kind: 'media',
+        title: asset.originalName || asset.path,
+        subtitle: `${asset.kind || 'média'} · ${(asset.bytes / 1024).toFixed(0)} Ko`,
+        payload: { assetId: asset.assetId || null, sha256: asset.sha256, name: asset.originalName },
+        url: `/api/assets/${asset.sha256}`
       }));
-    if (items.length) groups.push({ kind: 'media', count: items.length, items });
+    if (items.length) groups.push({ kind: 'media', label: 'Médias', count: items.length, items });
   }
 
   if (wanted.includes('announcements')) {
     const items = (await list('announcements'))
-      .filter((a) => normalize(`${a.title} ${a.body}`).includes(needle))
+      .filter((announcement) => normalize(`${announcement.title} ${announcement.body}`).includes(needle))
       .slice(0, LIMIT)
-      .map((a) => ({ id: a.id, title: a.title, subtitle: (a.body || '').slice(0, 80), kind: 'announcements', url: `/api/library/announcements/${a.id}` }));
-    if (items.length) groups.push({ kind: 'announcements', count: items.length, items });
+      .map((announcement) => ({
+        id: announcement.id,
+        kind: 'announcements',
+        title: announcement.title,
+        subtitle: (announcement.body || '').slice(0, 90),
+        payload: { title: announcement.title, text: announcement.body || '' },
+        url: `/api/library/announcements/${announcement.id}`
+      }));
+    if (items.length) groups.push({ kind: 'announcements', label: 'Annonces', count: items.length, items });
   }
 
-  return { groups, total: groups.reduce((s, g) => s + g.count, 0) };
+  if (wanted.includes('looks')) {
+    const items = (await list('looks'))
+      .filter((look) => normalize(`${look.name || ''} ${look.description || ''}`).includes(needle))
+      .slice(0, LIMIT)
+      .map((look) => ({
+        id: look.id,
+        kind: 'looks',
+        title: look.name,
+        subtitle: look.description || Object.keys(look.scenes || {}).join(', '),
+        payload: { lookId: look.id },
+        url: `/api/library/looks/${look.id}`
+      }));
+    if (items.length) groups.push({ kind: 'looks', label: 'Looks', count: items.length, items });
+  }
+
+  return {
+    groups,
+    total: groups.reduce((sum, group) => sum + group.count, 0),
+    query: needle
+  };
+}
+
+/** Première ligne d'un chant qui contient le terme cherché. */
+function firstMatchingLine(song, needle) {
+  for (const section of song.sections || []) {
+    for (const line of section.lines || []) {
+      if (normalize(line).includes(needle)) return line.slice(0, 90);
+    }
+  }
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -450,6 +511,11 @@ async function handleApi(req, res, url, pathname) {
 
   // --- assets ------------------------------------------------------------
   if (segments[0] === 'assets') {
+    // Index complet (accueil, bibliothèque) : rien de sensible, que des métadonnées.
+    if (method === 'GET' && segments.length === 1) {
+      const idx = await readIndex();
+      return sendJSON(res, 200, { version: idx.version || 1, assets: idx.assets || {} });
+    }
     if (method === 'POST' && segments.length === 1) {
       const name = url.searchParams.get('name') || req.headers['x-file-name'] || 'fichier';
       const mime = req.headers['content-type'] || 'application/octet-stream';
@@ -819,16 +885,77 @@ function splitSettings(url) {
 }
 
 async function handleBible(req, res, url, segments, method) {
-  if (method !== 'GET' && method !== 'POST') {
+  if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method)) {
     throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
   }
 
   // Liste des versions + catalogue des livres.
-  if (segments[1] === 'versions') {
+  if (segments[1] === 'versions' && !segments[2] && method === 'GET') {
     return sendJSON(res, 200, { versions: await listBibles(), books: BOOKS.length });
   }
   if (segments[1] === 'books') {
     return sendJSON(res, 200, { books: BOOKS });
+  }
+
+  // --- import d'une version (EF-11.1 → EF-11.10) -------------------------
+  // Ces routes passent **avant** la résolution de la version courante : un projet
+  // encore vide doit pouvoir importer sa première Bible.
+  if (segments[1] === 'import') {
+    if (method !== 'POST') throw Object.assign(new Error('Méthode non autorisée.'), { code: 'VALIDATION' });
+    const body = await readJsonBody(req);
+    const text = typeof body.text === 'string' ? body.text : typeof body.content === 'string' ? body.content : '';
+    if (!text.trim()) {
+      throw Object.assign(new Error('Choisissez un fichier de Bible (.xml).'), { code: 'VALIDATION', path: 'text' });
+    }
+    const filename = typeof body.filename === 'string' ? body.filename.slice(0, 200) : '';
+
+    // `/api/bible/import/preview` : analyse sans écriture (étape 4 du § 9.2.2).
+    if (segments[2] === 'preview') {
+      try {
+        return sendJSON(res, 200, { preview: previewBible(text, { filename }) });
+      } catch (err) {
+        if (err.code === 'UNSUPPORTED_FORMAT') {
+          return sendJSON(res, 422, {
+            error: { code: 'UNSUPPORTED_FORMAT', message: err.message },
+            preview: null
+          });
+        }
+        throw err;
+      }
+    }
+
+    const result = await importBibleXml(text, {
+      filename,
+      name: typeof body.name === 'string' ? body.name : undefined,
+      abbreviation: typeof body.abbreviation === 'string' ? body.abbreviation : undefined,
+      license: typeof body.license === 'string' ? body.license : undefined,
+      language: typeof body.language === 'string' ? body.language : undefined
+    });
+    await log('info', 'bible.import', result.created ? 'bible importée' : 'bible déjà présente', {
+      id: result.bible.id, format: result.bible.source?.format, verses: result.bible.counts?.verses
+    });
+    if (result.created) {
+      RELAY?.broadcast('op_project', {
+        t: 'project:changed', resource: `library/bibles/${result.bible.id}`, rev: result.bible.rev, ts: Date.now()
+      });
+    }
+    return sendJSON(res, result.created ? 201 : 200, result);
+  }
+
+  // --- gestion des versions déjà importées (EF-11.6) ---------------------
+  if (segments[1] === 'versions' && segments[2]) {
+    const id = segments[2];
+    if (method === 'PUT') {
+      const body = await readJsonBody(req);
+      return sendJSON(res, 200, { bible: await renameBible(id, body) });
+    }
+    if (method === 'DELETE') {
+      const removed = await removeBible(id);
+      RELAY?.broadcast('op_project', {
+        t: 'project:changed', resource: `library/bibles/${id}`, rev: 0, removed: true, ts: Date.now()
+      });
+      return sendJSON(res, 200, removed);
+    }
   }
 
   const bible = await resolveBible(url.searchParams.get('bible'), PROJECT);
@@ -1023,9 +1150,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return sendError(res, 405, 'VALIDATION', 'Méthode non autorisée.');
     }
-    // Le studio est la porte d'entrée ; l'état du socle vit sur /socle.html.
+    // L'accueil est la porte d'entrée (EF-05) ; le studio vit sur /studio.html,
+    // l'état du socle sur /socle.html.
     if (pathname === '/') {
-      return await serveStatic(req, res, '/studio.html');
+      return await serveStatic(req, res, '/accueil.html');
     }
     // Chaque sortie a son URL stable : /o/<outputId>?kind=<type> (ch. 07 § 7.3).
     if (/^\/o\/[\w.-]+\/?$/.test(pathname)) {

@@ -119,6 +119,10 @@
     <option value="short">Exemple court</option>
     <option value="long">Exemple long</option>
   </select>
+  <select id="looks" aria-label="Looks enregistrés" title="Appliquer un look">
+    <option value="">Looks…</option>
+  </select>
+  <button class="btn" id="saveLook" title="Enregistrer les scènes de cette sortie comme look">＋ Look</button>
   <span class="chip" id="contrast" title="Contraste mesuré (WCAG AA : 4,5:1)">contraste —</span>
   <span class="chip" id="dirty">enregistré</span>
   <button class="btn primary" id="save" title="Enregistrer (Ctrl+S)">Enregistrer</button>
@@ -774,7 +778,91 @@ function hexToRgba(hex, alpha = 0.84) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+$('#saveLook').addEventListener('click', saveLook);
+$('#looks').addEventListener('change', (event) => applyLook(event.target.value));
+
 window.addEventListener('resize', () => { if (scene) paintAll(); });
+
+// ---------------------------------------------------------------------------
+// Looks (EF-10) : jeu de scènes nommé, copie indépendante
+// ---------------------------------------------------------------------------
+function lookId(name) {
+  const slug = String(name || 'look').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24);
+  return `look_${slug || 'look'}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function loadLooks() {
+  const select = $('#looks');
+  if (!select) return;
+  try {
+    const res = await fetch('/api/library/looks', { cache: 'no-store' });
+    const data = await res.json();
+    const items = data.items || [];
+    select.innerHTML = `<option value="">Looks…</option>` + items.map((look) =>
+      `<option value="${esc(look.id)}">${esc(look.name)}</option>`).join('');
+  } catch {
+    select.innerHTML = '<option value="">Looks…</option>';
+  }
+}
+
+/** Enregistre **toutes** les scènes de la sortie courante dans un look. */
+async function saveLook() {
+  const name = prompt('Nom du look :');
+  if (!name) return;
+  const output = currentOutput();
+  if (!output) return;
+  const scenes = {};
+  for (const [kind, id] of Object.entries(output.scenesByKind || {})) {
+    try {
+      const res = await fetch(`/api/scenes/${encodeURIComponent(id)}`, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const scene = await res.json();
+      // Copie : le look ne partage jamais l'objet de la scène (A-10f).
+      scenes[kind] = { sceneId: id, embed: structuredClone(scene) };
+    } catch { /* une scène absente ne bloque pas l'enregistrement */ }
+  }
+  const look = {
+    id: lookId(name), rev: 1, name: name.slice(0, 60),
+    description: `${output.name}`,
+    scenes
+  };
+  try {
+    const res = await fetch(`/api/library/looks/${look.id}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(look)
+    });
+    if (!res.ok) throw new Error('Enregistrement refusé.');
+    await loadLooks();
+    toast(`Look « ${look.name} » enregistré.`);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+/** Applique un look à la sortie courante et au type affiché. */
+async function applyLook(id) {
+  if (!id) return;
+  const output = currentOutput();
+  const kind = $('#kind').value;
+  try {
+    const res = await fetch(`/api/library/looks/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Look introuvable.');
+    const look = await res.json();
+    const entry = look.scenes?.[kind] || Object.values(look.scenes || {})[0];
+    if (!entry?.embed) throw new Error(`Ce look ne contient pas de scène « ${KIND_LABELS[kind] || kind} ».`);
+    // On garde l'identifiant de la scène de la sortie : le look ne la remplace pas.
+    const next = { ...structuredClone(entry.embed), id: scene.id, name: `${look.name} — ${KIND_LABELS[kind] || kind}` };
+    scene = normalizeScene(next);
+    history.push(structuredClone(scene), 'application d’un look');
+    setDirty(true);
+    paintAll();
+    toast(`Look « ${look.name} » appliqué : enregistrez pour conserver.`);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    $('#looks').value = '';
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Démarrage
@@ -782,6 +870,7 @@ window.addEventListener('resize', () => { if (scene) paintAll(); });
 (async () => {
   await loadProject();
   await loadScene();
+  await loadLooks();
   window.addEventListener('beforeunload', (event) => {
     if (!dirty) return;
     event.preventDefault();

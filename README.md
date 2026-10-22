@@ -101,6 +101,19 @@ de style : l'aperçu du studio, l'éditeur `/scene.html` et la page `/o/<id>` ut
 | `app/web/scene.html` | éditeur WYSIWYG (glisser, redimensionner, historique, contraste) |
 | `app/src/core/songs/*.mjs` | import et conducteur des chants, partagés serveur/navigateur |
 
+### Accueil, studio unifié et recherche
+
+Le studio réunit désormais Bible, chants et annonces derrière un seul champ de recherche
+(`Ctrl/Cmd+K`), avec un accueil qui montre l'état des sorties en direct.
+
+| Où | Quoi |
+|---|---|
+| [`docs/PHASE-1-ACCUEIL.md`](docs/PHASE-1-ACCUEIL.md) | accueil (EF-05), studio (EF-06), recherche unifiée, annonces (EF-17), looks (EF-10), import de Bible (EF-11) |
+| `app/web/accueil.html` | accueil : état d'antenne, cartes d'aperçu WYSIWYG, « Tout couper », accès au studio |
+| `app/web/scene.html` | éditeur de scène + looks réutilisables |
+| `app/src/core/bible/formats.mjs` | détection Beblia / Zefania / OSIS / USFX, sans dépendance |
+| `app/src/core/bible/importer.mjs` | import avec prévisualisation, copie de la source, index de versets |
+
 ---
 
 ## Pourquoi ce projet

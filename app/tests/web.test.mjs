@@ -9,7 +9,7 @@ import { ROOT } from './helpers.mjs';
 
 const run = promisify(execFile);
 const WEB = path.join(ROOT, 'app', 'web');
-const PAGES = ['studio.html', 'output.html', 'socle.html', 'scene.html'];
+const PAGES = ['accueil.html', 'studio.html', 'output.html', 'socle.html', 'scene.html'];
 const VOID = new Set(['br', 'img', 'input', 'meta', 'link', 'hr', 'source', 'area', 'base', 'col', 'embed', 'param', 'track', 'wbr']);
 
 test('chaque page a un titre, une langue et un viewport', async () => {

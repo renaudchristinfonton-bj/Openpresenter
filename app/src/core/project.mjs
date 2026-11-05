@@ -273,10 +273,39 @@ export async function readLock() {
   return readJson(path.join(projectDir(), LOCK_FILE));
 }
 
+/**
+ * Le processus existe-t-il encore ? (même machine uniquement)
+ * `process.kill(pid, 0)` ne tue rien : il demande juste au système si le pid
+ * est vivant. EPERM signifie « vivant, mais pas à nous ».
+ */
+export function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err?.code === 'EPERM';
+  }
+}
+
+/**
+ * Un verrou est obsolète quand son propriétaire n'existe plus.
+ *
+ * L'ancienne règle ne regardait que le battement de cœur (60 s) : après une
+ * fermeture brutale de la fenêtre, relancer dans la minute donnait « déjà
+ * lancé » alors que plus personne ne répondait — et la fenêtre se fermait
+ * sans explication. Sur la même machine, le pid tranche immédiatement.
+ */
 export function lockIsStale(lock) {
   if (!lock) return true;
   const beat = Date.parse(lock.heartbeatAt || lock.startedAt || 0);
-  return !Number.isFinite(beat) || Date.now() - beat > STALE_MS;
+  const heartbeatOld = !Number.isFinite(beat) || Date.now() - beat > STALE_MS;
+  const sameHost = !lock.host || lock.host === os.hostname();
+  // Verrou d'une autre machine : seul le battement fait foi.
+  if (!sameHost) return heartbeatOld;
+  // Verrou local : pid disparu = verrou mort, même si le battement est récent.
+  if (lock.pid && !pidAlive(lock.pid)) return true;
+  return heartbeatOld;
 }
 
 /**

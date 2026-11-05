@@ -251,7 +251,33 @@ Sur ce PC        : http://localhost:8788/
 Depuis le réseau : http://192.168.x.x:8788/   (jeton à 4 caractères)
 ```
 
-Laissez la fenêtre du terminal ouverte tant que vous diffusez.
+Laissez la fenêtre du terminal ouverte tant que vous diffusez. **Fermer la fenêtre
+arrête OpenPresenter** — c'est le bouton d'arrêt, il n'y en a pas d'autre.
+
+### Si ça ne démarre pas
+
+Le lanceur ne se ferme jamais tout seul : en cas de problème, il affiche la cause, une
+piste concrète (dossier non inscriptible, `project.json` illisible, Node trop ancien…),
+un bloc de diagnostic (version de Node, dossier, verrou, dernières lignes du journal)
+et **attend une touche**. Le même message est écrit dans `project/logs/`.
+
+| Symptôme | Ce qui se passe |
+|---|---|
+| « Régie déjà lancée (port 8788) » | une instance tourne déjà : le navigateur s'ouvre dessus, cette fenêtre peut être fermée |
+| ancienne fenêtre fermée brutalement | le verrou de l'instance morte est détecté et repris immédiatement, sans attendre |
+| port occupé par un autre logiciel | le lanceur essaie les ports suivants (jusqu'à +20) et affiche celui retenu |
+| Node absent ou trop ancien | message explicite, code de sortie `70` — installez Node.js 20+ ou déposez un Node portable dans `runtime/` |
+
+Deux scripts décrivent l'état de la machine sans rien modifier — à lancer en cas de doute :
+
+| Situation | Action |
+|---|---|
+| Windows | double-clic sur **`Diagnostic.bat`** |
+| macOS | double-clic sur **`Diagnostic.command`** |
+| Linux | `./Diagnostic.sh` |
+
+Ils listent la version de Node, les ports 8788–8792, le verrou (`project/.lock`) avec
+l'état du processus, et les 20 dernières lignes du journal.
 
 ### Aperçu / démonstration derrière un proxy
 

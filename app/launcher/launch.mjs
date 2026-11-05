@@ -7,7 +7,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ROOT, projectDir } from '../src/core/paths.mjs';
-import { ensureProject, readProject, patchSettings } from '../src/core/project.mjs';
+import { ensureProject, readProject, patchSettings, readLock } from '../src/core/project.mjs';
 import { readJson } from '../src/core/json-store.mjs';
 
 const APP_VERSION = '3.0.0';
@@ -16,6 +16,7 @@ const messages = await readJson(path.join(path.dirname(fileURLToPath(import.meta
 const M = messages.fr || {};
 
 let logStream = null;
+let logPath = null;
 let serverChild = null;
 let stopping = false;
 const startedAt = Date.now();
@@ -67,7 +68,8 @@ async function initLog() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
   const name = `launch-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.log`;
-  const handle = await fs.open(path.join(dir, name), 'a');
+  logPath = path.join(dir, name);
+  const handle = await fs.open(logPath, 'a');
   logStream = handle.createWriteStream();
 }
 
@@ -96,14 +98,110 @@ async function freePort(preferred) {
   return null;
 }
 
-async function health(port) {
+async function health(port, timeout = 1200) {
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1200) });
+    const res = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(timeout) });
     if (!res.ok) return null;
     return await res.json();
   } catch {
     return null;
   }
+}
+
+/**
+ * Une régie tourne-t-elle déjà pour ce projet ?
+ *
+ * On regarde le port demandé, celui mémorisé dans le projet, quelques ports
+ * en dessous (une régie a pu démarrer sur un port de repli) et la plage de
+ * repli au-dessus. Un port fermé répond « refusé » en quelques millisecondes :
+ * le balayage ne coûte rien quand rien ne tourne.
+ */
+async function findRunning(projectId, preferred, remembered = null) {
+  const ports = new Set();
+  if (Number(remembered)) ports.add(Number(remembered));
+  for (let step = 0; step <= 3; step++) if (preferred - step > 1024) ports.add(preferred - step);
+  for (let step = 1; step <= 20; step++) ports.add(preferred + step);
+  ports.add(preferred);
+  for (const port of ports) {
+    const info = await health(port, 300);
+    if (info?.ok && (!projectId || info.projectId === projectId)) return { port, info };
+  }
+  return null;
+}
+
+/** Dernières lignes du journal du jour (pour ne jamais laisser un écran vide). */
+async function tailLog(lines = 12) {
+  try {
+    const dir = path.join(projectDir(), 'logs');
+    const files = (await fs.readdir(dir)).filter((f) => f.endsWith('.log')).sort();
+    if (!files.length) return [];
+    const text = await fs.readFile(path.join(dir, files[files.length - 1]), 'utf8');
+    return text.trimEnd().split('\n').slice(-lines);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Bloc de diagnostic affiché quand le démarrage échoue : version de Node,
+ * dossier, port, verrou, fin du journal. Une fenêtre qui se ferme sans rien
+ * dire est le pire des messages d'erreur.
+ */
+async function dumpDiagnostics(port, preRead = null) {
+  line('');
+  line('  ── Diagnostic ─────────────────────────────────────────');
+  line(`  Node.js   : ${process.version}`);
+  line(`  Exécutable: ${process.execPath}`);
+  line(`  Dossier   : ${projectDir()}`);
+  if (port) line(`  Port visé : ${port}`);
+  try {
+    const lock = await readLock();
+    line(`  Verrou    : ${lock ? `pid ${lock.pid} · battement ${lock.heartbeatAt}` : 'libre'}`);
+  } catch {
+    line('  Verrou    : illisible');
+  }
+  const recent = preRead ?? await tailLog(12);
+  if (recent.length) {
+    line('');
+    line('  Dernières lignes du journal :');
+    for (const row of recent) line(`    ${row}`);
+  }
+  line('');
+  line(`  Journal complet : ${logPath || path.join(projectDir(), 'logs')}`);
+  line('  ───────────────────────────────────────────────────────');
+}
+
+/**
+ * Piste concrète selon l'erreur : une trace technique ne dit pas quoi faire.
+ */
+function failureHint(message = '') {
+  const text = String(message);
+  if (/JSON/i.test(text)) {
+    return 'Le fichier « project/project.json » est illisible. Restaurez une sauvegarde du dossier project/ (sous-project/backups) ou renommez ce dossier pour repartir d’un projet neuf.';
+  }
+  if (/EACCES|EPERM/i.test(text)) {
+    return 'Le dossier n’est pas accessible en écriture. Évitez C:\\Program Files, un dossier réseau en lecture seule, ou une archive ZIP encore compressée : décompressez le logiciel avant de le lancer.';
+  }
+  if (/ENOENT/i.test(text)) {
+    return 'Un fichier attendu est absent : le dossier du logiciel est probablement incomplet (copie interrompue ?). Retéléchargez-le en entier.';
+  }
+  if (/EADDRINUSE|port/i.test(text)) {
+    return 'Aucun port libre : fermez l’autre régie ouverte, puis relancez.';
+  }
+  return '';
+}
+
+/** Garde la fenêtre ouverte pour qu'on puisse lire le message (macOS/Linux). */
+async function holdOpen() {
+  if (process.platform === 'win32' || !process.stdin.isTTY) return;
+  line('');
+  line('  Appuyez sur Entrée pour fermer cette fenêtre.');
+  await new Promise((resolve) => {
+    process.stdin.setEncoding('utf8');
+    process.stdin.resume();
+    process.stdin.once('data', resolve);
+  });
+  process.stdin.pause();
 }
 
 export function openBrowser(url) {
@@ -123,6 +221,16 @@ export function openBrowser(url) {
   } catch {
     line(`  Ouvrez ce lien dans votre navigateur : ${url}`);
   }
+}
+
+/** Recopie la sortie d'un enfant vers la console et vers le journal. */
+function relayOutput(stream, target) {
+  if (!stream) return;
+  stream.setEncoding('utf8');
+  stream.on('data', (chunk) => {
+    try { target.write(chunk); } catch { /* console fermée */ }
+    try { logStream?.write(chunk); } catch { /* journal fermé */ }
+  });
 }
 
 async function diskFreeBytes(dir) {
@@ -169,11 +277,14 @@ async function main() {
 
   const preferred = Number(process.env.PORT || 0) || project.settings?.port || 8788;
 
-  // Double lancement : si notre serveur répond déjà, on ouvre simplement le navigateur.
-  const already = await health(preferred);
-  if (already?.ok && already.projectId === project.id) {
-    line(`  Serveur déjà lancé (port ${preferred}) — ouverture du navigateur.`);
-    openBrowser(`http://127.0.0.1:${preferred}/`);
+  // Double lancement : si une régie répond déjà pour ce projet, on ouvre le
+  // navigateur sur elle et on s'arrête là. On regarde aussi les ports voisins :
+  // la régie a pu démarrer sur 8789 parce que 8788 était pris.
+  const running = await findRunning(project.id, preferred, project.settings?.port);
+  if (running) {
+    line(`  Régie déjà lancée (port ${running.port}) — ouverture du navigateur.`);
+    line('  Une seule instance suffit : cette fenêtre peut être fermée.');
+    openBrowser(`http://127.0.0.1:${running.port}/`);
     return 0;
   }
 
@@ -199,12 +310,22 @@ async function main() {
       HOST: process.env.OPENPRESENTER_HOST || '0.0.0.0',
       ...(process.env.OPENPRESENTER_READONLY === '1' ? { OPENPRESENTER_READONLY: '1' } : {})
     },
-    stdio: ['ignore', 'inherit', 'inherit']
+    // On relaie la sortie du serveur : elle doit rester visible dans la
+    // console ET rester dans le journal, seul témoin si la fenêtre se ferme.
+    stdio: ['ignore', 'pipe', 'pipe']
   });
+  relayOutput(child.stdout, process.stdout);
+  relayOutput(child.stderr, process.stderr);
 
   serverChild = child;
   let exited = false;
-  child.on('exit', (code) => { exited = true; if (code !== 0) shutdown(code ?? 1); });
+  let lockConflict = false;
+  child.on('exit', (code) => {
+    exited = true;
+    if (code === 0) return;                 // arrêt normal
+    if (code === 3) { lockConflict = true; return; }  // une autre instance tourne
+    shutdown(code ?? 1);
+  });
 
   const deadline = Date.now() + 20_000;
   let info = null;
@@ -217,9 +338,33 @@ async function main() {
   }
   process.stdout.write('\r' + ' '.repeat(48) + '\r');
 
+  if (!info?.ok && lockConflict) {
+    // Le serveur a trouvé un verrou vivant : c'est probablement nous, ailleurs.
+    const other = await findRunning(project.id, preferred, project.settings?.port);
+    if (other) {
+      line(`  Régie déjà lancée (port ${other.port}) — ouverture du navigateur.`);
+      line('  Une seule instance suffit : cette fenêtre peut être fermée.');
+      openBrowser(`http://127.0.0.1:${other.port}/`);
+      return 0;
+    }
+    const recent = await tailLog(12);
+    line('');
+    line('  Une autre instance semble détenir ce dossier de projet.');
+    line('  Si aucune régie n’est visible, supprimez le fichier « .lock » du dossier');
+    line(`  ${projectDir()} puis relancez.`);
+    await dumpDiagnostics(port, recent);
+    await holdOpen();
+    return exitCode('SERVER', 30);
+  }
+
   if (!info?.ok) {
     child.kill('SIGTERM');
-    fail(exitCode('SERVER', 30), M.serverError || "Le serveur n'a pas démarré.");
+    const recent = await tailLog(12);
+    line('');
+    line(M.serverError || "Le serveur n'a pas démarré.");
+    await dumpDiagnostics(port, recent);
+    await holdOpen();
+    return exitCode('SERVER', 30);
   }
 
   const url = `http://127.0.0.1:${port}/`;
@@ -252,5 +397,21 @@ async function shutdown(code) {
   process.exit(code);
 }
 
-const code = await main();
+let code = 0;
+try {
+  code = await main();
+} catch (err) {
+  // On lit le journal AVANT d'écrire le message : sinon le diagnostic se
+  // recopie lui-même dans sa propre liste de « dernières lignes ».
+  const recent = await tailLog(12).catch(() => []);
+  const message = err && err.message ? err.message : String(err);
+  line('');
+  line('  OpenPresenter n’a pas pu démarrer.');
+  line(`  ${message}`);
+  const hint = failureHint(message);
+  if (hint) line(`  → ${hint}`);
+  await dumpDiagnostics(null, recent).catch(() => {});
+  await holdOpen().catch(() => {});
+  code = exitCode('SERVER', 30);
+}
 process.exit(typeof code === 'number' ? code : 0);

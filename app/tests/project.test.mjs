@@ -116,14 +116,21 @@ test('projet : verrou — second lancement refusé, verrou obsolète repris', as
     const same = await acquireLock();
     assert.equal(same.ok, true);
 
-    // Autre processus vivant simulé : refus.
-    await fs.writeFile(lockPath, JSON.stringify({ pid: 999999, heartbeatAt: new Date().toISOString() }));
+    // Autre processus vivant simulé : refus. On prend le pid du parent, qui
+    // tourne forcément encore (un pid fantaisiste passe pour mort depuis que
+    // le verrou teste la vie du processus).
+    const livePid = process.ppid;
+    await fs.writeFile(lockPath, JSON.stringify({ pid: livePid, heartbeatAt: new Date().toISOString() }));
     const conflict = await acquireLock();
     assert.equal(conflict.ok, false);
     assert.equal(conflict.code, 'LOCKED');
 
-    // Verrou obsolète : repris.
-    const stale = { pid: 999999, heartbeatAt: new Date(Date.now() - 120_000).toISOString() };
+    // Verrou obsolète : pid mort démasqué tout de suite, sans attendre 60 s.
+    const dead = { pid: 999999, heartbeatAt: new Date().toISOString() };
+    assert.equal(lockIsStale(dead), true);
+
+    // Verrou obsolète par ancienneté (battement trop vieux) : repris aussi.
+    const stale = { pid: livePid, heartbeatAt: new Date(Date.now() - 120_000).toISOString() };
     await fs.writeFile(lockPath, JSON.stringify(stale));
     assert.equal(lockIsStale(stale), true);
     const recovered = await acquireLock();

@@ -35,7 +35,12 @@ Le studio, les sorties et la Bible arrivent en phase 1 ([`spec/21-plan-livraison
 ```
 
 Le lanceur affiche l'adresse locale, ouvre le navigateur et écrit son journal dans
-`project/logs/launch-<date>.log`. La page d'accueil actuelle est **l'état du socle** :
+`project/logs/launch-<date>.log`. La sortie du serveur y est recopiée : c'est le seul
+témoin qui reste si la fenêtre a été fermée. En cas d'échec il n'efface pas son
+message — cause, piste concrète, bloc de diagnostic, puis attente d'une touche — et
+un verrou laissé par une instance morte est repris aussitôt (test de vie du pid, sans
+attendre l'expiration du battement). `Diagnostic.bat` / `.sh` / `.command` donnent le
+même état sans rien modifier. La page d'accueil actuelle est **l'état du socle** :
 contrôles de diagnostic, sauvegarde, export, intégrité, journal.
 
 Options utiles :
@@ -58,7 +63,8 @@ Options utiles :
 |---|---|
 | **A-01** hors-ligne absolu | aucune ressource externe dans `app/web/`, aucune connexion sortante dans le code, en-têtes `no-store` |
 | **A-02** un double-clic | démarrage complet, URL affichée, journal du lanceur, code de sortie, refus d'un Node trop ancien (`70`), scripts < 80 lignes |
-| **A-02d** double lancement | un seul serveur, second lancement sort en `0`, verrou unique |
+| **A-02d** double lancement | un seul serveur, second lancement retrouve l'instance (même sur un port voisin) et sort en `0`, verrou unique |
+| **A-02g** fermeture brutale | verrou d'un pid mort repris immédiatement, serveur concurrent sort en `3`, lanceur toujours lisible |
 | **A-02e** chemin accentué | projet dans `Clé USB - L'Église du Plateau / culte`, journal sans caractère corrompu |
 | **A-02f** lecture seule | `403 READ_ONLY` sur toute écriture, lecture intacte |
 | **A-03** dossier = projet | **test fondateur** : copie intégrale du dossier, relecture de tous les objets, aucun chemin absolu |

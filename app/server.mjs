@@ -1810,7 +1810,9 @@ async function start() {
       `Ouvrez http://127.0.0.1:${PROJECT.settings?.port || PORT}/ dans votre navigateur.\n`
     );
     await log('warn', 'project.lock.conflict', 'second lancement détecté', { pid: existing.pid });
-    process.exit(0);
+    // Code distinct (3) : le lanceur sait ainsi qu'il doit simplement ouvrir
+    // l'instance existante, au lieu de croire à un plantage silencieux.
+    process.exit(3);
   }
   LOCK = lock.lock;
   setInterval(() => heartbeatLock(LOCK), 20_000).unref();

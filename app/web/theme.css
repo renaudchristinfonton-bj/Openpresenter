@@ -1,0 +1,244 @@
+/* =============================================================================
+   OpenPresenter — thème commun « FREESTREAM »
+   -----------------------------------------------------------------------------
+   Jetons de design repris du dépôt FREESTREAM (palette nuit + or), puis
+   composants partagés par toutes les pages de la régie.
+
+   Ce fichier est chargé APRÈS les styles propres à chaque page : il ne remplace
+   aucune mise en page, il ne fait que poser les couleurs, les rayons, les ombres
+   et quelques briques communes (barre haute, rail, pastilles, moniteurs).
+   Une page peut toujours surcharger une de ces valeurs localement.
+   ========================================================================== */
+
+:root {
+  /* Fonds et panneaux (FREESTREAM) */
+  --bg: #0b0e15;
+  --bg2: #121722;
+  --bg3: #182031;
+  --panel: #121722;
+  --panel2: #182031;
+  --p-1: #121722;
+  --p-2: #182031;
+  --p-3: #202a3e;
+
+  /* Traits */
+  --line: #2a3548;
+  --line2: #3b4961;
+  --line-2: #3b4961;
+
+  /* Textes */
+  --txt: #eef3fb;
+  --txt2: #a9b6ca;
+  --txt3: #6f7f98;
+  --muted: #6f7f98;
+
+  /* Accents */
+  --accent: #ffd479;
+  --accent2: #6ea8ff;
+  --accent-2: #6ea8ff;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #ff6b6b;
+  --danger: #ff6b6b;
+  --info: #6ea8ff;
+
+  /* Formes */
+  --r: 10px;
+  --r-lg: 16px;
+  --sh: 0 10px 30px rgba(0, 0, 0, .35);
+
+  /* Typographie */
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f: var(--sans);
+  --fmono: var(--mono);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html,
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(255, 212, 121, .28);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent2);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--accent2);
+}
+
+/* Barres de défilement discrètes, partout. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Briques communes
+   -------------------------------------------------------------------------- */
+
+/* Pastille d'état */
+.op-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--p-3);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--txt2);
+  white-space: nowrap;
+}
+
+.op-pill .op-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--err);
+  box-shadow: 0 0 8px rgba(255, 107, 107, .6);
+}
+
+.op-pill.on {
+  color: var(--ok);
+  border-color: rgba(74, 222, 128, .35);
+  background: rgba(74, 222, 128, .08);
+}
+
+.op-pill.on .op-dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(74, 222, 128, .7);
+}
+
+.op-pill.acc {
+  color: var(--accent);
+  border-color: rgba(255, 212, 121, .3);
+  background: rgba(255, 212, 121, .08);
+}
+
+/* Étiquette « en direct » */
+.op-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 70, 70, .14);
+  border: 1px solid rgba(255, 80, 80, .35);
+  color: #ff9d9d;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+/* En-tête de moniteur (TRAVAIL / À L'ANTENNE) */
+.op-monitor {
+  position: relative;
+  background: #05070c;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.op-monitor > .op-monitor-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .8), transparent);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #c3d0e2;
+}
+
+.op-monitor > .op-monitor-bar .op-tag {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(110, 168, 255, .2);
+  color: #bcd8ff;
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+
+.op-monitor > .op-monitor-bar .op-tag.air {
+  background: rgba(255, 80, 80, .2);
+  color: #ff9d9d;
+}
+
+/* Fond en damier pour les sorties à fond transparent */
+.op-checker {
+  background:
+    repeating-conic-gradient(#151c28 0% 25%, #0d121b 0% 50%) 50% / 24px 24px;
+}
+
+/* Carte */
+.op-card {
+  background: var(--p-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px;
+}
+
+/* Étiquette de raccourci clavier */
+.op-kbd,
+kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--p-3);
+  border: 1px solid var(--line2);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 5px;
+  color: var(--txt2);
+}
+
+/* Bandeau d'alerte discret */
+.op-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--txt3);
+}
+
+.op-note b {
+  color: var(--txt2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}

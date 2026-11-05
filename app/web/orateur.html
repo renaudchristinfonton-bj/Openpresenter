@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vue orateur — OpenPresenter</title>
+<link rel="stylesheet" href="/theme.css">
+<style>
+  /* ==========================================================================
+     Vue orateur (confidence monitor) — pour l'écran retour de scène ou une
+     tablette posée sur le pupitre : ce qui est dit, ce qui vient, l'heure.
+     Plein écran noir, très gros caractères, aucun élément cliquable.
+     ========================================================================== */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #04060a; color: var(--txt);
+    font-family: var(--sans); overflow: hidden;
+  }
+  body { display: grid; grid-template-rows: auto 1fr auto; }
+
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid #1b2432;
+    background: linear-gradient(180deg, #0e1520, #080c12);
+  }
+  .logo { font-weight: 800; letter-spacing: .16em; font-size: 14px; color: var(--accent); }
+  .logo small { display: block; font-size: 8.5px; letter-spacing: .26em; color: var(--txt3); font-weight: 700; margin-top: -1px; }
+  .badge {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 6px;
+    background: rgba(255, 212, 121, .1); border: 1px solid rgba(255, 212, 121, .3);
+    color: var(--accent);
+  }
+  .spacer { flex: 1; }
+  .clock { font-family: var(--mono); font-size: 30px; font-weight: 700; letter-spacing: .04em; }
+  .state { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--txt3); display: flex; align-items: center; gap: 7px; }
+  .state .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--err); box-shadow: 0 0 8px var(--err); }
+  .state.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .state.on { color: var(--ok); }
+
+  main { display: grid; grid-template-rows: 1fr auto; padding: 26px 34px; gap: 18px; min-height: 0; }
+  #current {
+    display: flex; flex-direction: column; justify-content: center; gap: 14px;
+    font-size: clamp(28px, 4.4vw, 76px); line-height: 1.22; font-weight: 600;
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+  #current.idle { color: #2c3648; font-size: clamp(18px, 2vw, 30px); font-weight: 500; }
+  #ref {
+    font-family: var(--mono); font-size: clamp(13px, 1.2vw, 19px); font-weight: 700;
+    color: var(--accent); letter-spacing: .04em;
+  }
+  #next-box {
+    border-top: 1px solid #1b2432; padding-top: 14px;
+    display: flex; gap: 16px; align-items: baseline; min-height: 76px;
+  }
+  #next-box .lbl {
+    font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--txt3); flex-shrink: 0; padding-top: 4px;
+  }
+  #next { font-size: clamp(15px, 1.55vw, 25px); line-height: 1.4; color: var(--txt2); }
+
+  footer {
+    display: flex; align-items: center; gap: 18px; padding: 10px 22px;
+    border-top: 1px solid #131b26; color: var(--txt3); font-size: 11.5px;
+  }
+  footer b { color: var(--txt2); font-weight: 600; }
+  .progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: #ffffff10; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  #timer { font-family: var(--mono); font-size: 26px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OPENPRESENTER<small>VUE ORATEUR</small></div>
+  <span class="badge" id="outName">sortie principale</span>
+  <span class="spacer"></span>
+  <span class="state" id="state"><span class="dot"></span><span id="stateText">connexion…</span></span>
+  <span class="clock" id="clock">--:--</span>
+</header>
+
+<main>
+  <section id="current" class="idle" aria-live="polite">En attente de contenu…</section>
+  <div id="next-box">
+    <span class="lbl">À suivre</span>
+    <div id="next">—</div>
+  </div>
+</main>
+
+<footer>
+  <span><b>Vue en lecture seule</b> — elle suit exactement ce qui part à l’antenne.</span>
+  <span class="spacer"></span>
+  <span id="timer" hidden></span>
+  <span id="kindLabel"></span>
+</footer>
+
+<div class="progress"><i id="bar"></i></div>
+
+<script type="module">
+// ---------------------------------------------------------------------------
+// Vue orateur : abonnée au canal de la sortie (`op_out_<id>`), elle ne fait
+// qu'afficher le message `show` reçu. Aucune écriture, aucun risque de couper
+// le direct depuis l'écran de scène.
+// ---------------------------------------------------------------------------
+const $ = (selector) => document.querySelector(selector);
+const params = new URLSearchParams(location.search);
+const outputId = params.get('out') || 'out_full';
+const token = params.get('t') || '';
+
+const KIND_LABEL = {
+  bible: 'Bible', songs: 'Chant', media: 'Média', announcements: 'Annonce',
+  lowerthird: 'Habillage', timer: 'Minuteur', plan: 'Plan'
+};
+
+let socket = null;
+let payload = null;
+let kind = null;
+let timerEndsAt = null;
+
+function withToken(url) {
+  return token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : url;
+}
+
+$('#outName').textContent = outputId === 'out_full' ? 'sortie principale' : outputId;
+
+// --- Horloge --------------------------------------------------------------
+function pad(n) { return String(n).padStart(2, '0'); }
+function tickClock() {
+  const now = new Date();
+  $('#clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+tickClock();
+setInterval(tickClock, 10000);
+
+// --- Minuteur -------------------------------------------------------------
+function timerText() {
+  if (!timerEndsAt) return '';
+  const left = Math.max(0, timerEndsAt - Date.now());
+  const total = Math.round(left / 1000);
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+setInterval(() => {
+  if (!timerEndsAt) return;
+  $('#timer').textContent = timerText();
+  if (timerEndsAt - Date.now() <= 0) timerEndsAt = null;
+}, 500);
+
+// --- Rendu ----------------------------------------------------------------
+function textOf(content) {
+  if (!content) return '';
+  if (kind === 'songs') return content.text || content.lyrics || '';
+  if (kind === 'media') return content.mediaName || content.text || '';
+  if (kind === 'timer') return content.timer || 'Minuteur';
+  if (kind === 'lowerthird') {
+    return [content.title, content.body || content.announcement].filter(Boolean).join(' — ');
+  }
+  if (kind === 'announcements') return content.text || content.title || '';
+  return content.text || content.verse || '';
+}
+
+function referenceOf(content) {
+  if (!content) return '';
+  if (kind === 'bible') return content.reference || '';
+  if (kind === 'songs') return [content.title, content.section].filter(Boolean).join(' · ');
+  if (kind === 'announcements') return 'Annonce';
+  if (kind === 'lowerthird') return 'Habillage';
+  if (kind === 'timer') return 'Minuteur';
+  return '';
+}
+
+function paint() {
+  const current = $('#current');
+  const state = $('#state');
+  if (!payload) {
+    current.className = 'idle';
+    current.textContent = 'En attente de contenu…';
+    $('#next').textContent = '—';
+    $('#kindLabel').textContent = '';
+    state.classList.remove('on');
+    $('#stateText').textContent = 'hors antenne';
+    return;
+  }
+  const text = textOf(payload);
+  const ref = referenceOf(payload);
+  current.className = '';
+  current.replaceChildren();
+  if (ref) {
+    const badge = document.createElement('div');
+    badge.id = 'ref';
+    badge.textContent = ref;
+    current.append(badge);
+  }
+  const body = document.createElement('div');
+  body.textContent = text || '—';
+  current.append(body);
+
+  $('#next').textContent = payload.nextText
+    ? [payload.nextRef || '', payload.nextText].filter(Boolean).join(' — ')
+    : '—';
+  $('#kindLabel').textContent = KIND_LABEL[kind] || kind || '';
+  state.classList.add('on');
+  $('#stateText').textContent = 'à l’antenne';
+  $('#bar').style.width = payload.partCount
+    ? `${Math.round(((Number(payload.partIndex) || 0) + 1) / Number(payload.partCount) * 100)}%`
+    : '0%';
+
+  if (kind === 'timer' && payload.endsAt) {
+    timerEndsAt = new Date(payload.endsAt).getTime();
+    $('#timer').hidden = false;
+    $('#timer').textContent = timerText();
+  } else {
+    timerEndsAt = null;
+    $('#timer').hidden = true;
+  }
+}
+
+// --- Relais ---------------------------------------------------------------
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  socket = new WebSocket(`${proto}://${location.host}/ws?channel=op_out_${encodeURIComponent(outputId)}`);
+  socket.addEventListener('open', () => {
+    $('#state').classList.add('on');
+    $('#stateText').textContent = payload ? 'à l’antenne' : 'prête';
+  });
+  socket.addEventListener('close', () => {
+    $('#state').classList.remove('on');
+    $('#stateText').textContent = 'reconnexion…';
+    setTimeout(connect, 2000);
+  });
+  socket.addEventListener('message', (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+    if (message.t === 'show') {
+      kind = message.kind;
+      payload = message.payload || {};
+      paint();
+    }
+    if (message.t === 'clear') {
+      payload = null;
+      kind = null;
+      paint();
+    }
+  });
+}
+
+// La dernière diffusion connue est rejouée à la connexion (EF-04.9) : rouvrir
+// l'écran orateur en plein culte ne le laisse jamais vide.
+fetch(withToken('/api/live/state'), { cache: 'no-store' })
+  .then((res) => (res.ok ? res.json() : null))
+  .then((state) => {
+    const entry = state?.channels?.[outputId];
+    if (entry) { kind = entry.kind; payload = entry.payload || {}; paint(); }
+  })
+  .catch(() => { /* le relais fera foi */ });
+
+paint();
+connect();
+</script>
+</body>
+</html>

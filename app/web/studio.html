@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenPresenter — Studio</title>
+<style>
+  :root{
+    --bg:#0b0d12; --bg2:#11141c; --bg3:#171b25; --line:#252a36; --line2:#333a4a;
+    --txt:#e8eaf0; --txt2:#9aa3b5; --txt3:#6b7487; --accent:#ffd479;
+    --ok:#34d399; --warn:#f59e0b; --err:#ef5360;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px}
+  body{display:flex;flex-direction:column;overflow:hidden}
+
+  header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#07080d;flex:0 0 auto}
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#ed7958);display:grid;place-items:center;color:#17110a;font-size:10px;font-weight:900}
+  h1{font-size:13px;margin:0;font-weight:800;letter-spacing:.02em}
+  .who{font-size:11px;color:var(--txt3)}
+  .spacer{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;border:1px solid var(--line2);background:var(--bg3);color:var(--txt2)}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--err)}
+  .chip.on .dot{background:var(--ok)}
+  a.chip{text-decoration:none}
+  a.chip:hover{background:#1e2331;color:var(--txt)}
+
+  main{flex:1;display:grid;grid-template-columns:minmax(340px,420px) 1fr;min-height:0}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+
+  .panel{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--bg2)}
+  .panel h2{margin:0;padding:8px 12px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);border-bottom:1px solid var(--line);background:#07080d}
+
+  /* Champ de saisie unique (ch. 09 § 9.3.1) */
+  .field-wrap{padding:12px}
+  .field{
+    display:flex;align-items:center;gap:8px;
+    padding:12px 14px;border-radius:9px;
+    background:#05060a;border:2px solid var(--line2);
+    font-family:var(--mono);font-size:19px;letter-spacing:.01em;
+    cursor:text;min-height:54px;
+  }
+  .field:focus-within,.field.active{border-color:var(--accent);box-shadow:0 0 0 3px #ffd4791f}
+  .field .prefix{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:2px 8px;border-radius:5px;background:#ffd4791a;color:var(--accent);
+    font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .field .prefix:hover{background:#ffd4792e}
+  .field .typed{color:var(--txt);white-space:pre}
+  .field .ghost{color:var(--txt3);font-size:13px;font-family:var(--sans)}
+  .caret{width:2px;height:22px;background:var(--accent);animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .hint{font-size:11px;color:var(--txt3);margin-top:7px;line-height:1.5}
+  .hint kbd{font-family:var(--mono);background:var(--bg3);border:1px solid var(--line2);border-radius:4px;padding:1px 5px;font-size:10px;color:var(--txt2)}
+  .msg{margin-top:8px;padding:8px 10px;border-radius:7px;font-size:11.5px;line-height:1.45;display:none}
+  .msg.show{display:block}
+  .msg.error{background:#ef53601a;border:1px solid #ef536044;color:#ff8f98}
+  .msg.warning{background:#f59e0b1a;border:1px solid #f59e0b44;color:#ffce7a}
+
+  /* Suggestions de livres */
+  .suggest{border-top:1px solid var(--line);max-height:230px;overflow:auto}
+  .suggest:empty{display:none}
+  .sug{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-size:13px;border-left:2px solid transparent}
+  .sug .abbr{font-family:var(--mono);font-size:11px;color:var(--txt3);width:34px}
+  .sug .n{flex:1}
+  .sug .ch{font-size:10px;color:var(--txt3)}
+  .sug.hi{background:#ffd47914;border-left-color:var(--accent)}
+  .sug.hi .n{color:var(--accent);font-weight:700}
+
+  /* Parties */
+  .parts{flex:1;overflow:auto;min-height:0}
+  .part{padding:9px 12px;border-bottom:1px solid #1a1e28;cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+  .part:hover{background:#ffffff06}
+  .part.cur{background:#ffd47912;box-shadow:inset 2px 0 0 var(--accent)}
+  .part .idx{font-family:var(--mono);font-size:10px;color:var(--txt3);padding-top:2px;min-width:16px}
+  .part .body{font-size:12.5px;line-height:1.45;color:var(--txt2)}
+  .part.cur .body{color:var(--txt)}
+  .part .meta{font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:3px}
+  .empty-state{padding:24px 16px;color:var(--txt3);font-size:12px;line-height:1.6;text-align:center}
+
+  /* Scène */
+  .stage-wrap{display:flex;flex-direction:column;min-height:0;background:#05060a}
+  .stage-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:#07080d;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:6px;border:1px solid var(--line2);background:var(--bg3);color:var(--txt);font-size:11.5px;font-weight:650;cursor:pointer;font-family:inherit}
+  .btn:hover{background:#1e2331}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#17110a;font-weight:800}
+  .btn.danger{color:#ff9aa2;border-color:#ef536055}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.sm{padding:4px 8px;font-size:10.5px}
+  .refbar{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .counter{font-family:var(--mono);font-size:11px;color:var(--txt3)}
+
+  .stage{flex:1;min-height:0;display:grid;place-items:center;padding:14px;position:relative}
+  .screen{
+    position:relative;width:100%;max-width:960px;aspect-ratio:16/9;
+    background:#000;border-radius:8px;overflow:hidden;
+    box-shadow:0 20px 60px #000a, 0 0 0 1px var(--line);
+    display:flex;align-items:center;justify-content:center;
+    padding:4% 6%;
+  }
+  /* Aperçu : la scène est rendue à 1920×1080 puis réduite. Aucun style de
+     contenu ici — l'éditeur et la sortie partagent `SCENE_CSS` (ENF-42). */
+  .screen{position:relative;overflow:hidden;padding:0}
+  .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
+  .stage-idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#2b3040;font-weight:600;font-size:15px}
+  .screen.idle .op-stage{display:none}
+  .screen:not(.idle) .stage-idle{display:none}
+
+  .strip{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);background:#07080d;overflow:auto;flex:0 0 auto;flex-wrap:wrap}
+  .out{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:6px;border:1px solid var(--line2);background:var(--bg2);font-size:11px;cursor:pointer;user-select:none}
+  .out input{accent-color:var(--accent);margin:0}
+  .out .nm{font-weight:650}
+  .out .ty{font-family:var(--mono);font-size:9px;color:var(--txt3)}
+  .out.on{border-color:#ffd47966;background:#ffd47910}
+
+  /* Un module occupe tout le volet et garde ses zones défilantes. */
+  .module{display:flex;flex-direction:column;min-height:0;flex:1}
+  .module[hidden]{display:none}
+
+  /* Onglets de modules (EF-06.6 / maquette MAQ-03) */
+  .modes{display:flex;gap:4px;background:#05060a;border:1px solid var(--line2);border-radius:8px;padding:3px}
+  .mode{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:0;border-radius:6px;
+    background:transparent;color:var(--txt3);font:650 11.5px/1 "Inter",system-ui,sans-serif;cursor:pointer;
+  }
+  .mode:hover{color:var(--txt2)}
+  .mode.on{background:#ffd47914;color:var(--accent)}
+  .mode kbd{font-family:var(--mono);font-size:9px;color:var(--txt3);font-weight:400}
+  .mode.on kbd{color:#ffd47999}
+
+  /* Chants */
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{min-width:0}
+  .search{
+    flex:1;background:#05060a;border:1px solid var(--line2);border-radius:7px;
+    color:var(--txt);font:13px/1.3 "Inter",system-ui,sans-serif;padding:9px 11px;
+  }
+  .search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #ffd47914}
+  .songs{flex:0 0 auto;max-height:34vh;overflow:auto;border-top:1px solid var(--line)}
+  .song{padding:8px 12px;border-bottom:1px solid #1a1e28;cursor:pointer;display:flex;gap:9px;align-items:center}
+  .song:hover{background:#ffffff06}
+  .song.on{background:#ffd47912;box-shadow:inset 2px 0 0 var(--accent)}
+  .song .t{flex:1;font-size:12.5px}
+  .song .a{font-size:10.5px;color:var(--txt3)}
+  .song .k{font-family:var(--mono);font-size:9px;color:var(--txt3)}
+  .conductor{flex:1;overflow:auto;min-height:0}
+  .step{display:flex;gap:9px;align-items:center;padding:8px 12px;border-bottom:1px solid #1a1e28;cursor:pointer}
+  .step:hover{background:#ffffff06}
+  .step.cur{background:#ffd47912;box-shadow:inset 2px 0 0 var(--accent)}
+  .step .n{font-family:var(--mono);font-size:10px;color:var(--txt3);min-width:14px}
+  .step .nm{flex:1;font-size:12.5px}
+  .step .ty{font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px;border:1px solid var(--line2)}
+  .quick{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap;background:#07080d}
+  .arrangement{display:flex;gap:6px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+  .arrangement select{
+    flex:1;background:var(--bg3);border:1px solid var(--line2);color:var(--txt);
+    border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:inherit;
+  }
+  .lyrics{white-space:pre-wrap;font-size:12.5px;line-height:1.5;color:var(--txt2)}
+
+  /* Modules Médias / Habillage / Minuteur : tout au même écran (EF-16, EF-19, EF-18) */
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;padding:10px 12px;flex:1;min-height:0;overflow:auto;align-content:start}
+  .media{display:flex;flex-direction:column;gap:0;padding:0;border:1px solid var(--line2);border-radius:9px;background:var(--bg3);cursor:pointer;overflow:hidden;text-align:left;font-family:inherit}
+  .media:hover{border-color:#ffffff33}
+  .media.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .media.live{border-color:#34d399}
+  .media .th{aspect-ratio:16/9;background:#0a0c12;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:22px;overflow:hidden}
+  .media .th img{width:100%;height:100%;object-fit:contain;display:block}
+  .media .nm{font-size:10.5px;color:var(--txt2);padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#090b11}
+  .module select{background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:inherit}
+  .lbl{font-size:11px;color:var(--txt3)}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+  .field label{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em}
+  .field input{background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;width:100%}
+  .field input:focus{border-color:var(--accent)}
+  .clock{font-family:var(--mono);font-size:62px;font-weight:700;text-align:center;padding:18px 0 6px;color:var(--txt);letter-spacing:.01em}
+  .clock.warn{color:var(--accent)}
+  .clock.over{color:#ef5360}
+  .chip.on{border-color:#34d399;color:#34d399;background:#34d39914}
+
+  /* Recherche unifiée (EF-06.8 → EF-06.18) */
+  .palette{
+    width:min(680px,94vw);margin:12vh auto auto;border:1px solid var(--line2);border-radius:12px;
+    background:var(--bg2);color:var(--txt);padding:0;box-shadow:0 30px 90px #000d;
+  }
+  .palette::backdrop{background:#000b;backdrop-filter:blur(2px)}
+  .palette-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .palette-head input{
+    flex:1;background:transparent;border:0;outline:none;color:var(--txt);
+    font:16px/1.3 "Inter",system-ui,sans-serif;
+  }
+  .palette-head kbd{
+    font-family:var(--mono);font-size:10px;color:var(--txt3);
+    border:1px solid var(--line2);border-radius:4px;padding:1px 5px;
+  }
+  .filters{display:flex;gap:5px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .filter{
+    border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--txt3);
+    font:600 10.5px/1 "Inter",system-ui,sans-serif;padding:4px 9px;cursor:pointer;
+  }
+  .filter.on{border-color:var(--accent);color:var(--accent);background:#ffd47910}
+  .results{max-height:min(52vh,460px);overflow:auto}
+  .group-head{
+    padding:7px 14px 3px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);
+  }
+  .result{display:flex;gap:10px;align-items:flex-start;padding:7px 14px;cursor:pointer;border-left:2px solid transparent}
+  .result:hover{background:#ffffff06}
+  .result.hi{background:#ffd47914;border-left-color:var(--accent)}
+  .result .ico{font-size:13px;width:18px;text-align:center;opacity:.85}
+  .result .main{flex:1;min-width:0}
+  .result .t{font-size:12.5px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .s{font-size:10.5px;color:var(--txt3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .k{font-size:9px;color:var(--txt3);font-family:var(--mono)}
+  .palette-foot{
+    display:flex;gap:12px;padding:8px 14px;border-top:1px solid var(--line);
+    background:#07080d;font-size:10.5px;color:var(--txt3);flex-wrap:wrap;
+  }
+  .palette-foot b{color:var(--txt2);font-weight:600}
+
+  /* Import */
+  dialog{
+    width:min(620px,92vw);border:1px solid var(--line2);border-radius:12px;padding:0;
+    background:var(--bg2);color:var(--txt);box-shadow:0 30px 80px #000c;
+  }
+  dialog::backdrop{background:#000a;backdrop-filter:blur(2px)}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .dlg-head h3{margin:0;font-size:13.5px}
+  .dlg-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line);background:#07080d}
+  dialog textarea{
+    width:100%;min-height:150px;resize:vertical;background:#05060a;border:1px solid var(--line2);
+    border-radius:8px;color:var(--txt);font:12px/1.5 var(--mono);padding:10px;
+  }
+  dialog textarea:focus{outline:none;border-color:var(--accent)}
+  .preview-box{border:1px solid var(--line2);border-radius:8px;padding:10px 12px;background:#05060a;font-size:12px;line-height:1.6}
+  .preview-box b{color:var(--accent)}
+  .preview-box .warn{color:#ffce7a}
+  .preview-box .ok{color:var(--ok)}
+  .file-drop{border:1px dashed var(--line2);border-radius:8px;padding:10px;font-size:11.5px;color:var(--txt3);text-align:center}
+  .file-drop.over{border-color:var(--accent);color:var(--accent)}
+  #bibleFields{display:grid;grid-template-columns:1fr 96px 1fr;gap:8px;font-size:11px;color:var(--txt3)}
+  #bibleFields label{display:flex;flex-direction:column;gap:4px}
+  #bibleFields input{background:#07080d;border:1px solid var(--line2);color:var(--txt);border-radius:6px;padding:6px 8px;font:inherit;font-size:12px}
+  #bibleFields input:focus{outline:none;border-color:var(--accent)}
+  .txt-msg{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#ffce7a;line-height:1.6}
+
+  .toast{position:fixed;right:14px;bottom:14px;padding:9px 12px;border-radius:8px;background:#141a24;border:1px solid var(--line2);font-size:12px;opacity:0;transform:translateY(6px);transition:.16s;pointer-events:none;max-width:340px}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:#ef536055;background:#1a0f12;color:#ff9aa2}
+
+  /* ==========================================================================
+     Coque « régie » — barre haute, rail vertical, colonne « à l'antenne ».
+     Hérite des jetons FREESTREAM posés par /theme.css.
+     ========================================================================== */
+  header{
+    height:56px;padding:0 14px;gap:12px;flex-wrap:nowrap;
+    background:linear-gradient(180deg,#141b29,#10151f);
+  }
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;flex-shrink:0}
+  .brand .mark{width:30px;height:30px;border-radius:9px;font-size:11px}
+  .brand-txt b{display:block;font-size:13px;font-weight:800;letter-spacing:.14em;color:var(--accent);line-height:1.1}
+  .brand-txt small{display:block;font-size:8px;letter-spacing:.22em;color:var(--txt3);font-weight:700;text-transform:uppercase;margin-top:1px}
+  .who{font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26vw}
+  #clockPill{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--txt)}
+
+  .workspace{
+    flex:1;display:grid;
+    grid-template-columns:88px minmax(0,1fr) minmax(252px,312px);
+    min-height:0;min-width:0;
+  }
+  .workspace > main{min-width:0;min-height:0}
+  .rail{min-height:0}
+
+  /* ---------- Rail des modules ---------- */
+  .rail{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:10px 7px;background:#0d121c;border-right:1px solid var(--line);
+    overflow-y:auto;overflow-x:hidden;
+  }
+  .rail .mode{
+    width:72px;flex:0 0 auto;flex-direction:column;gap:3px;
+    padding:8px 3px;border-radius:11px;border:1px solid transparent;
+    background:transparent;color:var(--txt3);
+    font:700 9.5px/1.15 var(--sans);letter-spacing:.01em;text-align:center;
+  }
+  .rail .mode .ico{display:block;width:22px;height:22px;margin-bottom:1px}
+  .rail .mode .ico svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .rail .mode kbd{display:none}
+  .rail .mode:hover{background:var(--p-2);color:var(--txt)}
+  .rail .mode.on{background:rgba(255,212,121,.12);border-color:rgba(255,212,121,.3);color:var(--accent)}
+  .rail-sep{width:44px;height:1px;background:var(--line);margin:7px 0}
+  .rail-link{
+    width:72px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:8px 3px;border-radius:11px;border:1px solid transparent;
+    color:var(--txt3);text-decoration:none;font:700 9.5px/1.15 var(--sans);text-align:center;
+  }
+  .rail-link .ico{display:block;width:22px;height:22px}
+  .rail-link .ico svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .rail-link:hover{background:var(--p-2);color:var(--txt)}
+
+  /* ---------- Colonne « à l'antenne » ---------- */
+  .air{
+    display:flex;flex-direction:column;gap:12px;min-width:0;padding:12px;
+    background:#0c111b;border-left:1px solid var(--line);overflow-y:auto;
+  }
+  .air-head{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3)}
+  .air-monitor .op-monitor-bar{padding:6px 9px}
+  .air-frame{aspect-ratio:16/9;background:#000}
+  .air-frame iframe{width:100%;height:100%;border:0;display:block;pointer-events:none;background:#000}
+  .air-row{display:flex;gap:6px;flex-wrap:wrap}
+  .air-sec h3{margin:0 0 6px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3)}
+  .air-elapsed{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--txt);letter-spacing:.02em}
+  .air-sec .op-note{margin:6px 0 0}
+  .air-sec .op-note b{color:var(--accent)}
+
+  @media (max-width:1240px){
+    .workspace{grid-template-columns:88px minmax(0,1fr)}
+    .air{display:none}
+  }
+  @media (max-width:860px){
+    .workspace{grid-template-columns:72px minmax(0,1fr)}
+    .rail .mode,.rail-link{width:58px}
+    .brand-txt{display:none}
+  }
+  @media (max-width:720px){
+    main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  }
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/" title="Retour à l’accueil">
+    <span class="mark">OP</span>
+    <span class="brand-txt"><b>OPENPRESENTER</b><small>RÉGIE DE CULTE</small></span>
+  </a>
+  <div class="who" id="who">chargement…</div>
+  <span class="spacer"></span>
+  <span class="op-live" id="liveBadge" hidden><span class="op-dot"></span>En direct</span>
+  <span class="op-pill" id="clockPill" title="Heure de la machine">--:--</span>
+  <span class="chip" id="ws"><span class="dot"></span> <span id="wsText">connexion</span></span>
+  <a class="chip" href="/mur.html" title="Mur des sorties — toutes les sorties en un écran">Mur</a>
+  <a class="chip" href="/orateur.html" title="Vue orateur — texte courant, suivant, horloge">Orateur</a>
+  <a class="chip" href="/scene.html" title="Éditeur de scènes (WYSIWYG)">Scènes</a>
+  <a class="chip" href="/plan.html" title="Plan de déroulement du culte">Plan</a>
+  <a class="chip" href="/socle.html" title="État du socle et diagnostic">Socle</a>
+</header>
+
+<div class="workspace">
+
+<nav class="rail" role="tablist" aria-label="Modules" aria-orientation="vertical">
+  <button class="mode on" id="modeBible" role="tab" aria-selected="true" data-mode="bible" title="Bible (Alt+1)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5A2.5 2.5 0 0 1 4 20.5Z"/><path d="M9 7.5h6M9 11h4"/></svg></span>
+    <span class="lb">Bible</span><kbd>Alt+1</kbd>
+  </button>
+  <button class="mode" id="modeSongs" role="tab" aria-selected="false" data-mode="songs" title="Chants (Alt+2)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>
+    <span class="lb">Chants</span><kbd>Alt+2</kbd>
+  </button>
+  <button class="mode" id="modeAnn" role="tab" aria-selected="false" data-mode="announcements" title="Annonces (Alt+3)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M16 8.5a5 5 0 0 1 0 7M19 6a9 9 0 0 1 0 12"/></svg></span>
+    <span class="lb">Annonces</span><kbd>Alt+3</kbd>
+  </button>
+  <button class="mode" id="modeMedia" role="tab" aria-selected="false" data-mode="media" title="Médias (Alt+4)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/></svg></span>
+    <span class="lb">Médias</span><kbd>Alt+4</kbd>
+  </button>
+  <button class="mode" id="modeLt" role="tab" aria-selected="false" data-mode="lowerthird" title="Habillage (Alt+5)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h13l5 5-5 5H3Z"/><path d="M7 12h6"/></svg></span>
+    <span class="lb">Habillage</span><kbd>Alt+5</kbd>
+  </button>
+  <button class="mode" id="modeTimer" role="tab" aria-selected="false" data-mode="timer" title="Minuteur (Alt+6)">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></span>
+    <span class="lb">Minuteur</span><kbd>Alt+6</kbd>
+  </button>
+
+  <div class="rail-sep" role="presentation"></div>
+
+  <a class="rail-link" href="/mur.html" title="Mur des sorties"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span><span class="lb">Mur</span></a>
+  <a class="rail-link" href="/orateur.html" title="Vue orateur"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span><span class="lb">Orateur</span></a>
+  <a class="rail-link" href="/scene.html" title="Éditeur de scènes"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-2s-.8-2-.8-2.6c0-.9.7-1.4 1.8-1.4H17a4 4 0 0 0 4-4c0-4-4-8-9-8Z"/><circle cx="8" cy="9.5" r="1.2"/><circle cx="12" cy="7" r="1.2"/><circle cx="16" cy="9" r="1.2"/></svg></span><span class="lb">Scènes</span></a>
+  <a class="rail-link" href="/plan.html" title="Plan de déroulement"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h11l5 5v11H4Z"/><path d="M8 9h6M8 13h8M8 17h5"/></svg></span><span class="lb">Plan</span></a>
+  <a class="rail-link" href="/" title="Accueil"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5.5 9.5V21h13V9.5"/></svg></span><span class="lb">Accueil</span></a>
+</nav>
+
+<main>
+  <section class="panel">
+   <div class="module" id="mod-bible">
+    <h2>Bible — saisie clavier</h2>
+
+    <div class="field-wrap">
+      <div class="row" style="margin-bottom:8px">
+        <span class="chip" id="bibleVersion" title="Version utilisée pour la saisie et la diffusion">version —</span>
+        <span class="spacer"></span>
+        <button class="btn sm" id="bibleOpenImport" title="Importer une version biblique (.xml)">＋ Bible</button>
+      </div>
+      <div class="field active" id="field" tabindex="0" role="combobox" aria-expanded="false" aria-label="Recherche de référence biblique">
+        <span class="prefix" id="prefix" hidden>Jean ▸</span>
+        <span class="typed" id="typed"></span>
+        <span class="caret" id="caret"></span>
+        <span class="ghost" id="ghost"></span>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="hint">
+        <kbd>j</kbd> <kbd>e</kbd> <kbd>Entrée</kbd> <kbd>3</kbd> <kbd>Espace</kbd> <kbd>1</kbd> <kbd>6</kbd> <kbd>Entrée</kbd>
+        · <kbd>↑</kbd><kbd>↓</kbd> choisir · <kbd>Échap</kbd> reculer
+      </div>
+    </div>
+
+    <div class="suggest" id="suggest"></div>
+
+    <h2 style="border-top:1px solid var(--line)">Parties <span class="spacer"></span><span id="partInfo" class="chip" style="border:none;background:none;padding:0;color:var(--txt3)"></span></h2>
+    <div class="parts" id="parts">
+      <div class="empty-state">
+        Saisissez une référence :<br>
+        <span class="mono">Jean 3:16</span> · <span class="mono">Ps 23</span> · <span class="mono">1 Corinthiens 13:4-7</span>
+      </div>
+    </div>
+   </div>
+
+   <div class="module" id="mod-ann" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="annSearch" type="search" placeholder="Rechercher une annonce…" aria-label="Rechercher une annonce">
+        <button class="btn primary" id="annNew" title="Nouvelle annonce">＋ Nouvelle</button>
+      </div>
+      <div class="hint">Cliquez une annonce pour l’afficher sur les sorties cochées.</div>
+    </div>
+    <h2>Annonces <span class="spacer"></span><span class="chip" id="annCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="annList" style="max-height:none;flex:1"></div>
+   </div>
+
+   <div class="module" id="mod-songs" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="songSearch" type="search" placeholder="Chant, auteur ou paroles…" aria-label="Rechercher un chant">
+        <button class="btn primary" id="songImport" title="Importer un chant (Ctrl+O)">＋ Importer</button>
+      </div>
+      <div class="hint">
+        <kbd>↑</kbd><kbd>↓</kbd> parcourir · <kbd>↵</kbd> diffuser · <kbd>Maj</kbd>+<kbd>→</kbd> sauter une section
+        · <kbd>1</kbd>…<kbd>9</kbd> aller à une étape · <kbd>Échap</kbd> couper
+      </div>
+    </div>
+    <h2>Sons <span class="spacer"></span><span class="chip" id="songCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="songList"></div>
+    <h2>Conducteur <span class="spacer"></span><span class="chip" id="songInfo" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="arrangement">
+      <label for="arrangement" style="font-size:11px;color:var(--txt3)">Ordre</label>
+      <select id="arrangement" aria-label="Arrangement"></select>
+      <button class="btn sm" id="addArrangement" title="Dupliquer l’ordre courant dans un nouvel arrangement">＋</button>
+    </div>
+    <div class="conductor" id="conductor"></div>
+    <div class="quick">
+      <button class="btn sm" id="qAppend" title="Ajouter un refrain à la fin">＋ Refrain à la fin</button>
+      <button class="btn sm" id="qRepeat" title="Répéter la section courante">↻ Répéter</button>
+      <button class="btn sm" id="qSkip" title="Sauter la section courante">⤼ Sauter</button>
+    </div>
+   </div>
+
+   <div class="module" id="mod-media" hidden>
+    <div class="field-wrap">
+      <div class="row">
+        <input class="search" id="mediaSearch" type="search" placeholder="Nom du média… (image ou vidéo)" aria-label="Rechercher un média">
+        <button class="btn primary" id="mediaImport" title="Importer une image ou une vidéo (Ctrl+O)">＋ Importer</button>
+      </div>
+      <div class="hint">Un clic = à l’antenne · <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> parcourir · <kbd>↵</kbd> rediffuser · <kbd>Échap</kbd> couper</div>
+    </div>
+    <h2>Médias <span class="spacer"></span><span class="chip" id="mediaCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="media-grid" id="mediaGrid"></div>
+    <div class="quick">
+      <label class="lbl" for="mediaFit">Cadre</label>
+      <select id="mediaFit" title="Comment l’image remplit l’écran">
+        <option value="contain">Entier</option>
+        <option value="cover">Remplir</option>
+        <option value="stretch">Étirer</option>
+      </select>
+      <input type="file" id="mediaPick" accept="image/*,video/*" multiple hidden>
+    </div>
+   </div>
+
+   <div class="module" id="mod-lt" hidden>
+    <div class="field-wrap">
+      <div class="row" style="flex-wrap:wrap">
+        <span class="field"><label for="ltName">Nom</label><input id="ltName" type="text" placeholder="Pasteur Jean Koffi" autocomplete="off"></span>
+        <span class="field"><label for="ltRole">Fonction</label><input id="ltRole" type="text" placeholder="Prédicateur" autocomplete="off"></span>
+      </div>
+      <div class="row" style="margin-top:9px;flex-wrap:wrap">
+        <span class="field" style="max-width:110px"><label for="ltHold">Durée (s)</label><input id="ltHold" type="number" min="0" step="1" value="8" title="0 = reste à l’écran jusqu’à « Couper »"></span>
+        <button class="btn primary" id="ltGo" title="Afficher maintenant (Entrée)">▲ À l’antenne</button>
+        <button class="btn" id="ltCutBtn" title="Retirer le bandeau (Échap)">■ Couper</button>
+        <span class="chip" id="ltState">hors antenne</span>
+      </div>
+      <div class="hint">Le bandeau se pose sur <b>n’importe quelle sortie</b> sans éteindre le verset affiché. <kbd>↵</kbd> affiche · <kbd>Échap</kbd> retire.</div>
+    </div>
+    <h2>Bandeau courant</h2>
+    <div class="field-wrap" style="padding-top:0"><div class="lyrics" id="ltEcho">—</div></div>
+    <h2>Bandeaux enregistrés <span class="spacer"></span><span class="chip" id="ltCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <div class="songs" id="ltList" style="max-height:none;flex:1"></div>
+    <div class="quick">
+      <button class="btn sm" id="ltSave" title="Enregistrer ce nom et cette fonction dans le projet">＋ Enregistrer ce bandeau</button>
+    </div>
+   </div>
+
+   <div class="module" id="mod-timer" hidden>
+    <div class="clock" id="timerClock">15:00</div>
+    <div class="field-wrap" style="padding-top:0">
+      <div class="row" style="justify-content:center;margin-bottom:10px">
+        <span class="chip" id="timerState">à l’arrêt</span>
+      </div>
+      <div class="row" style="flex-wrap:wrap">
+        <span class="field" style="max-width:96px"><label for="timerMin">Minutes</label><input id="timerMin" type="number" min="0" step="1" value="15"></span>
+        <span class="field" style="max-width:96px"><label for="timerWarn">Alerte (min)</label><input id="timerWarn" type="number" min="0" step="1" value="5"></span>
+        <span class="field" style="max-width:96px"><label for="timerCrit">Rouge (min)</label><input id="timerCrit" type="number" min="0" step="1" value="1"></span>
+        <button class="btn primary" id="timerStart" title="Espace">▶ Démarrer</button>
+        <button class="btn" id="timerReset" title="Revenir au réglage">↺ Réinitialiser</button>
+        <button class="btn" id="timerMode" title="Basculer compte à rebours / compteur">Compte à rebours</button>
+      </div>
+      <div class="row" style="margin-top:9px;flex-wrap:wrap">
+        <span class="lbl">Rappels</span>
+        <button class="btn sm" data-min="5">5</button>
+        <button class="btn sm" data-min="10">10</button>
+        <button class="btn sm" data-min="15">15</button>
+        <button class="btn sm" data-min="20">20</button>
+        <button class="btn sm" data-min="30">30</button>
+        <span class="spacer"></span>
+        <button class="btn primary sm" id="timerAir" title="Afficher le minuteur sur les sorties cochées">▲ À l’antenne</button>
+        <button class="btn sm" id="timerOff" title="Retirer le minuteur des sorties">■ Couper</button>
+      </div>
+      <label class="row" style="margin-top:9px;gap:7px;font-size:11.5px;color:var(--txt2)">
+        <input type="checkbox" id="timerCut" checked> Couper l’affichage à la fin du temps
+      </label>
+      <div class="hint">La sortie continue d’afficher le décompte <b>même si ce poste est fermé</b> : le temps est calculé sur place, sans réseau.</div>
+    </div>
+   </div>
+  </section>
+
+  <section class="stage-wrap">
+    <div class="stage-bar">
+      <span class="op-pill acc" title="Ce moniteur montre le contenu en préparation ; il ne part à l’antenne qu’après « Diffuser »">Aperçu</span>
+      <span class="refbar" id="refbar">—</span>
+      <span class="counter" id="counter"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="prev" title="Élément précédent (←)">◀</button>
+      <button class="btn sm" id="next" title="Élément suivant (→)">▶</button>
+      <button class="btn primary sm" id="go" title="Diffuser (Entrée)">Diffuser</button>
+      <button class="btn danger sm" id="clear" title="Couper (Échap sur la scène)">Couper</button>
+    </div>
+
+    <div class="stage">
+      <div class="screen idle" id="screen">
+        <div class="op-stage" id="stage"></div>
+        <div class="stage-idle" id="preview">Aucun contenu à l’antenne</div>
+      </div>
+    </div>
+
+    <div class="strip" id="outputs"></div>
+  </section>
+</main>
+
+<aside class="air" aria-label="Sortie à l’antenne">
+  <div class="air-head">
+    <span>À l’antenne</span>
+    <span class="op-pill" id="airState"><span class="op-dot"></span><span id="airKind">hors antenne</span></span>
+  </div>
+  <div class="op-monitor air-monitor">
+    <div class="op-monitor-bar"><span id="airName">sortie principale</span><span class="spacer"></span><span class="op-tag air">OBS</span></div>
+    <div class="air-frame"><iframe id="airFrame" src="/o/out_full" title="Aperçu de la sortie à l’antenne" loading="lazy"></iframe></div>
+  </div>
+  <div class="air-row">
+    <a class="btn sm" id="airOpen" href="/o/out_full" target="_blank" rel="noopener">↗ Ouvrir</a>
+    <a class="btn sm" href="/mur.html">Mur</a>
+    <a class="btn sm" href="/orateur.html">Orateur</a>
+  </div>
+  <div class="air-sec">
+    <h3>Depuis le début</h3>
+    <div class="air-elapsed" id="airElapsed">00:00:00</div>
+    <p class="op-note">Le compteur part du démarrage du serveur ; il remet la régie dans le rythme du culte.</p>
+  </div>
+  <div class="air-sec">
+    <h3>Repères</h3>
+    <p class="op-note"><b>Entrée</b> diffuse · <b>Échap</b> coupe · <b>←</b>/<b>→</b> navigue<br>
+      <b>Ctrl+K</b> recherche unifiée · <b>Alt+1…6</b> change de module</p>
+  </div>
+</aside>
+
+</div>
+
+<dialog id="bibleDlg" aria-labelledby="bibleDlgTitle">
+  <div class="dlg-head">
+    <h3 id="bibleDlgTitle">Importer une version biblique</h3>
+    <span class="spacer"></span>
+    <span class="chip" id="bibleDlgFormat">format détecté automatiquement</span>
+  </div>
+  <div class="dlg-body">
+    <div class="file-drop" id="bibleDrop">
+      Déposez un fichier <span class="mono">.xml</span> (Beblia, Zefania, OSIS, USFX) — ou cliquez pour le choisir.
+      <input type="file" id="bibleFile" accept=".xml,application/xml,text/xml" hidden>
+    </div>
+    <div id="biblePreview" class="preview-box" hidden></div>
+    <div id="bibleFields" hidden>
+      <label>Nom affiché<input id="bibleName" type="text" maxlength="120" spellcheck="false"></label>
+      <label>Abréviation<input id="bibleAbbr" type="text" maxlength="6" spellcheck="false"></label>
+      <label>Licence<input id="bibleLicense" type="text" maxlength="120" placeholder="Domaine public"></label>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="bibleCancel">Annuler</button>
+    <button class="btn primary" id="bibleConfirm" disabled>Importer</button>
+  </div>
+</dialog>
+
+<dialog class="palette" id="palette" aria-label="Recherche unifiée">
+  <div class="palette-head">
+    <span aria-hidden="true">🔍</span>
+    <input id="paletteInput" type="text" placeholder="Tout chercher : chant, verset, média, annonce, look…"
+           autocomplete="off" spellcheck="false" aria-controls="paletteResults">
+    <kbd>Échap</kbd>
+  </div>
+  <div class="filters" id="paletteFilters"></div>
+  <div class="results" id="paletteResults" role="listbox" aria-label="Résultats"></div>
+  <div class="palette-foot">
+    <span><b>↑↓</b> naviguer</span>
+    <span><b>Entrée</b> diffuser</span>
+    <span><b>Maj+Entrée</b> aperçu</span>
+    <span><b>Échap</b> fermer</span>
+  </div>
+</dialog>
+
+<dialog id="importDlg" aria-labelledby="importTitle">
+  <div class="dlg-head">
+    <h3 id="importTitle">Importer un chant</h3>
+    <span class="spacer"></span>
+    <span class="chip" id="importFormat">format détecté automatiquement</span>
+  </div>
+  <div class="dlg-body">
+    <div class="file-drop" id="fileDrop">
+      Déposez un fichier <span class="mono">.txt</span>, <span class="mono">.chordpro</span>, <span class="mono">.cho</span> ou <span class="mono">.xml</span> — ou collez les paroles ci-dessous.
+      <input type="file" id="fileInput" accept=".txt,.chordpro,.cho,.crd,.xml,text/plain" hidden>
+    </div>
+    <textarea id="importText" spellcheck="false" placeholder="{{title: Grâce infinie}}
+Couplet 1
+[G]Grâce infinie, quel doux [C]son…"></textarea>
+    <div id="importPreview" class="preview-box" hidden></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" id="importCancel">Annuler</button>
+    <button class="btn" id="importAnalyze">Analyser</button>
+    <button class="btn primary" id="importConfirm" disabled>Importer</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { createEntry, STATE } from '/shared/bible/reference.mjs';
+import { navigate, currentItem, actionForKey, isTypingTarget, positionLabel } from '/shared/bible/navigation.mjs';
+// Le même moteur que la page de sortie : l'aperçu est la sortie (A-10).
+import { mountScene, SCENE_CSS } from '/shared/render/engine.mjs';
+import { contentFromPayload } from '/shared/render/content.mjs';
+import { pickOverlayTargets, makeOverlayOutput, acceptsKind, overlayRouteLabel } from '/shared/overlay.mjs';
+import { fallbackSceneFor, lowerThirdScene } from '/shared/scene.mjs';
+// Chants : mêmes modules purs que le serveur (import, sections, arrangements).
+import { parseSongText, importSummary, SECTION_LABELS } from '/shared/songs/parser.mjs';
+import {
+  buildSongSelection, navigateSong, currentSongItem, songPositionLabel, atEnd,
+  switchArrangement, appendChorus, repeatCurrentStep, skipCurrentStep,
+  addArrangement, goToStep, activeArrangement
+} from '/shared/songs/arrangement.mjs';
+
+{
+  const style = document.createElement('style');
+  style.id = 'op-scene-css';
+  style.textContent = SCENE_CSS;
+  document.head.append(style);
+}
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const SETTINGS = { splitMode: 'auto', splitBy: 'words', maxWordsPerScreen: 25, minWordsPerPart: 3, balanceParts: true };
+
+let entry = createEntry({ verseCount: () => null });
+let selection = null;
+let outputs = [];
+let targets = new Set();
+let bibleId = null;
+let socket = null;
+
+function toast(message, kind = '') {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = 'toast show ' + kind;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast ' + kind; }, 3200);
+}
+
+// ---------------------------------------------------------------------------
+// Affichage du champ
+// ---------------------------------------------------------------------------
+function paintField() {
+  const s = entry.state;
+  const prefix = $('#prefix');
+  if (s.bookNum) {
+    prefix.hidden = false;
+    const b = entry.state.suggestions?.[0];
+    prefix.textContent = `${entry.label.split(' ▸ ')[0]} ▸`;
+  } else {
+    prefix.hidden = true;
+  }
+  const full = entry.label;
+  const cut = s.bookNum ? full.indexOf('▸') + 1 : 0;
+  $('#typed').textContent = s.bookNum ? full.slice(cut).trimStart() : s.query;
+  $('#ghost').textContent = s.mode === STATE.BOOK && !s.query ? 'tapez un livre…' : '';
+
+  const msg = $('#msg');
+  if (s.message) {
+    msg.textContent = s.message;
+    msg.className = 'msg show ' + (s.messageKind === 'error' ? 'error' : 'warning');
+  } else {
+    msg.className = 'msg';
+    msg.textContent = '';
+  }
+}
+
+function paintSuggestions() {
+  const s = entry.state;
+  const box = $('#suggest');
+  $('#field').setAttribute('aria-expanded', s.mode === STATE.BOOK && s.suggestions.length ? 'true' : 'false');
+  if (s.mode !== STATE.BOOK || !s.suggestions.length) { box.innerHTML = ''; return; }
+  box.innerHTML = s.suggestions.map((b, i) => `
+    <div class="sug ${i === s.highlight ? 'hi' : ''}" data-num="${b.num}">
+      <span class="abbr">${esc(b.abbr)}</span>
+      <span class="n">${esc(b.name)}</span>
+      <span class="ch">${b.chapters} ch.</span>
+    </div>`).join('');
+  box.querySelectorAll('.sug').forEach((el) => {
+    el.addEventListener('click', () => {
+      entry.selectBook(Number(el.dataset.num));
+      paintAll();
+      focusField();
+    });
+  });
+}
+
+function paintParts() {
+  const box = $('#parts');
+  if (!selection || !selection.items.length) {
+    box.innerHTML = `<div class="empty-state">Saisissez une référence :<br>
+      <span class="mono">Jean 3:16</span> · <span class="mono">Ps 23</span> ·
+      <span class="mono">1 Corinthiens 13:4-7</span></div>`;
+    $('#partInfo').textContent = '';
+    $('#refbar').textContent = '—';
+    $('#counter').textContent = '';
+    return;
+  }
+  const cur = selection.index;
+  box.innerHTML = selection.items.map((it, i) => `
+    <div class="part ${i === cur ? 'cur' : ''}" data-i="${i}">
+      <span class="idx">${i + 1}</span>
+      <span class="body">${esc(it.text)}
+        <span class="meta">v. ${it.verse} · partie ${it.partIndex + 1}/${it.partCount}</span>
+      </span>
+    </div>`).join('');
+  box.querySelectorAll('.part').forEach((el) => {
+    el.addEventListener('click', () => {
+      selection = { ...selection, index: Number(el.dataset.i) };
+      paintAll();
+      broadcast();
+    });
+  });
+  const item = currentItem(selection);
+  $('#partInfo').textContent = `${selection.items.length} parties`;
+  $('#refbar').textContent = selection.label;
+  $('#counter').textContent = `${cur + 1} / ${selection.items.length} · ${positionLabel(selection)}`;
+  const active = box.querySelector('.part.cur');
+  active?.scrollIntoView({ block: 'nearest' });
+  paintPreview(item);
+}
+
+// ---------------------------------------------------------------------------
+// Aperçu WYSIWYG : la scène de la sortie, rendue par le moteur partagé
+// ---------------------------------------------------------------------------
+const sceneCache = new Map();
+
+function scaleStage() {
+  const stage = $('#stage');
+  const screen = $('#screen');
+  if (!stage || !screen) return;
+  const scale = screen.clientWidth / 1920;
+  stage.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener('resize', scaleStage);
+
+async function sceneFor(kind) {
+  if (sceneCache.has(kind)) return sceneCache.get(kind);
+  const outputId = outputs.find((o) => targets.has(o.id))?.id || outputs[0]?.id || 'out_full';
+  const output = outputs.find((o) => o.id === outputId);
+  const sceneId = output?.scenesByKind?.[kind] || null;
+  let scene = null;
+  if (sceneId) {
+    try {
+      const res = await fetch(`/api/scenes/${encodeURIComponent(sceneId)}`, { cache: 'no-store' });
+      if (res.ok) scene = await res.json();
+    } catch { /* repli */ }
+  }
+  if (!scene) {
+    scene = fallbackSceneFor({
+      id: `scn_preview_${kind}`,
+      name: `Aperçu — ${kind}`,
+      kind,
+      preset: output?.preset || 'full',
+      transparent: Boolean(output?.transparent)
+    });
+  }
+  sceneCache.set(kind, scene);
+  return scene;
+}
+
+async function showOnStage(kind, content, assets = {}) {
+  if (!content) {
+    $('#stage').replaceChildren();
+    $('#preview').textContent = 'Aucun contenu à l’antenne';
+    $('#screen').classList.add('idle');
+    return;
+  }
+  const scene = await sceneFor(kind);
+  mountScene($('#stage'), { scene, content, assets, editing: false });
+  $('#screen').classList.remove('idle');
+  scaleStage();
+}
+
+async function paintPreview(item) {
+  if (!item?.text) {
+    await showOnStage('bible', null);
+    return;
+  }
+  const content = contentFromPayload({
+    text: item.text,
+    reference: selection?.label,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    badge: selection?.bibleId === 'bible_sample_fr' ? 'LSG' : ''
+  }, 'bible');
+  await showOnStage('bible', content);
+}
+
+function paintOutputs() {
+  const box = $('#outputs');
+  box.innerHTML = outputs.map((o) => `
+    <label class="out ${targets.has(o.id) ? 'on' : ''}" data-id="${o.id}">
+      <input type="checkbox" ${targets.has(o.id) ? 'checked' : ''}>
+      <span class="nm">${esc(o.name)}</span>
+      <span class="ty">${o.width}×${o.height}</span>
+    </label>
+    <a class="btn sm" href="/o/${encodeURIComponent(o.id)}?kind=bible" target="_blank" rel="noopener"
+       title="Ouvrir la sortie « ${esc(o.name)} » pour la Bible">↗ lien</a>`).join('');
+  box.querySelectorAll('.out').forEach((el) => {
+    el.querySelector('input').addEventListener('change', (e) => {
+      const id = el.dataset.id;
+      if (e.target.checked) targets.add(id); else targets.delete(id);
+      el.classList.toggle('on', e.target.checked);
+      refreshAir();
+    });
+  });
+  refreshAir();
+}
+
+function paintAll() {
+  paintField();
+  paintSuggestions();
+  paintParts();
+}
+
+function focusField() { if (mode === 'bible') $('#field').focus(); }
+
+// ---------------------------------------------------------------------------
+// Module Chants (EF-15) — la liste, le conducteur, la diffusion
+// ---------------------------------------------------------------------------
+let mode = 'bible';
+let songs = [];
+let currentSong = null;
+let songSelection = null;
+let songQuery = '';
+let importDraft = null;
+
+const SONG_SETTINGS = { maxWordsPerScreen: 20, minWordsPerPart: 3 };
+
+/** Insensible à la casse et aux accents (EF-15.21). */
+function fold(value) {
+  return String(value ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function songHaystack(song) {
+  return fold([
+    song.title, song.artist, song.composer,
+    ...(song.sections || []).map((section) => section.lines.join(' '))
+  ].join(' '));
+}
+
+function visibleSongs() {
+  const needle = fold(songQuery).trim();
+  if (!needle) return songs;
+  return songs.filter((song) => songHaystack(song).includes(needle));
+}
+
+function paintSongs() {
+  const list = $('#songList');
+  const items = visibleSongs();
+  $('#songCount').textContent = items.length === songs.length
+    ? `${songs.length} chant(s)`
+    : `${items.length} / ${songs.length}`;
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">${songs.length
+      ? 'Aucun chant ne correspond à la recherche.'
+      : `Aucun chant pour l’instant.<br>Cliquez sur <b>＋ Importer</b> et collez les paroles,
+         ou <button class="btn sm" id="sampleSongs" style="margin-top:8px">ajoutez deux chants d’exemple</button>.`}</div>`;
+    $('#sampleSongs')?.addEventListener('click', loadSampleSongs);
+    return;
+  }
+  list.innerHTML = items.map((song) => `
+    <div class="song ${song.id === currentSong?.id ? 'on' : ''}" data-id="${esc(song.id)}" role="button" tabindex="0">
+      <span class="t">${esc(song.title)}
+        <div class="a">${esc(song.artist || song.composer || '—')}</div>
+      </span>
+      <span class="k">${(song.sections || []).length} sect.</span>
+    </div>`).join('');
+  list.querySelectorAll('.song').forEach((el) => {
+    const open = () => loadSong(el.dataset.id);
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+    });
+  });
+}
+
+function paintConductor() {
+  const box = $('#conductor');
+  if (!songSelection) {
+    box.innerHTML = '<div class="empty-state">Choisissez un chant pour afficher son conducteur.</div>';
+    $('#songInfo').textContent = '';
+    return;
+  }
+  const current = currentSongItem(songSelection);
+  box.innerHTML = (songSelection.steps || []).map((step) => `
+    <div class="step ${current && current.step === step.step ? 'cur' : ''}" data-step="${step.step}" role="button" tabindex="0">
+      <span class="n">${step.step + 1}</span>
+      <span class="nm">${esc(step.name)}</span>
+      <span class="ty" style="color:${sectionColor(step.type)};border-color:${sectionColor(step.type)}55">
+        ${esc(SECTION_LABELS[step.type] || step.type)}
+      </span>
+    </div>`).join('');
+  box.querySelectorAll('.step').forEach((el) => {
+    el.addEventListener('click', () => goToSongStep(Number(el.dataset.step)));
+  });
+  const active = box.querySelector('.step.cur');
+  active?.scrollIntoView({ block: 'nearest' });
+  $('#songInfo').textContent = `${songSelection.arrangementName} · ${songSelection.steps.length} étapes`;
+}
+
+const SECTION_COLORS = {
+  verse: '#60a5fa', chorus: '#a78bfa', bridge: '#fb923c', prechorus: '#93c5fd',
+  intro: '#9ca3af', outro: '#9ca3af', tag: '#34d399', interlude: '#ffd479'
+};
+function sectionColor(type) { return SECTION_COLORS[type] || '#9ca3af'; }
+
+function paintArrangements() {
+  const select = $('#arrangement');
+  if (!currentSong) { select.innerHTML = ''; return; }
+  const active = activeArrangement(currentSong, songSelection?.arrangementId);
+  select.innerHTML = (currentSong.arrangements || []).map((arrangement) =>
+    `<option value="${esc(arrangement.id)}" ${arrangement.id === active.id ? 'selected' : ''}>${esc(arrangement.name)}</option>`).join('');
+}
+
+function paintStageBar() {
+  if (mode === 'songs') {
+    const item = currentSongItem(songSelection);
+    $('#refbar').textContent = currentSong?.title || '—';
+    $('#counter').textContent = item
+      ? `${songSelection.index + 1} / ${songSelection.items.length} · ${songPositionLabel(songSelection)}`
+      : '';
+    return;
+  }
+  // L'affichage Bible est géré par paintParts().
+}
+
+function paintSongsAll() {
+  paintSongs();
+  paintConductor();
+  paintArrangements();
+  paintStageBar();
+}
+
+async function loadSongs() {
+  try {
+    const res = await fetch('/api/library/songs', { cache: 'no-store' });
+    const data = await res.json();
+    songs = data.items || [];
+  } catch {
+    songs = [];
+  }
+  paintSongs();
+}
+
+async function loadSampleSongs() {
+  try {
+    const res = await fetch('/api/songs/samples', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Ajout impossible.');
+    await loadSongs();
+    await loadAnnouncements();
+    wireExtraModules();
+    await restoreTimerState();
+    if (timer.running) startTimerTick();
+    toast('Deux chants d’exemple ajoutés.');
+    if (songs[0]) await loadSong(songs[0].id);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function loadSong(id, { arrangementId = null } = {}) {
+  const song = songs.find((item) => item.id === id) || null;
+  if (!song) return;
+  currentSong = song;
+  songSelection = buildSongSelection(song, { arrangementId, settings: SONG_SETTINGS });
+  paintSongsAll();
+  await paintSongPreview();
+  // Même règle que la Bible : choisir un contenu le diffuse s'il y a des cibles.
+  broadcastSong();
+}
+
+function paintSongPreview() {
+  const item = currentSongItem(songSelection);
+  if (!item) return showOnStage('songs', null);
+  return showOnStage('songs', contentFromPayload({
+    text: item.text,
+    title: currentSong?.title,
+    section: item.sectionName,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    step: item.step
+  }, 'songs'));
+}
+
+function goToSongStep(step) {
+  if (!songSelection) return;
+  songSelection = goToStep(songSelection, step + 1);
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+function moveSong(action) {
+  if (!songSelection) return;
+  const result = navigateSong(songSelection, action);
+  if (result.ended) { toast(result.message, 'warn'); return; }
+  if (!result.changed) return;
+  songSelection = result.selection;
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+/** Change d'arrangement sans perdre la position (EF-15.12). */
+function changeArrangement(arrangementId) {
+  if (!currentSong || !songSelection) return;
+  const result = switchArrangement(songSelection, currentSong, arrangementId, { settings: SONG_SETTINGS });
+  songSelection = result.selection;
+  paintSongsAll();
+  paintSongPreview();
+  broadcastSong();
+}
+
+/** Édite l'arrangement puis reconstruit immédiatement (EF-15.14). */
+function editArrangement(transform, message) {
+  if (!currentSong || !songSelection) return;
+  const before = currentSongItem(songSelection);
+  const outcome = transform(currentSong, songSelection);
+  if (!outcome.changed) {
+    toast(outcome.reason === 'no-chorus'
+      ? 'Ce chant n’a pas de refrain à ajouter.'
+      : 'Impossible de modifier cet arrangement.', 'err');
+    return;
+  }
+  currentSong = outcome.song;
+  songSelection = buildSongSelection(currentSong, {
+    arrangementId: songSelection.arrangementId,
+    settings: SONG_SETTINGS
+  });
+  // On reste sur la même section quand elle existe encore.
+  if (before) {
+    const same = songSelection.items.findIndex((item) => item.sectionId === before.sectionId);
+    if (same >= 0) songSelection = { ...songSelection, index: same };
+  }
+  paintSongsAll();
+  paintSongPreview();
+  if (message) toast(message);
+  broadcastSong();
+}
+
+function setMode(next) {
+  if (mode === next) return;
+  mode = next;
+  for (const button of document.querySelectorAll('.mode')) {
+    const on = button.dataset.mode === next;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  $('#mod-bible').hidden = next !== 'bible';
+  $('#mod-songs').hidden = next !== 'songs';
+  $('#mod-ann').hidden = next !== 'announcements';
+  $('#mod-media').hidden = next !== 'media';
+  $('#mod-lt').hidden = next !== 'lowerthird';
+  $('#mod-timer').hidden = next !== 'timer';
+  try { localStorage.setItem('op.studio.mode', next); } catch { /* stockage refusé */ }
+  // EF-06.7 : changer de module ne coupe jamais ce qui est à l'antenne.
+  if (next === 'bible') {
+    paintParts();
+    focusField();
+  } else if (next === 'songs') {
+    paintSongsAll();
+    if (currentSong) paintSongPreview();
+  } else if (next === 'media') {
+    loadMedia().then(() => { if (mediaLive) previewMedia(mediaLive); });
+  } else if (next === 'lowerthird') {
+    previewLtSoon(true);
+  } else if (next === 'timer') {
+    renderTimer();
+  } else {
+    renderAnnouncements();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
+async function loadSelection(bookNum, chapter, first, last, { preview = false } = {}) {
+  const params = new URLSearchParams({ book: String(bookNum), chapter: String(chapter) });
+  if (first) params.set('first', String(first));
+  if (last) params.set('last', String(last));
+  for (const [k, v] of Object.entries(SETTINGS)) params.set(k, String(v));
+  if (bibleId) params.set('bible', bibleId);
+
+  const res = await fetch(`/api/bible/selection?${params}`, { cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok) {
+    toast(data?.error?.message || 'Sélection impossible.', 'err');
+    return;
+  }
+  if (data.empty) {
+    toast(data.message, 'err');
+    return;
+  }
+  selection = data;
+  paintAll();
+  // Sélectionner une référence ne diffuse pas : seules les sorties cochées
+  // reçoivent, et seulement quand la diffusion est demandée (Entrée / bouton).
+  // `Maj+Entrée` dans la recherche unifiée demande explicitement un aperçu.
+  if (!preview) broadcast();
+}
+
+/** Envoie un contenu aux sorties cochées ; ne lève jamais d'exception à l'UI. */
+async function sendToOutputs(kind, payload, { force = false, targetsOverride = null } = {}) {
+  const chosen = targetsOverride || [...targets];
+  if (!chosen.length && !force) return;
+  if (!targetsOverride && !targets.size) toast('Aucune sortie cochée : diffusion vers les sorties par défaut.');
+  try {
+    const res = await fetch('/api/live/show', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ targets: chosen, kind, payload })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || 'Diffusion refusée.');
+    if (data.refused?.length) {
+      const filtered = data.refused.filter((r) => r.reason === 'filtered').length;
+      const label = kind === 'songs' ? 'les chants' : 'la Bible';
+      toast(filtered
+        ? `${filtered} sortie(s) ne reçoivent pas ${label}.`
+        : 'Diffusion partielle : vérifiez les sorties.', 'err');
+    }
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+/**
+ * Aperçu du contenu suivant, joint au message de diffusion : la vue orateur et
+ * les sorties « cœur » peuvent annoncer la suite sans interrogatoire du serveur.
+ */
+function upcoming(sel) {
+  const next = sel?.items?.[sel.index + 1];
+  if (!next) return {};
+  return { nextText: next.text };
+}
+
+async function broadcastBible(force = false) {
+  const item = currentItem(selection);
+  if (!item) return;
+  await sendToOutputs('bible', {
+    text: item.text,
+    reference: selection.label,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    verse: item.verse,
+    chapter: item.chapter,
+    bookNum: item.bookNum,
+    bibleId: selection.bibleId,
+    sceneId: null,
+    ...upcoming(selection),
+    nextRef: selection.label
+  }, { force });
+}
+
+/** Diffuse l'élément courant du module actif (bouton « Diffuser », Entrée). */
+async function broadcast(force = false) {
+  if (mode === 'songs') return broadcastSong(force);
+  if (mode === 'media') return broadcastMedia(force);
+  if (mode === 'lowerthird') return broadcastLt(force);
+  if (mode === 'timer') return sendTimerToAir();
+  return broadcastBible(force);
+}
+
+async function broadcastSong(force = false) {
+  const item = currentSongItem(songSelection);
+  if (!item) return;
+  await sendToOutputs('songs', {
+    text: item.text,
+    title: currentSong?.title || '',
+    section: item.sectionName,
+    sectionType: item.sectionType,
+    step: item.step,
+    partIndex: item.partIndex,
+    partCount: item.partCount,
+    arrangementId: songSelection.arrangementId,
+    songId: currentSong?.id || '',
+    ...upcoming(songSelection),
+    nextRef: songSelection.items?.[songSelection.index + 1]?.sectionName || ''
+  }, { force });
+}
+
+async function clearOutputs() {
+  await fetch('/api/live/clear', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targets: [...targets] })
+  });
+  $('#stage').replaceChildren();
+  $('#preview').textContent = 'Aucun contenu à l’antenne';
+  $('#screen').classList.add('idle');
+  afterClear();
+  toast('Sorties coupées.');
+}
+
+function move(action) {
+  if (mode === 'songs') return moveSong(action);
+  if (mode === 'media') return moveMedia(action === 'next' ? 1 : -1);
+  if (!selection) return;
+  const result = navigate(selection, action);
+  if (result.chapter) {
+    const { delta } = result.chapter;
+    const chapter = Math.max(1, Math.min(200, selection.chapter + delta));
+    loadSelection(selection.bookNum, chapter);
+    return;
+  }
+  if (!result.changed) return;
+  selection = result.selection;
+  paintParts();
+  broadcast();
+}
+
+// ---------------------------------------------------------------------------
+// Module Médias (EF-16) : la bibliothèque du dossier `assets/medias/`
+// ---------------------------------------------------------------------------
+let mediaItems = [];
+let mediaIndex = -1;
+let mediaQuery = '';
+let mediaLive = null;
+
+function mediaUrl(item) {
+  if (!item) return '';
+  return item.url || (item.assetId ? `/api/assets/${item.assetId}` : '');
+}
+
+function currentMedia() { return mediaItems[mediaIndex] || null; }
+
+async function loadMedia() {
+  const params = new URLSearchParams();
+  if (mediaQuery) params.set('q', mediaQuery);
+  try {
+    const res = await fetch(`/api/media?${params}`, { cache: 'no-store' });
+    const data = await res.json();
+    mediaItems = Array.isArray(data.items) ? data.items : [];
+  } catch {
+    mediaItems = [];
+  }
+  if (mediaIndex >= mediaItems.length) mediaIndex = mediaItems.length - 1;
+  if (mediaIndex < 0 && mediaItems.length) mediaIndex = 0;
+  renderMedia();
+}
+
+function renderMedia() {
+  const grid = $('#mediaGrid');
+  $('#mediaCount').textContent = mediaItems.length ? `${mediaItems.length} fichier(s)` : '';
+  if (!mediaItems.length) {
+    grid.innerHTML = `<div class="empty-state">Aucun média ici pour l’instant.<br>
+      « ＋ Importer » copie le fichier dans le projet : il reste affichable hors ligne.</div>`;
+    return;
+  }
+  grid.innerHTML = mediaItems.map((item, i) => `
+    <button class="media${i === mediaIndex ? ' on' : ''}${mediaLive?.assetId === item.assetId ? ' live' : ''}"
+            data-i="${i}" title="${esc(item.name)}">
+      <span class="th">${item.thumb
+        ? `<img src="${esc(item.thumb)}" alt="" loading="lazy">`
+        : (item.mime && String(item.mime).startsWith('video') ? '▶' : '▣')}</span>
+      <span class="nm">${esc(item.name)}</span>
+    </button>`).join('');
+  for (const node of grid.querySelectorAll('.media')) {
+    node.onclick = () => {
+      mediaIndex = Number(node.dataset.i);
+      renderMedia();
+      broadcastMedia(true);
+    };
+  }
+}
+
+function mediaPayload(item) {
+  return {
+    assetId: item.assetId,
+    assetKind: String(item.mime || '').startsWith('video') ? 'video' : 'image',
+    mediaName: item.name,
+    title: item.name,
+    fit: $('#mediaFit') ? $('#mediaFit').value : 'contain'
+  };
+}
+
+async function previewMedia(item) {
+  if (!item) { await showOnStage('media', null); return; }
+  const content = contentFromPayload(mediaPayload(item), 'media');
+  await showOnStage('media', content, { [item.assetId]: mediaUrl(item) });
+  $('#refbar').textContent = `Média — ${item.name}`;
+  $('#counter').textContent = mediaItems.length ? `${mediaIndex + 1} / ${mediaItems.length}` : '';
+}
+
+async function broadcastMedia(force = false) {
+  const item = currentMedia();
+  if (!item) { toast('Aucun média sélectionné.', 'err'); return; }
+  await previewMedia(item);
+  await sendToOutputs('media', mediaPayload(item), { force });
+  mediaLive = item;
+  renderMedia();
+}
+
+function moveMedia(delta) {
+  if (!mediaItems.length) return;
+  mediaIndex = Math.max(0, Math.min(mediaItems.length - 1, mediaIndex + delta));
+  renderMedia();
+  previewMedia(currentMedia());
+  const node = $('#mediaGrid').querySelectorAll('.media')[mediaIndex];
+  node?.scrollIntoView({ block: 'nearest' });
+}
+
+async function importMediaFiles(fileList) {
+  const files = [...(fileList || [])].filter((f) => f && f.size > 0);
+  if (!files.length) return;
+  let done = 0;
+  let failed = 0;
+  for (const file of files) {
+    try {
+      const res = await fetch(
+        `/api/assets?name=${encodeURIComponent(file.name)}&kind=media`,
+        { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error?.message || 'Import refusé.');
+      }
+      done += 1;
+    } catch (err) {
+      failed += 1;
+      toast(`${file.name} : ${err.message}`, 'err');
+    }
+  }
+  if (done) {
+    toast(failed
+      ? `${done} média(s) importé(s), ${failed} en échec.`
+      : `${done} média(s) importé(s) dans le projet.`);
+    await loadMedia();
+  }
+}
+
+function handleMediaKey(event) {
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault(); moveMedia(1); return true;
+  }
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault(); moveMedia(-1); return true;
+  }
+  if (event.key === 'Enter') { event.preventDefault(); broadcastMedia(true); return true; }
+  if (event.key === 'Home') { event.preventDefault(); mediaIndex = 0; renderMedia(); previewMedia(currentMedia()); return true; }
+  if (event.key === 'End') {
+    event.preventDefault(); mediaIndex = mediaItems.length - 1; renderMedia(); previewMedia(currentMedia()); return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Module Habillage (EF-19) : bandeau nom + fonction par-dessus la caméra
+// ---------------------------------------------------------------------------
+let ltLive = false;
+let ltCut = null;
+let ltTargets = null;
+
+// Ce que chaque sortie porte en ce moment, suivi par le relais WebSocket.
+// C'est ce qui permet de refuser qu'un calque écrase un verset en direct.
+const onAir = new Map();
+
+// Un calque (habillage, minuteur) ne remplace jamais le contenu principal :
+// une sortie ne porte qu'un seul contenu à l'antenne. On vise donc une sortie
+// qui accepte ce type, de préférence parmi celles cochées par le régisseur.
+// Un calque (habillage, minuteur) ne remplace jamais le contenu principal :
+// une sortie ne porte qu'un seul contenu à l'antenne. Le routage est partagé
+// avec le serveur (`/shared/overlay.mjs`) pour que la règle soit la même ici,
+// dans les tests et dans le profil appliqué.
+async function refreshOutputs() {
+  try {
+    const res = await fetch('/api/outputs', { cache: 'no-store' });
+    const data = await res.json();
+    outputs = data.outputs || outputs;
+    sceneCache.clear();
+    paintOutputs();
+    return data;
+  } catch { return null; }
+}
+
+async function overlayRoute(kind) {
+  let route = pickOverlayTargets(outputs, [...targets], kind, { onAir: Object.fromEntries(onAir) });
+  if (!route.needsCreation) return route;
+  // Aucun porteur dédié : on crée la sortie transparente une fois pour toutes,
+  // plutôt que d'écraser le verset affiché.
+  const created = makeOverlayOutput(kind, outputs.map((o) => o.id));
+  // La sortie naît avec sa scène : sinon l'écran d'affichage retomberait sur un
+  // gabarit générique et le régisseur ne pourrait rien retoucher.
+  try {
+    const scene = lowerThirdScene({ id: `scn_${kind === 'timer' ? 'timer' : 'lowerthird'}_${created.id.replace(/^out_/, '')}` });
+    const saved = await fetch(`/api/scenes/${scene.id}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(scene)
+    });
+    if (saved.ok) created.scenesByKind = { lowerthird: scene.id, timer: scene.id };
+  } catch { /* l'affichage a un repli */ }
+  const doc = await refreshOutputs();
+  if (doc) {
+    doc.rev = (Number(doc.rev) || 1) + 1;
+    doc.outputs = [...(doc.outputs || []), created];
+    const res = await fetch('/api/outputs', {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc)
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast(data?.error?.message || 'La sortie de calque n’a pas pu être créée.', 'err');
+      return pickOverlayTargets(outputs, [...targets], kind);
+    }
+    await refreshOutputs();
+    toast(`Sortie « ${created.name} » créée : le calque s’y pose sans éteindre le contenu en cours.`);
+  }
+  return pickOverlayTargets(outputs, [...targets], kind, { onAir: Object.fromEntries(onAir) });
+}
+
+function announceOverlayRoute(kind, route) {
+  if (!route.moved) return;
+  toast(kind === 'lowerthird'
+    ? `Bandeau envoyé sur « ${route.label} » : c’est la sortie transparente qui reçoit l’habillage.`
+    : `Minuteur envoyé sur « ${route.label} » : la sortie principale reste sur le contenu en cours.`);
+}
+
+function ltPayload() {
+  const name = $('#ltName').value.trim();
+  const role = $('#ltRole').value.trim();
+  return {
+    title: name,
+    // La liaison `announcement` porte la seconde ligne du bandeau.
+    body: role,
+    text: role
+  };
+}
+
+async function previewLt() {
+  const payload = ltPayload();
+  if (!payload.title && !payload.body) { await showOnStage('lowerthird', null); return; }
+  await showOnStage('lowerthird', contentFromPayload(payload, 'lowerthird'));
+  $('#refbar').textContent = `Habillage — ${payload.title || payload.body}`;
+  $('#counter').textContent = '';
+}
+
+async function broadcastLt(force = true) {
+  const payload = ltPayload();
+  if (!payload.title && !payload.body) { toast('Saisissez un nom (ou une fonction).', 'err'); return; }
+  const seconds = Math.max(0, Number($('#ltHold').value) || 0);
+  const route = await overlayRoute('lowerthird');
+  if (!route.ids.length) { toast('Aucune sortie ne reçoit l’habillage : cochez-en une ou créez une sortie transparente.', 'err'); return; }
+  ltTargets = route.ids;
+  await previewLt();
+  await sendToOutputs('lowerthird', payload, { force, targetsOverride: route.ids });
+  announceOverlayRoute('lowerthird', route);
+  ltLive = true;
+  $('#ltState').textContent = `${overlayRouteLabel(route)}${seconds ? ` · coupe dans ${seconds} s` : ''}`;
+  $('#ltState').classList.add('on');
+  if (ltCut) clearTimeout(ltCut);
+  if (seconds > 0) ltCut = setTimeout(() => clearLt(), seconds * 1000);
+}
+
+async function clearLt() {
+  if (ltCut) { clearTimeout(ltCut); ltCut = null; }
+  ltLive = false;
+  $('#ltState').textContent = 'hors antenne';
+  $('#ltState').classList.remove('on');
+  await showOnStage('lowerthird', null);
+  await fetch('/api/live/clear', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targets: [...targets, ...(ltTargets || [])], kind: 'lowerthird' })
+  }).catch(() => {});
+}
+
+// Les bandeaux nommés appartiennent au projet (`library/lowerthirds/`) : on les
+// retrouve sur n'importe quel poste qui ouvre le même dossier (EF-19.6).
+let ltPresets = [];
+
+async function loadLowerThirds() {
+  try {
+    const res = await fetch('/api/library/lowerthirds', { cache: 'no-store' });
+    const data = await res.json();
+    ltPresets = (data.items || []).slice()
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
+  } catch {
+    ltPresets = [];
+  }
+  renderLtList();
+}
+
+function renderLtList() {
+  const box = $('#ltList');
+  $('#ltCount').textContent = ltPresets.length ? String(ltPresets.length) : '';
+  if (!ltPresets.length) {
+    box.innerHTML = `<div class="empty-state">Aucun bandeau enregistré.<br>Renseignez un nom puis « ＋ Enregistrer ce bandeau ».</div>`;
+    return;
+  }
+  box.innerHTML = ltPresets.map((item) => `
+    <div class="song" data-id="${esc(item.id)}" title="Cliquer pour afficher ce bandeau">
+      <span class="t">${esc(item.name)}</span>
+      <span class="a">${esc(item.subtitle || '')}</span>
+      <button class="btn sm" data-del="${esc(item.id)}" title="Retirer ce bandeau du projet">×</button>
+    </div>`).join('');
+  for (const node of box.querySelectorAll('.song')) {
+    node.onclick = async (event) => {
+      if (event.target.dataset.del) return;
+      const item = ltPresets.find((entry) => entry.id === node.dataset.id);
+      if (!item) return;
+      $('#ltName').value = item.title || item.name;
+      $('#ltRole').value = item.subtitle || '';
+      $('#ltHold').value = Number.isFinite(Number(item.holdSec)) ? String(item.holdSec) : '8';
+      await previewLtSoon(true);
+      broadcastLt(true);
+    };
+  }
+  for (const button of box.querySelectorAll('[data-del]')) {
+    button.onclick = async (event) => {
+      event.stopPropagation();
+      const id = button.dataset.del;
+      const item = ltPresets.find((entry) => entry.id === id);
+      if (!item || !confirm(`Retirer le bandeau « ${item.name} » du projet ?`)) return;
+      await fetch(`/api/library/lowerthirds/${id}`, { method: 'DELETE' }).catch(() => {});
+      await loadLowerThirds();
+      toast('Bandeau retiré du projet.');
+    };
+  }
+}
+
+async function saveLowerThird() {
+  const title = $('#ltName').value.trim();
+  const subtitle = $('#ltRole').value.trim();
+  if (!title) { toast('Donnez un nom au bandeau avant de l’enregistrer.', 'err'); return; }
+  const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 28) || 'bandeau';
+  const id = `lt_${slug}`;
+  const existing = ltPresets.find((entry) => entry.id === id);
+  const body = {
+    id,
+    rev: existing ? existing.rev : 1,
+    name: title,
+    title,
+    subtitle,
+    holdSec: Math.max(0, Number($('#ltHold').value) || 0),
+    layout: 'classic',
+    animationIn: 'slide-left',
+    animationOut: 'slide-left',
+    animationMs: 400
+  };
+  const res = await fetch(`/api/library/lowerthirds/${id}`, {
+    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    toast((data && data.error && data.error.message) || 'Enregistrement refusé.', 'err');
+    return;
+  }
+  await loadLowerThirds();
+  toast(`Bandeau « ${title} » enregistré dans le projet.`);
+}
+
+// ---------------------------------------------------------------------------
+// Module Minuteur (EF-18) : compte à rebours de l'événement
+// ---------------------------------------------------------------------------
+let timerTargets = null;
+let timerAirLabel = '';
+const timer = { mode: 'down', running: false, endsAt: null, startedAt: null, remainingMs: 15 * 60 * 1000, onAir: false, cutAtEnd: true, handle: null };
+
+function timerRemainingMs() {
+  if (timer.mode === 'up') {
+    return timer.running && timer.startedAt
+      ? timer.remainingMs + (Date.now() - timer.startedAt)
+      : timer.remainingMs;
+  }
+  if (!timer.running || !timer.endsAt) return timer.remainingMs;
+  return new Date(timer.endsAt).getTime() - Date.now();
+}
+
+function timerText(ms = timerRemainingMs()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  const total = Math.max(0, Math.round(Math.abs(ms) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const text = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return ms < 0 ? `+${text}` : text;
+}
+
+function renderTimer() {
+  const left = timerRemainingMs();
+  const el = $('#timerClock');
+  el.textContent = timerText(left);
+  const over = timer.mode === 'down' && left <= 0 && timer.running;
+  const near = timer.mode === 'down' && left > 0 && left <= timerWarnMs();
+  el.classList.toggle('over', over);
+  el.classList.toggle('warn', near && !over);
+  $('#timerState').textContent = timer.onAir
+    ? `${timerAirLabel || 'à l’antenne'} · ${timer.running ? 'en marche' : 'en pause'}`
+    : (timer.running ? 'en marche (hors antenne)' : 'à l’arrêt');
+  $('#timerState').classList.toggle('on', timer.onAir);
+  $('#timerStart').textContent = timer.running ? '⏸ Pause' : '▶ Démarrer';
+  $('#timerMode').textContent = timer.mode === 'down' ? 'Compte à rebours' : 'Compteur';
+}
+
+function timerPayload() {
+  const left = Math.max(0, timerRemainingMs());
+  return {
+    mode: timer.mode,
+    running: timer.running,
+    endsAt: timer.mode === 'down' && timer.running ? timer.endsAt : null,
+    startedAt: timer.mode === 'up' && timer.running ? timer.startedAt : null,
+    remainingMs: left,
+    timer: timerText(left),
+    warnAtMs: timerWarnMs(),
+    criticalAtMs: timerCriticalMs()
+  };
+}
+
+/** Seuils choisis par le régisseur, en millisecondes (EF-18.3). */
+function timerWarnMs() {
+  return Math.max(0, (Number($('#timerWarn').value) || 0) * 60_000);
+}
+
+function timerCriticalMs() {
+  return Math.max(0, (Number($('#timerCrit').value) || 0) * 60_000);
+}
+
+function startTimerTick() {
+  if (timer.handle) clearInterval(timer.handle);
+  timer.handle = setInterval(() => {
+    renderTimer();
+    if (timer.onAir) {
+      // La sortie calcule elle-même le temps restant ; on ne renvoie le payload
+      // qu'au démarrage et à la pause, jamais seconde par seconde.
+    }
+    if (timer.mode === 'down' && timer.running && timerRemainingMs() <= 0) {
+      timer.running = false;
+      if (timer.handle) { clearInterval(timer.handle); timer.handle = null; }
+      renderTimer();
+      toast('Temps écoulé.');
+      if (timer.onAir && timer.cutAtEnd) stopTimer({ silent: true });
+    }
+  }, 250);
+}
+
+function toggleTimer() {
+  if (timer.running) {
+    // Pause : on fige le temps restant.
+    if (timer.handle) { clearInterval(timer.handle); timer.handle = null; }
+    timer.remainingMs = Math.max(0, timerRemainingMs());
+    timer.running = false;
+    timer.endsAt = null;
+    timer.startedAt = null;
+    if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+  } else {
+    if (timer.mode === 'down') {
+      if (timer.remainingMs <= 0) timer.remainingMs = (Number($('#timerMin').value) || 0) * 60_000;
+      timer.endsAt = new Date(Date.now() + timer.remainingMs).toISOString();
+    } else {
+      timer.startedAt = Date.now();
+    }
+    timer.running = true;
+    startTimerTick();
+    if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+  }
+  renderTimer();
+  saveTimerState();
+}
+
+async function sendTimerToAir() {
+  timer.onAir = true;
+  if (!timer.running && timer.mode === 'down' && timer.remainingMs <= 0) {
+    timer.remainingMs = (Number($('#timerMin').value) || 0) * 60_000;
+  }
+  const route = await overlayRoute('timer');
+  if (!route.ids.length) { toast('Aucune sortie ne reçoit le minuteur : cochez-en une ou créez une sortie transparente.', 'err'); return; }
+  timerTargets = route.ids;
+  await previewTimer();
+  await sendToOutputs('timer', timerPayload(), { force: true, targetsOverride: route.ids });
+  timerAirLabel = overlayRouteLabel(route);
+  renderTimer();
+  saveTimerState();
+  if (route.moved) announceOverlayRoute('timer', route);
+  else toast('Minuteur à l’antenne.');
+}
+
+async function stopTimer({ silent = false } = {}) {
+  timer.onAir = false;
+  timer.running = false;
+  timer.remainingMs = Math.max(0, timerRemainingMs());
+  timer.endsAt = null;
+  timer.startedAt = null;
+  await showOnStage('timer', null);
+  await fetch('/api/live/clear', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ targets: [...targets, ...(timerTargets || [])], kind: 'timer' })
+  }).catch(() => {});
+  renderTimer();
+  saveTimerState();
+  if (!silent) toast('Minuteur retiré de l’antenne.');
+}
+
+function resetTimer(minutes) {
+  if (Number.isFinite(minutes)) {
+    timer.remainingMs = Math.max(0, Math.round(minutes * 60_000));
+    if ($('#timerMin')) $('#timerMin').value = String(minutes);
+  } else {
+    timer.remainingMs = Math.max(0, (Number($('#timerMin')?.value) || 0) * 60_000);
+  }
+  timer.running = false;
+  timer.endsAt = null;
+  timer.startedAt = null;
+  renderTimer();
+  saveTimerState();
+  if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+}
+
+function switchTimerMode() {
+  timer.mode = timer.mode === 'down' ? 'up' : 'down';
+  timer.remainingMs = timer.mode === 'up' ? 0 : Math.max(0, (Number($('#timerMin')?.value) || 0) * 60_000);
+  timer.running = false;
+  timer.endsAt = null;
+  timer.startedAt = null;
+  renderTimer();
+  saveTimerState();
+  if (timer.onAir) sendToOutputs('timer', timerPayload(), { force: true });
+}
+
+let timerSaveTimer = null;
+function saveTimerState() {
+  // L'état vit dans `session-state.json`, pas dans le navigateur : un poste de
+  // régie qui redémarre retrouve le compte à rebours en cours (EF-18.8).
+  if (timerSaveTimer) clearTimeout(timerSaveTimer);
+  timerSaveTimer = setTimeout(() => {
+    timerSaveTimer = null;
+    fetch('/api/session', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        timer: {
+          mode: timer.mode,
+          running: timer.running,
+          endsAt: timer.endsAt,
+          startedAt: timer.startedAt,
+          remainingMs: timer.remainingMs,
+          onAir: timer.onAir,
+          durationMin: Number($('#timerMin')?.value) || 0,
+          warnMin: Number($('#timerWarn')?.value) || 0,
+          criticalMin: Number($('#timerCrit')?.value) || 0
+        }
+      })
+    }).catch(() => {});
+  }, 250);
+}
+
+async function restoreTimerState() {
+  try {
+    const saved = await fetch('/api/session', { cache: 'no-store' }).then((r) => r.json());
+    const state = saved && saved.timer;
+    if (!state || typeof state !== 'object') return;
+    timer.mode = state.mode === 'up' ? 'up' : 'down';
+    timer.remainingMs = Number(state.remainingMs) || 0;
+    timer.onAir = Boolean(state.onAir);
+    if ($('#timerMin') && Number(state.durationMin)) $('#timerMin').value = String(state.durationMin);
+    if ($('#timerWarn') && Number(state.warnMin)) $('#timerWarn').value = String(state.warnMin);
+    if ($('#timerCrit') && Number(state.criticalMin)) $('#timerCrit').value = String(state.criticalMin);
+    if (state.running && timer.mode === 'down' && state.endsAt && new Date(state.endsAt) > new Date()) {
+      timer.running = true;
+      timer.endsAt = state.endsAt;
+      startTimerTick();
+    } else if (state.running && timer.mode === 'up' && state.startedAt) {
+      timer.running = true;
+      timer.startedAt = state.startedAt;
+      startTimerTick();
+    }
+    renderTimer();
+  } catch { /* premier lancement */ }
+}
+
+async function previewTimer() {
+  const content = contentFromPayload(timerPayload(), 'timer');
+  await showOnStage('timer', content);
+  $('#refbar').textContent = `Minuteur — ${content.timer}`;
+  $('#counter').textContent = '';
+}
+
+function handleLtKey(event) {
+  if (event.key === 'Enter') { event.preventDefault(); broadcastLt(true); return; }
+  if (event.key === 'Escape') { event.preventDefault(); clearLt(); return; }
+  previewLtSoon();
+}
+
+function handleTimerKey(event) {
+  if (event.key === ' ' || event.code === 'Space') { event.preventDefault(); toggleTimer(); return; }
+  if (event.key === 'Enter') { event.preventDefault(); sendTimerToAir(); return; }
+  if (event.key === 'Escape') { event.preventDefault(); stopTimer(); return; }
+  if (event.key === 'Backspace') { event.preventDefault(); resetTimer(); return; }
+}
+
+let ltEchoTimer = null;
+function previewLtSoon(now = false) {
+  if (ltEchoTimer) { clearTimeout(ltEchoTimer); ltEchoTimer = null; }
+  const run = () => {
+    ltEchoTimer = null;
+    const payload = ltPayload();
+    $('#ltEcho').textContent = payload.title || payload.body
+      ? `${payload.title}${payload.body ? ' — ' + payload.body : ''}`
+      : '—';
+    if (ltLive) broadcastLt(true);   // on air : la correction est immédiate (EF-19.4)
+    else previewLt();
+  };
+  if (now) { run(); return; }
+  ltEchoTimer = setTimeout(run, 220);
+}
+
+function wireExtraModules() {
+  // Médias
+  $('#mediaImport').onclick = () => $('#mediaPick').click();
+  $('#mediaPick').onchange = (e) => { importMediaFiles(e.target.files); e.target.value = ''; };
+  let mediaSearchTimer = null;
+  $('#mediaSearch').oninput = (e) => {
+    mediaQuery = e.target.value.trim();
+    if (mediaSearchTimer) clearTimeout(mediaSearchTimer);
+    mediaSearchTimer = setTimeout(() => loadMedia(), 160);
+  };
+  $('#mediaFit').onchange = () => {
+    const item = currentMedia();
+    if (!item) return;
+    if (mediaLive?.assetId === item.assetId) broadcastMedia(true);
+    else previewMedia(item);
+  };
+
+  // Habillage
+  $('#ltGo').onclick = () => broadcastLt(true);
+  $('#ltCutBtn').onclick = () => clearLt();
+  for (const id of ['ltName', 'ltRole', 'ltHold']) {
+    $('#' + id).addEventListener('input', () => previewLtSoon());
+  }
+  $('#ltSave').onclick = saveLowerThird;
+  loadLowerThirds();
+
+  // Minuteur
+  $('#timerStart').onclick = toggleTimer;
+  $('#timerReset').onclick = () => resetTimer();
+  $('#timerMode').onclick = switchTimerMode;
+  $('#timerAir').onclick = () => sendTimerToAir();
+  $('#timerOff').onclick = () => stopTimer();
+  $('#timerMin').oninput = () => { if (!timer.running) resetTimer(); };
+  $('#timerCut').onchange = (e) => { timer.cutAtEnd = e.target.checked; };
+  for (const button of document.querySelectorAll('#mod-timer [data-min]')) {
+    button.onclick = () => resetTimer(Number(button.dataset.min));
+  }
+  renderTimer();
+}
+
+// Ce que le module partagé `clearOutputs` doit réinitialiser chez nous.
+function afterClear() {
+  for (const id of [...targets]) onAir.delete(id);
+  if (ltCut) { clearTimeout(ltCut); ltCut = null; }
+  ltLive = false;
+  const ltState = $('#ltState');
+  ltState.textContent = 'hors antenne';
+  ltState.classList.remove('on');
+  mediaLive = null;
+  renderMedia();
+  if (timer.onAir) { timer.onAir = false; renderTimer(); }
+}
+
+// ---------------------------------------------------------------------------
+// Clavier (une seule source : le module partagé de navigation)
+// ---------------------------------------------------------------------------
+document.addEventListener('keydown', (event) => {
+  // Recherche unifiée : ouverte depuis n'importe où (EF-06.8).
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    if (paletteOpen) closePalette(); else openPalette();
+    return;
+  }
+  // Le dialogue d'import de Bible capture la saisie : seuls Échap et la fermeture agissent.
+  if ($('#bibleDlg').open) {
+    if (event.key === 'Escape') { event.preventDefault(); $('#bibleDlg').close(); }
+    return;
+  }
+  // Raccourcis de modules (EF-06.6) et import, actifs partout.
+  if (event.altKey && ['1', '2', '3', '4', '5', '6'].includes(event.key)) {
+    event.preventDefault();
+    setMode({
+      1: 'bible', 2: 'songs', 3: 'announcements',
+      4: 'media', 5: 'lowerthird', 6: 'timer'
+    }[event.key]);
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
+    event.preventDefault();
+    openImport();
+    return;
+  }
+  if (mode === 'songs') { handleSongKey(event); return; }
+  if (mode === 'media') {
+    if (isTypingTarget(event.target) && event.target.id !== 'mediaSearch') return;
+    if (event.target.id === 'mediaSearch' && event.key !== 'Escape' && event.key !== 'ArrowDown') return;
+    if (event.key === 'Escape') { event.preventDefault(); clearOutputs(); return; }
+    if (handleMediaKey(event)) return;
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      $('#mediaSearch').focus();
+      return;
+    }
+    return;
+  }
+  if (mode === 'lowerthird') { handleLtKey(event); return; }
+  if (mode === 'timer') { handleTimerKey(event); return; }
+
+  if (isTypingTarget(event.target) && event.target.tagName !== 'DIV') return;
+  const s = entry.state;
+
+  if (event.key === 'Escape' && s.mode === STATE.BOOK && !s.query) {
+    event.preventDefault();
+    clearOutputs();
+    return;
+  }
+
+  if (s.mode !== STATE.VERSE) {
+    // Saisie texte / chiffres
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (/^\d$/.test(event.key)) entry.typeDigits(event.key);
+      else if (/^[a-zA-Z\u00c0-\u017f]$/.test(event.key)) entry.typeText(event.key);
+      else if (event.key === ' ') entry.toVerseState();
+      else if (/^[-–,.:]$/.test(event.key)) entry.toVerseState();
+      paintAll();
+      return;
+    }
+    if (event.key === 'Backspace') { event.preventDefault(); entry.backspace(); paintAll(); return; }
+    if (event.key === 'Escape') { event.preventDefault(); entry.escape(); paintAll(); return; }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault(); entry.move(event.key === 'ArrowDown' ? 1 : -1); paintAll(); return;
+    }
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      const result = entry.enter();
+      paintAll();
+      if (result?.action) {
+        loadSelection(result.action.bookNum, result.action.chapter, result.action.first, result.action.last);
+        if (result.action.preview) return;
+        entry.afterBroadcast();
+        paintField();
+      }
+      return;
+    }
+    return;
+  }
+
+  // État verset : chiffres, tiret, Entrée
+  if (/^\d$/.test(event.key)) { event.preventDefault(); entry.typeDigits(event.key); paintField(); return; }
+  if (event.key === '-' || event.key === '–' || event.key === ',') {
+    event.preventDefault(); entry.typeSeparator(event.key); paintField(); return;
+  }
+  if (event.key === 'Backspace') { event.preventDefault(); entry.backspace(); paintField(); return; }
+  if (event.key === 'Escape') { event.preventDefault(); entry.escape(); paintField(); return; }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const preview = event.shiftKey;
+    const result = entry.enter({ preview });
+    paintField();
+    if (result?.action) {
+      loadSelection(result.action.bookNum, result.action.chapter, result.action.first, result.action.last)
+        .then(() => { if (!preview) entry.afterBroadcast(); paintField(); });
+    }
+    return;
+  }
+
+  // Navigation dans la sélection (les touches du § 9.4.2)
+  const action = actionForKey(event);
+  if (!action) return;
+  if (action === 'clear') { event.preventDefault(); clearOutputs(); return; }
+  if (action === 'repeat') { event.preventDefault(); broadcast(true); return; }
+  if (action.startsWith('verse:')) {
+    event.preventDefault();
+    const n = Number(action.split(':')[1]);
+    const at = selection?.items.findIndex((it) => it.verse === n);
+    if (at >= 0) { selection = { ...selection, index: at }; paintParts(); broadcast(); }
+    return;
+  }
+  event.preventDefault();
+  move(action);
+});
+
+// ---------------------------------------------------------------------------
+// Clavier du module Chants (§ 10.3)
+// ---------------------------------------------------------------------------
+function handleSongKey(event) {
+  const inSearch = event.target?.id === 'songSearch';
+
+  // Dans le champ de recherche, seules quelques touches sont détournées :
+  // tout le reste doit rester de la frappe (espaces compris).
+  if (inSearch) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const first = visibleSongs()[0];
+      if (first) loadSong(first.id).then(() => broadcastSong(true));
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      // Premier Échap : vide la recherche ; second : coupe l'antenne.
+      if ($('#songSearch').value) {
+        $('#songSearch').value = '';
+        songQuery = '';
+        paintSongs();
+      } else {
+        clearOutputs();
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveSong(event.key === 'ArrowDown' ? 'next' : 'prev');
+      return;
+    }
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    clearOutputs();
+    return;
+  }
+  if (isTypingTarget(event.target)) return;
+
+  if (event.key === 'Enter') { event.preventDefault(); broadcast(true); return; }
+  if (/^[1-9]$/.test(event.key)) {
+    event.preventDefault();
+    goToSongStep(Number(event.key) - 1);
+    return;
+  }
+
+  let action = null;
+  if (event.shiftKey) {
+    if (event.key === 'ArrowRight') action = 'sectionNext';
+    else if (event.key === 'ArrowLeft') action = 'sectionPrev';
+  } else if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(event.key)) {
+    action = 'next';
+  } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) {
+    action = 'prev';
+  }
+  if (!action) return;
+  event.preventDefault();
+  moveSong(action);
+}
+
+// ---------------------------------------------------------------------------
+// Import d'une version biblique (§ 9.2) : prévisualisation avant validation
+// ---------------------------------------------------------------------------
+let bibleDraft = null;
+let bibleVersions = [];
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`;
+}
+
+function paintBibleVersion() {
+  const current = bibleVersions.find((entry) => entry.id === bibleId) || bibleVersions[0];
+  $('#bibleVersion').textContent = current
+    ? `${current.name}${current.abbreviation ? ' · ' + current.abbreviation : ''}`
+    : 'aucune version importée';
+}
+
+async function refreshBibleVersions() {
+  try {
+    const res = await fetch('/api/bible/versions', { cache: 'no-store' });
+    const data = await res.json();
+    bibleVersions = data.versions || [];
+  } catch {
+    bibleVersions = [];
+  }
+  paintBibleVersion();
+  if (!bibleId && bibleVersions.length) bibleId = bibleVersions[0].id;
+  return bibleVersions;
+}
+
+function openBibleImport() {
+  if ($('#bibleDlg').open) { $('#bibleFile').click(); return; }
+  bibleDraft = null;
+  $('#biblePreview').hidden = true;
+  $('#biblePreview').innerHTML = '';
+  $('#bibleFields').hidden = true;
+  $('#bibleDlgFormat').textContent = 'format détecté automatiquement';
+  $('#bibleConfirm').disabled = true;
+  $('#bibleFile').value = '';
+  $('#bibleDlg').showModal();
+}
+
+function bibleError(message) {
+  const box = $('#biblePreview');
+  box.hidden = false;
+  box.innerHTML = `<div class="txt-msg">${esc(message)}</div>`;
+  $('#bibleFields').hidden = true;
+  $('#bibleConfirm').disabled = true;
+  $('#bibleDlgFormat').textContent = 'format non reconnu';
+}
+
+/** Lecture + analyse **sans écriture** : l'opérateur voit avant de valider (EF-11.2). */
+async function previewBibleFile(file) {
+  if (!file) return;
+  $('#bibleDlgFormat').textContent = 'analyse…';
+  try {
+    const text = await file.text();
+    const res = await fetch('/api/bible/import/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, filename: file.name })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.preview) {
+      bibleError(data?.error?.message || 'Ce fichier n’est pas une Bible reconnue.');
+      return;
+    }
+    const preview = data.preview;
+    bibleDraft = { text, filename: file.name, preview };
+    const counts = preview.counts || {};
+    $('#biblePreview').hidden = false;
+    $('#biblePreview').innerHTML = `
+      <div><b>Bible détectée</b> — ${esc(preview.formatLabel)}</div>
+      <div>Livres : ${counts.books ?? '—'} · Chapitres : ${counts.chapters ?? '—'} · Versets : ${counts.verses ?? '—'}</div>
+      <div>Langue : ${esc(preview.language || 'non détectée')} · Taille : ${formatBytes(preview.sizeBytes)}</div>
+      ${preview.preview ? `<div>Aperçu — <span class="mono">${esc(preview.preview.reference)}</span><br>
+        « ${esc(preview.preview.text)} »</div>` : ''}`;
+    $('#bibleFields').hidden = false;
+    $('#bibleName').value = preview.name || '';
+    $('#bibleAbbr').value = (preview.name || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(Boolean)
+      .slice(0, 4).map((word) => word[0]).join('').toUpperCase() || 'BIB';
+    $('#bibleLicense').value = '';
+    $('#bibleDlgFormat').textContent = preview.formatLabel;
+    $('#bibleConfirm').disabled = false;
+    $('#bibleName').focus();
+  } catch {
+    bibleError('Ce fichier n’a pas pu être lu. Vérifiez son contenu.');
+  }
+}
+
+async function confirmBibleImport() {
+  if (!bibleDraft) return;
+  const button = $('#bibleConfirm');
+  button.disabled = true;
+  button.textContent = 'Import…';
+  try {
+    const res = await fetch('/api/bible/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        text: bibleDraft.text,
+        filename: bibleDraft.filename,
+        name: $('#bibleName').value.trim() || bibleDraft.preview.name,
+        abbreviation: $('#bibleAbbr').value.trim() || undefined,
+        license: $('#bibleLicense').value.trim() || undefined
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.bible) throw new Error(data?.error?.message || 'Import refusé.');
+    $('#bibleDlg').close();
+    bibleId = data.bible.id;                 // la version importée devient la version active
+    await refreshBibleVersions();
+    selection = null;                        // l'ancienne sélection vient d'une autre version
+    paintAll();
+    toast(data.created
+      ? `« ${data.bible.name} » importée (${data.bible.counts?.verses ?? '?'} versets).`
+      : `« ${data.bible.name} » est déjà dans ce projet.`);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Importer';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recherche unifiée (EF-06.8 → EF-06.18)
+// ---------------------------------------------------------------------------
+// Annonces : liste, création, diffusion (EF-17).
+let announcements = [];
+let annQuery = '';
+
+function renderAnnouncements() {
+  const needle = fold(annQuery).trim();
+  const items = needle
+    ? announcements.filter((item) => fold(`${item.title} ${item.body || ''}`).includes(needle))
+    : announcements;
+  $('#annCount').textContent = items.length === announcements.length
+    ? `${announcements.length} annonce(s)`
+    : `${items.length} / ${announcements.length}`;
+  const list = $('#annList');
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">${announcements.length
+      ? 'Aucune annonce ne correspond.'
+      : 'Aucune annonce.<br>Cliquez sur <b>＋ Nouvelle</b> pour en écrire une.'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map((item) => `
+    <div class="song" data-id="${esc(item.id)}" role="button" tabindex="0">
+      <span class="t">${esc(item.title)}
+        <div class="a">${esc((item.body || '').slice(0, 80))}</div>
+      </span>
+      <button class="btn sm" data-del="${esc(item.id)}" title="Supprimer">✕</button>
+    </div>`).join('');
+  for (const element of list.querySelectorAll('.song')) {
+    element.addEventListener('click', (event) => {
+      if (event.target.closest('[data-del]')) return;
+      showAnnouncement(element.dataset.id);
+    });
+  }
+  for (const button of list.querySelectorAll('[data-del]')) {
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await deleteAnnouncement(button.dataset.del);
+    });
+  }
+}
+
+async function loadAnnouncements() {
+  try {
+    const res = await fetch('/api/library/announcements', { cache: 'no-store' });
+    const data = await res.json();
+    announcements = data.items || [];
+  } catch {
+    announcements = [];
+  }
+  renderAnnouncements();
+}
+
+async function createAnnouncement() {
+  const title = prompt('Titre de l’annonce :');
+  if (!title) return;
+  const body = prompt('Texte affiché :', '') ?? '';
+  const id = `ann_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    const res = await fetch(`/api/library/announcements/${id}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, rev: 1, title: title.slice(0, 120), body: body.slice(0, 2000), kind: 'text' })
+    });
+    if (!res.ok) throw new Error('Enregistrement refusé.');
+    await loadAnnouncements();
+    toast('Annonce enregistrée.');
+    showAnnouncement(id);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function deleteAnnouncement(id) {
+  const item = announcements.find((entry) => entry.id === id);
+  if (!item) return;
+  if (!confirm(`Supprimer « ${item.title} » ?`)) return;
+  try {
+    const res = await fetch(`/api/library/announcements/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Suppression refusée.');
+    await loadAnnouncements();
+    toast('Annonce supprimée.');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+async function showAnnouncement(id) {
+  const item = announcements.find((entry) => entry.id === id);
+  if (!item) return;
+  await showOnStage('announcements', contentFromPayload({
+    title: item.title,
+    text: item.body || '',
+    announcement: item.body || ''
+  }, 'announcements'));
+  await sendToOutputs('announcements', {
+    title: item.title,
+    text: item.body || '',
+    announcement: item.body || ''
+  }, { force: true });
+}
+
+const SEARCH_KINDS = [
+  { id: 'songs', label: 'Chants', icon: '🎤' },
+  { id: 'bibles', label: 'Versets', icon: '📖' },
+  { id: 'media', label: 'Médias', icon: '🖼️' },
+  { id: 'announcements', label: 'Annonces', icon: '📢' },
+  { id: 'looks', label: 'Looks', icon: '🎚️' }
+];
+const KIND_ICON = Object.fromEntries(SEARCH_KINDS.map((kind) => [kind.id, kind.icon]));
+
+let paletteOpen = false;
+let paletteFocusBack = null;
+let paletteItems = [];      // liste aplatie, tous groupes confondus
+let paletteIndex = 0;
+let paletteFilters = new Set();
+let paletteTimer = null;
+let paletteSequence = 0;
+
+function renderFilters() {
+  $('#paletteFilters').innerHTML = SEARCH_KINDS.map((kind) => `
+    <button class="filter ${paletteFilters.has(kind.id) ? 'on' : ''}" data-filter="${kind.id}">
+      ${kind.icon} ${kind.label}
+    </button>`).join('');
+  for (const button of $('#paletteFilters').querySelectorAll('[data-filter]')) {
+    button.addEventListener('click', () => {
+      const id = button.dataset.filter;
+      if (paletteFilters.has(id)) paletteFilters.delete(id); else paletteFilters.add(id);
+      renderFilters();
+      runSearch($('#paletteInput').value);
+    });
+  }
+}
+
+function openPalette(prefill = '') {
+  if (!paletteOpen) paletteFocusBack = document.activeElement;
+  paletteOpen = true;
+  $('#paletteInput').value = prefill;
+  renderFilters();
+  if (!$('#palette').open) $('#palette').showModal();
+  setTimeout(() => $('#paletteInput').focus(), 20);
+  if (prefill) runSearch(prefill);
+  else paintResults([], '');
+}
+
+function closePalette() {
+  paletteOpen = false;
+  if ($('#palette').open) $('#palette').close();
+  clearTimeout(paletteTimer);
+  // EF-06.13 : le focus revient à l'élément qui avait la main.
+  if (paletteFocusBack?.isConnected) paletteFocusBack.focus();
+}
+
+/** Débounce de 120 ms (EF-06.16) : une seule requête par rafale de frappe. */
+function scheduleSearch(value) {
+  clearTimeout(paletteTimer);
+  paletteTimer = setTimeout(() => runSearch(value), 120);
+}
+
+async function runSearch(value) {
+  const query = String(value || '').trim();
+  if (query.length < 2) { paintResults([], query); return; }
+  const sequence = ++paletteSequence;
+  const kinds = paletteFilters.size ? [...paletteFilters].join(',') : '';
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}${kinds ? `&kinds=${kinds}` : ''}`, { cache: 'no-store' });
+    const data = await res.json();
+    // Une réponse tardive ne doit pas écraser une frappe plus récente.
+    if (sequence !== paletteSequence) return;
+    paintResults(data.groups || [], query);
+  } catch {
+    if (sequence === paletteSequence) paintResults([], query, 'Recherche indisponible hors ligne.');
+  }
+}
+
+function paintResults(groups, query, error = '') {
+  const box = $('#paletteResults');
+  paletteItems = groups.flatMap((group) => group.items.map((item) => ({ ...item, groupKind: group.kind })));
+  paletteIndex = 0;
+
+  if (error) { box.innerHTML = `<div class="group-head">${esc(error)}</div>`; return; }
+  if (!query || query.trim().length < 2) {
+    box.innerHTML = '<div class="group-head">Tapez au moins deux lettres.</div>';
+    return;
+  }
+  if (!paletteItems.length) {
+    box.innerHTML = `<div class="group-head">Aucun résultat pour « ${esc(query)} ».</div>`;
+    return;
+  }
+
+  let cursor = 0;
+  box.innerHTML = groups.map((group) => `
+    <div class="group-head">${esc(group.label || group.kind)} (${group.count})</div>
+    ${group.items.map((item) => {
+      const index = cursor++;
+      return `<div class="result" role="option" data-index="${index}" aria-selected="false">
+        <span class="ico">${KIND_ICON[item.kind] || '•'}</span>
+        <span class="main">
+          <span class="t">${esc(item.title)}</span>
+          <span class="s">${esc(item.detail || item.subtitle || '')}</span>
+        </span>
+        <span class="k">${esc(item.title && item.kind === 'bibles' ? '' : '')}</span>
+      </div>`;
+    }).join('')}`).join('');
+
+  for (const element of box.querySelectorAll('.result')) {
+    element.addEventListener('mouseenter', () => { paletteIndex = Number(element.dataset.index); highlight(); });
+    element.addEventListener('click', () => activate(false));
+  }
+  highlight();
+}
+
+function highlight() {
+  const box = $('#paletteResults');
+  for (const element of box.querySelectorAll('.result')) {
+    const on = Number(element.dataset.index) === paletteIndex;
+    element.classList.toggle('hi', on);
+    element.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) element.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+/** Ouvre et diffuse (ou met en aperçu) l'élément en surbrillance (EF-06.11/12). */
+async function activate(preview) {
+  const item = paletteItems[paletteIndex];
+  if (!item) return;
+  closePalette();
+  try {
+    if (item.kind === 'songs') {
+      if (mode !== 'songs') setMode('songs');
+      await loadSongs();
+    await loadAnnouncements();
+      await loadSong(item.id, {});
+      if (preview) return;
+      await broadcastSong(true);
+      return;
+    }
+    if (item.kind === 'bibles') {
+      if (mode !== 'bibles') setMode('bible');
+      const payload = item.payload || {};
+      await loadSelection(payload.bookNum, payload.chapter, payload.verse, payload.verse, { preview });
+      return;
+    }
+    if (item.kind === 'announcements') {
+      await sendToOutputs('announcements', {
+        title: item.title, text: item.payload?.text || item.subtitle || ''
+      }, { force: !preview });
+      return;
+    }
+    if (item.kind === 'media') {
+      await sendToOutputs('media', {
+        title: item.title,
+        mediaName: item.title,
+        text: item.title,
+        assetId: item.payload?.assetId || null,
+        sha256: item.payload?.sha256 || null
+      }, { force: !preview });
+      return;
+    }
+    if (item.kind === 'looks') {
+      toast(`Look « ${item.title} » : ouvrez l’éditeur de scènes pour l’appliquer.`);
+      return;
+    }
+  } catch (err) {
+    toast(err?.message || 'Action impossible.', 'err');
+  }
+}
+
+function bindPalette() {
+  const input = $('#paletteInput');
+  input.addEventListener('input', (event) => scheduleSearch(event.target.value));
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (!paletteItems.length) return;
+      paletteIndex = Math.min(paletteItems.length - 1, paletteIndex + 1);
+      highlight();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      paletteIndex = Math.max(0, paletteIndex - 1);
+      highlight();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      activate(event.shiftKey);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closePalette();
+    }
+  });
+  $('#palette').addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closePalette();
+  });
+  // Un clic sur le fond ferme, sans propager au reste de la page.
+  $('#palette').addEventListener('click', (event) => {
+    if (event.target === $('#palette')) closePalette();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Import d'un chant (§ 10.1) : aperçu avant validation
+// ---------------------------------------------------------------------------
+function openImport() {
+  // Un second appel (Ctrl+O répété) ne doit pas lever d'exception.
+  if ($('#importDlg').open) { $('#importText').focus(); return; }
+  importDraft = null;
+  $('#importText').value = '';
+  $('#importPreview').hidden = true;
+  $('#importPreview').innerHTML = '';
+  $('#importFormat').textContent = 'format détecté automatiquement';
+  $('#importConfirm').disabled = true;
+  $('#importDlg').showModal();
+  setTimeout(() => $('#importText').focus(), 30);
+}
+
+function paintImportPreview(song) {
+  const summary = importSummary(song);
+  const box = $('#importPreview');
+  box.hidden = false;
+  const chords = summary.hasChords
+    ? `<span class="ok">oui</span> (${summary.chords.slice(0, 8).join(', ')}${summary.chords.length > 8 ? '…' : ''})`
+    : 'non';
+  const warnings = summary.warnings.length
+    ? `<div class="warn">⚠ ${summary.warnings.map(esc).join('<br>⚠ ')}</div>`
+    : '';
+  box.innerHTML = `
+    <div><b>${esc(summary.title)}</b> — ${esc(formatLabel(summary.format))}</div>
+    <div>Sections : ${summary.sections} · ${summary.sectionNames.map(esc).join(', ')}</div>
+    <div>Accords : ${chords}</div>
+    <div>Métadonnées : ${[
+      summary.metadata.artist && `auteur ${esc(summary.metadata.artist)}`,
+      summary.metadata.key && `tonalité ${esc(summary.metadata.key)}`,
+      summary.metadata.tempo && `tempo ${esc(summary.metadata.tempo)}`,
+      summary.metadata.ccli && `CCLI ${esc(summary.metadata.ccli)}`
+    ].filter(Boolean).join(' · ') || 'aucune'}</div>
+    ${warnings}`;
+  $('#importFormat').textContent = formatLabel(summary.format);
+  $('#importConfirm').disabled = summary.sections === 0;
+}
+
+function formatLabel(format) {
+  return ({ chordpro: 'ChordPro', opensong: 'OpenSong', ccli: 'CCLI / SongSelect', text: 'Texte brut' })[format] || format;
+}
+
+function readImportSource() {
+  return $('#importText').value || '';
+}
+
+/** Analyse (aucune écriture) : un aperçu est toujours montré avant import. */
+function analyzeImport() {
+  const text = readImportSource();
+  if (!text.trim()) {
+    toast('Collez les paroles du chant ou déposez un fichier.', 'err');
+    return;
+  }
+  try {
+    const filename = $('#fileInput').files?.[0]?.name || '';
+    importDraft = parseSongText(text, { filename });
+    paintImportPreview(importDraft);
+  } catch {
+    toast('Ce fichier n’a pas pu être lu. Vérifiez son contenu.', 'err');
+  }
+}
+
+async function confirmImport() {
+  if (!importDraft) { analyzeImport(); return; }
+  const button = $('#importConfirm');
+  button.disabled = true;
+  button.textContent = 'Import…';
+  try {
+    const res = await fetch('/api/songs/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        text: readImportSource(),
+        filename: $('#fileInput').value || '',
+        keepSource: true
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.song) throw new Error(data?.error?.message || 'Import refusé.');
+    $('#importDlg').close();
+    await loadSongs();
+    await loadAnnouncements();
+    await loadSong(data.song.id);
+    toast(`« ${data.song.title} » importé.`);
+    broadcastSong(true);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Importer';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Démarrage
+// ---------------------------------------------------------------------------
+async function boot() {
+  try {
+    const [health, outs, versions] = await Promise.all([
+      fetch('/api/health').then((r) => r.json()),
+      fetch('/api/outputs').then((r) => r.json()),
+      fetch('/api/bible/versions').then((r) => r.json())
+    ]);
+    $('#who').textContent = `${health.projectName || 'projet'} · port ${health.port} · ${health.lanToken ? 'réseau ' + health.lanToken : 'local'}`;
+    bibleId = versions.versions?.[0]?.id || null;
+    bibleVersions = versions.versions || [];
+
+    outputs = outs.outputs || [];
+    sceneCache.clear();
+    try {
+      const air = await fetch('/api/live/state', { cache: 'no-store' }).then((r) => r.json());
+      for (const [id, entry] of Object.entries(air.channels || {})) onAir.set(id, entry.kind);
+    } catch { /* rien à l'antenne */ }
+    targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
+    paintOutputs();
+    paintBibleVersion();
+    paintAll();
+    await loadSongs();
+    await loadAnnouncements();
+
+    // EF-06.4 : le module actif est mémorisé entre les sessions.
+    let savedMode = 'bible';
+    try { savedMode = localStorage.getItem('op.studio.mode') || 'bible'; } catch { /* stockage refusé */ }
+    if (savedMode !== 'bible' && ['songs', 'announcements', 'media', 'lowerthird', 'timer'].includes(savedMode)) {
+      mode = 'bible';            // pour que setMode() applique le changement
+      setMode(savedMode);
+    } else {
+      focusField();
+    }
+
+    connectWs();
+  } catch (err) {
+    toast('Serveur injoignable — relancez OpenPresenter.', 'err');
+  }
+}
+
+function connectWs() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  socket = new WebSocket(`${proto}://${location.host}/ws?channel=op_studio`);
+  socket.addEventListener('open', () => {
+    $('#ws').classList.add('on');
+    $('#wsText').textContent = 'en ligne';
+    socket.send(JSON.stringify({ t: 'hello' }));
+  });
+  socket.addEventListener('close', () => {
+    $('#ws').classList.remove('on');
+    $('#wsText').textContent = 'hors ligne';
+    setTimeout(connectWs, 2000);
+  });
+  socket.addEventListener('message', (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+    if (msg.t === 'hello:ack') $('#wsText').textContent = 'en ligne';
+    if (msg.t === 'live:state') for (const id of msg.targets || []) onAir.set(id, msg.kind);
+    if (msg.t === 'live:cleared') for (const id of msg.targets || []) onAir.delete(id);
+    if (msg.t === 'live:state' || msg.t === 'live:cleared') paintAir();
+  });
+}
+
+$('#field').addEventListener('click', () => {
+  if (entry.state.mode !== STATE.BOOK) { entry.escape(); paintAll(); }
+  focusField();
+});
+
+// --- Chants ---------------------------------------------------------------
+$('#modeBible').addEventListener('click', () => setMode('bible'));
+$('#modeSongs').addEventListener('click', () => setMode('songs'));
+$('#modeMedia').addEventListener('click', () => setMode('media'));
+$('#modeLt').addEventListener('click', () => setMode('lowerthird'));
+$('#modeTimer').addEventListener('click', () => setMode('timer'));
+$('#songImport').addEventListener('click', openImport);
+$('#songSearch').addEventListener('input', (event) => { songQuery = event.target.value; paintSongs(); });
+$('#arrangement').addEventListener('change', (event) => changeArrangement(event.target.value));
+$('#addArrangement').addEventListener('click', () => {
+  if (!currentSong) return;
+  currentSong = addArrangement(currentSong, `Version ${(currentSong.arrangements?.length || 1) + 1}`);
+  paintArrangements();
+  paintConductor();
+  toast('Arrangement ajouté. Modifiez son ordre avec les boutons du conducteur.');
+});
+$('#qAppend').addEventListener('click', () => editArrangement((song, sel) => appendChorus(song, sel.arrangementId), 'Refrain ajouté à la fin.'));
+$('#qRepeat').addEventListener('click', () => editArrangement((song, sel) => repeatCurrentStep(song, sel, sel.arrangementId), 'Section répétée.'));
+$('#qSkip').addEventListener('click', () => editArrangement((song, sel) => skipCurrentStep(song, sel, sel.arrangementId), 'Section sautée.'));
+
+// --- Annonces -------------------------------------------------------------
+$('#modeAnn').addEventListener('click', () => setMode('announcements'));
+$('#annNew').addEventListener('click', createAnnouncement);
+$('#annSearch').addEventListener('input', (event) => { annQuery = event.target.value; renderAnnouncements(); });
+
+// --- Bible : import d'une version ----------------------------------------
+$('#bibleOpenImport').addEventListener('click', openBibleImport);
+$('#bibleCancel').addEventListener('click', () => $('#bibleDlg').close());
+$('#bibleConfirm').addEventListener('click', confirmBibleImport);
+$('#bibleDrop').addEventListener('click', () => $('#bibleFile').click());
+$('#bibleFile').addEventListener('change', () => previewBibleFile($('#bibleFile').files?.[0]));
+for (const type of ['dragover', 'dragleave', 'drop']) {
+  $('#bibleDrop').addEventListener(type, (event) => {
+    event.preventDefault();
+    $('#bibleDrop').classList.toggle('over', type === 'dragover');
+    if (type === 'drop') previewBibleFile(event.dataTransfer?.files?.[0]);
+  });
+}
+
+// --- Recherche unifiée ----------------------------------------------------
+bindPalette();
+
+// --- Import ---------------------------------------------------------------
+$('#importCancel').addEventListener('click', () => $('#importDlg').close());
+$('#importAnalyze').addEventListener('click', analyzeImport);
+$('#importConfirm').addEventListener('click', confirmImport);
+$('#fileDrop').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  $('#importText').value = text;
+  analyzeImport();
+});
+for (const type of ['dragenter', 'dragover']) {
+  $('#fileDrop').addEventListener(type, (event) => { event.preventDefault(); $('#fileDrop').classList.add('over'); });
+}
+for (const type of ['dragleave', 'drop']) {
+  $('#fileDrop').addEventListener(type, (event) => { event.preventDefault(); $('#fileDrop').classList.remove('over'); });
+}
+$('#fileDrop').addEventListener('drop', async (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) return;
+  if (/^(image|video)\//.test(file.type)) {
+    // Un média lâché n'importe où rejoint le module Médias (EF-16.2), pas l'import texte.
+    if ($('#importDlg').open) $('#importDlg').close();
+    setMode('media');
+    await importMediaFiles([file]);
+    return;
+  }
+  $('#importText').value = await file.text();
+  analyzeImport();
+});
+$('#prev').onclick = () => move('prev');
+$('#next').onclick = () => move('next');
+$('#go').onclick = () => broadcast(true);
+$('#clear').onclick = clearOutputs;
+
+// ---------------------------------------------------------------------------
+// Coque de la régie : horloge, moniteur « à l'antenne », compteur de séance.
+// Rien ici ne touche à la diffusion : ce sont des repères de confort.
+// ---------------------------------------------------------------------------
+function pad2(value) { return String(value).padStart(2, '0'); }
+
+function tickClock() {
+  const now = new Date();
+  $('#clockPill').textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+}
+
+const sessionStart = Date.now();
+
+function tickElapsed() {
+  const total = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  $('#airElapsed').textContent = `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
+const KIND_LABEL = {
+  bible: 'Bible', songs: 'Chant', media: 'Média', announcements: 'Annonce',
+  lowerthird: 'Habillage', timer: 'Minuteur', plan: 'Plan'
+};
+
+/** Sortie montrée dans le moniteur de droite : la première cochée. */
+function primaryOutput() {
+  return outputs.find((output) => targets.has(output.id)) || outputs[0] || null;
+}
+
+function refreshAir() {
+  const output = primaryOutput();
+  if (!output) return;
+  const frame = $('#airFrame');
+  const src = `/o/${encodeURIComponent(output.id)}`;
+  if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
+  $('#airOpen').setAttribute('href', src);
+  $('#airName').textContent = output.name;
+}
+
+function paintAir() {
+  const live = [...onAir.entries()];
+  const pill = $('#airState');
+  const badge = $('#liveBadge');
+  if (!live.length) {
+    pill.classList.remove('on');
+    $('#airKind').textContent = 'hors antenne';
+    badge.hidden = true;
+    return;
+  }
+  pill.classList.add('on');
+  $('#airKind').textContent = KIND_LABEL[live[0][1]] || live[0][1];
+  badge.hidden = false;
+}
+
+tickClock();
+tickElapsed();
+setInterval(tickClock, 15000);
+setInterval(tickElapsed, 1000);
+paintAir();
+
+boot();
+</script>
+</body>
+</html>

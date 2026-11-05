@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mur des sorties — OpenPresenter</title>
+<link rel="stylesheet" href="/theme.css">
+<style>
+  /* ==========================================================================
+     Mur des sorties — chaque sortie est un cadre vivant (la vraie page de
+     sortie), pour voir d'un coup d'œil ce que reçoivent la salle, le stream et
+     les sources OBS. Aucune commande ici : c'est un écran de surveillance.
+     ========================================================================== */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--txt); font-family: var(--sans); }
+  body { padding: 20px 22px 30px; }
+
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .logo { font-weight: 800; letter-spacing: .14em; font-size: 15px; color: var(--accent); }
+  .logo small { display: block; font-size: 8.5px; letter-spacing: .26em; color: var(--txt3); font-weight: 700; margin-top: -1px; }
+  .spacer { flex: 1; }
+
+  .wall {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  }
+  .cell {
+    background: var(--p-1); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .cell-head {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-bottom: 1px solid var(--line); background: #0e141f;
+  }
+  .cell-head .nm { font-weight: 700; font-size: 12.5px; }
+  .cell-head .spec { font-family: var(--mono); font-size: 10px; color: var(--txt3); }
+  .cell-head .spacer { flex: 1; }
+  .frame { position: relative; aspect-ratio: 16/9; background: #000; }
+  .frame.transparent { background: repeating-conic-gradient(#151c28 0% 25%, #0d121b 0% 50%) 50% / 24px 24px; }
+  .frame iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+  .cell-foot {
+    display: flex; gap: 6px; align-items: center; padding: 8px 12px;
+    border-top: 1px solid var(--line); background: #0a0f18;
+  }
+  .cell-foot code {
+    font-family: var(--mono); font-size: 10.5px; color: var(--accent-2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px;
+    border-radius: 7px; border: 1px solid var(--line2); background: var(--p-2);
+    color: var(--txt); font-size: 11px; font-weight: 650; cursor: pointer; text-decoration: none;
+    font-family: inherit; white-space: nowrap;
+  }
+  .btn:hover { background: var(--p-3); }
+  .empty { padding: 40px; text-align: center; color: var(--txt3); border: 1px dashed var(--line); border-radius: 14px; }
+  .toast {
+    position: fixed; right: 16px; bottom: 16px; padding: 9px 13px; border-radius: 9px;
+    background: #141a24; border: 1px solid var(--line2); border-left: 3px solid var(--accent);
+    font-size: 12px; opacity: 0; transform: translateY(8px); transition: .16s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OPENPRESENTER<small>MUR DES SORTIES</small></div>
+  <span class="op-pill" id="count"><span class="op-dot"></span><span id="countText">chargement…</span></span>
+  <span class="spacer"></span>
+  <a class="btn" href="/studio.html">🎛 Ouvrir la régie</a>
+  <a class="btn" href="/orateur.html">🎤 Vue orateur</a>
+  <a class="btn" href="/">Accueil</a>
+</header>
+
+<main class="wall" id="wall">
+  <div class="empty">Chargement des sorties…</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// ---------------------------------------------------------------------------
+// Le mur ne diffuse rien : il ouvre la page de sortie de chaque sortie, donc il
+// montre exactement ce que voit OBS (même moteur, même scène, même jeton).
+// ---------------------------------------------------------------------------
+const $ = (selector) => document.querySelector(selector);
+
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Une URL absolue, recopiée telle quelle dans OBS sur un autre poste. */
+function urlFor(output) {
+  return `${location.origin}/o/${encodeURIComponent(output.id)}`;
+}
+
+function card(output) {
+  const kinds = Object.entries(output.receives || {})
+    .filter(([, allowed]) => allowed !== false)
+    .map(([kind]) => kind)
+    .join(' · ');
+  return `
+    <article class="cell" data-id="${esc(output.id)}">
+      <div class="cell-head">
+        <span class="nm">${esc(output.name)}</span>
+        <span class="spec">${output.width}×${output.height}${output.transparent ? ' · alpha' : ''}</span>
+        <span class="spacer"></span>
+        <span class="op-pill" data-state="${esc(output.id)}"><span class="op-dot"></span><span data-state-text="${esc(output.id)}">hors antenne</span></span>
+      </div>
+      <div class="frame ${output.transparent ? 'transparent' : ''}">
+        <iframe src="${esc(urlFor(output))}" title="Sortie ${esc(output.name)}" loading="lazy"></iframe>
+      </div>
+      <div class="cell-foot">
+        <code title="${esc(urlFor(output))}">${esc(urlFor(output))}</code>
+        <button class="btn" data-copy="${esc(output.id)}">Copier</button>
+        <a class="btn" href="${esc(urlFor(output))}" target="_blank" rel="noopener">↗ Ouvrir</a>
+        <a class="btn" href="/scene.html?output=${encodeURIComponent(output.id)}">Scènes</a>
+      </div>
+      <div class="cell-foot" style="border-top:0;color:var(--txt3);font-size:10.5px">
+        Reçoit : ${esc(kinds || '—')}
+      </div>
+    </article>`;
+}
+
+async function load() {
+  let outputs = [];
+  try {
+    const res = await fetch('/api/outputs', { cache: 'no-store' });
+    if (res.ok) outputs = (await res.json()).outputs || [];
+  } catch { /* mur vide plutôt que page cassée */ }
+
+  const wall = $('#wall');
+  if (!outputs.length) {
+    wall.innerHTML = '<div class="empty">Aucune sortie déclarée dans ce projet.<br>Créez-en une depuis l’accueil.</div>';
+    $('#countText').textContent = 'aucune sortie';
+    return;
+  }
+  wall.innerHTML = outputs.map(card).join('');
+  $('#count').classList.add('on');
+  $('#countText').textContent = `${outputs.length} sortie${outputs.length > 1 ? 's' : ''} en ligne`;
+
+  wall.querySelectorAll('[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const output = outputs.find((item) => item.id === button.dataset.copy);
+      try {
+        await navigator.clipboard.writeText(urlFor(output));
+        toast(`Lien « ${output.name} » copié.`);
+      } catch {
+        toast('Copie refusée par le navigateur — sélectionnez l’URL à la main.');
+      }
+    });
+  });
+}
+
+// État « à l'antenne » par sortie, poussé par le relais.
+function paintLive(state) {
+  for (const [id, entry] of Object.entries(state?.channels || {})) {
+    const pill = document.querySelector(`[data-state="${CSS.escape(id)}"]`);
+    const label = document.querySelector(`[data-state-text="${CSS.escape(id)}"]`);
+    if (!pill) continue;
+    pill.classList.add('on');
+    if (label) label.textContent = entry.kind || 'à l’antenne';
+  }
+}
+
+async function loadLive() {
+  try {
+    const res = await fetch('/api/live/state', { cache: 'no-store' });
+    if (res.ok) paintLive(await res.json());
+  } catch { /* rien à l'antenne */ }
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const socket = new WebSocket(`${proto}://${location.host}/ws?channel=op_studio`);
+  socket.addEventListener('message', (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+    if (message.t === 'live:state') {
+      for (const id of message.targets || []) {
+        const pill = document.querySelector(`[data-state="${CSS.escape(id)}"]`);
+        const label = document.querySelector(`[data-state-text="${CSS.escape(id)}"]`);
+        if (pill) pill.classList.add('on');
+        if (label) label.textContent = message.kind || 'à l’antenne';
+      }
+    }
+    if (message.t === 'live:cleared') {
+      for (const id of message.targets || []) {
+        const pill = document.querySelector(`[data-state="${CSS.escape(id)}"]`);
+        const label = document.querySelector(`[data-state-text="${CSS.escape(id)}"]`);
+        if (pill) pill.classList.remove('on');
+        if (label) label.textContent = 'hors antenne';
+      }
+    }
+  });
+  socket.addEventListener('close', () => setTimeout(connect, 2500));
+}
+
+(async () => {
+  await load();
+  await loadLive();
+  connect();
+})();
+</script>
+</body>
+</html>

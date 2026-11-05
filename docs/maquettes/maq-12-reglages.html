@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-12 — Réglages et journal · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { height: 820px; display: grid; grid-template-rows: 52px 1fr; background: var(--bg-2); }
+
+  .head { display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .head .mark { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #ed7958); display: grid; place-items: center; color: #17110a; font-size: 9px; font-weight: 900; }
+  .head h1 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; font-weight: 900; }
+
+  .body { display: grid; grid-template-columns: 196px 1fr 380px; min-height: 0; }
+
+  /* Réglages : sous-navigation */
+  .subnav { background: #0a0c11; border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .subnav .t { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--txt-3); font-weight: 800; padding: 6px 9px 4px; }
+  .subnav a { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 6px; font-size: 12px; color: var(--txt-2); text-decoration: none; }
+  .subnav a:hover { background: #141822; color: var(--txt); }
+  .subnav a.on { background: #f5b9421c; color: var(--accent); font-weight: 700; }
+  .subnav .sep { height: 1px; background: var(--line); margin: 8px 4px; }
+
+  /* Formulaire */
+  .form { overflow: auto; padding: 14px 16px 30px; }
+  .fh { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
+  .fh h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+  .fh .sub { font-size: 10px; color: var(--txt-3); }
+  .fh .sp { flex: 1; }
+
+  .card { background: #0d1017; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; }
+  .card .ch { padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--txt-3); font-weight: 800; display: flex; align-items: center; gap: 6px; }
+  .card .cb { padding: 12px; display: flex; flex-direction: column; gap: 11px; }
+
+  .frow { display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: start; }
+  .frow .lab { font-size: 12px; color: var(--txt); }
+  .frow .lab .h { display: block; font-size: 10px; color: var(--txt-3); margin-top: 2px; line-height: 1.45; }
+  .field { font-size: 12px; }
+  .inline { display: flex; gap: 6px; align-items: center; }
+  .inline .field { max-width: 260px; }
+  .pillbtn { padding: 5px 9px; border-radius: 5px; border: 1px solid var(--line-2); background: #0d1017; font-size: 10px; color: var(--txt-2); }
+
+  .sw { width: 34px; height: 19px; border-radius: 999px; background: #2a3142; border: 1px solid var(--line-2); position: relative; flex: none; }
+  .sw i { position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #8b93a5; display: block; }
+  .sw.on { background: #f5b94233; border-color: #f5b94288; }
+  .sw.on i { left: 17px; background: var(--accent); }
+
+  .warnbox { margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: #f59e0b12; border: 1px solid #f59e0b40; font-size: 10px; color: #ffcf80; line-height: 1.5; }
+
+  /* Journal */
+  .journal { background: #0a0c11; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .jh { padding: 9px 11px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; }
+  .jh .t { font-size: 11px; font-weight: 800; }
+  .jf { padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .jf .field { font-size: 10px; padding: 4px 7px; flex: 1; min-width: 90px; }
+  .jl { overflow: auto; flex: 1; }
+  .entry { display: grid; grid-template-columns: 58px 48px 1fr; gap: 7px; padding: 6px 10px; border-bottom: 1px solid #171b25; font-size: 10px; align-items: start; }
+  .entry:hover { background: #ffffff05; }
+  .entry .ts { font-family: var(--mono); color: var(--txt-3); font-size: 9px; padding-top: 1px; }
+  .entry .lv { font-size: 8px; font-weight: 900; letter-spacing: .04em; padding: 1px 4px; border-radius: 3px; text-align: center; }
+  .entry .lv.INFO { background: #38bdf822; color: #7dd3fc; }
+  .entry .lv.WARN { background: #f59e0b22; color: #fbbf24; }
+  .entry .lv.ERROR { background: #ef536022; color: #ff8e97; }
+  .entry .ev { font-family: var(--mono); color: var(--txt-2); font-size: 9px; }
+  .entry .ms { color: var(--txt); grid-column: 3; margin-top: 1px; line-height: 1.45; }
+  .jf2 { padding: 7px 10px; border-top: 1px solid var(--line); font-size: 9px; color: var(--txt-3); display: flex; align-items: center; gap: 6px; }
+  .jf2 .sp { flex: 1; }
+
+  /* Toast */
+  .toast { position: absolute; right: 14px; bottom: 14px; width: 320px; background: #1a0f12; border: 1px solid #ef536055; border-radius: 8px; padding: 9px 10px; box-shadow: 0 12px 30px #000a; }
+  .toast .th { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 900; letter-spacing: .05em; color: #ff8e97; text-transform: uppercase; }
+  .toast .tb { font-size: 11px; color: var(--txt); margin: 3px 0 6px; line-height: 1.45; }
+  .toast .tf { display: flex; gap: 5px; }
+  .toast .x { margin-left: auto; color: var(--txt-3); }
+  .host { position: relative; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html">10 Diag</a>
+  <a href="maq-11-sorties.html">11 Sorties</a>
+  <a href="maq-12-reglages.html" class="on">12 Réglages</a>
+  <a href="maq-13-catalogue.html">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#settings</span>
+    <span>MAQ-12 · réglages et journal</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> réglages du projet ouverts, un réglage non appliqué (« Auto-sauvegarde »), panneau Journal filtré sur <code>WARN</code> et <code>ERROR</code>, toast d'erreur copiable.</div>
+
+  <div class="app host">
+
+    <div class="head">
+      <span class="mark">OP</span>
+      <h1>Réglages</h1>
+      <span class="tiny dim">ICC Pahou · projet <span class="mono">prj_7f3c1a9e2b4d</span></span>
+      <span class="spacer"></span>
+      <span class="pill warn"><span class="dot warn"></span> 1 modification non appliquée</span>
+      <button class="btn sm">Annuler</button>
+      <button class="btn sm primary">Enregistrer</button>
+    </div>
+
+    <div class="body">
+
+      <div class="subnav">
+        <div class="t">Projet</div>
+        <a href="#"><span>🏷️</span> Identité</a>
+        <a href="#" class="on"><span>⚙</span> Général</a>
+        <a href="#"><span>🖥️</span> Diffusion</a>
+        <a href="#"><span>🎨</span> Affichage</a>
+        <a href="#"><span>📱</span> Télécommande</a>
+        <div class="sep"></div>
+        <div class="t">Données</div>
+        <a href="#"><span>💾</span> Sauvegardes</a>
+        <a href="#"><span>📦</span> Export / Restauration</a>
+        <a href="#"><span>🔄</span> Importer (V1 / V2)</a>
+        <a href="#"><span>🧹</span> Intégrité</a>
+        <a href="#"><span>📚</span> Catalogue</a>
+        <div class="sep"></div>
+        <a href="#"><span>📓</span> Journal</a>
+        <a href="#"><span>🌐</span> Langue</a>
+        <a href="#"><span>🧪</span> Avancé</a>
+      </div>
+
+      <div class="form">
+        <div class="fh">
+          <div>
+            <h2>Général</h2>
+            <div class="sub">Ces réglages s'appliquent à tout le projet et sont enregistrés dans <span class="mono">project.json</span>.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">Identité du projet</div>
+          <div class="cb">
+            <div class="frow">
+              <div class="lab">Nom du projet<span class="h">Affiché sur l'accueil et dans les archives.</span></div>
+              <input class="field" value="ICC Pahou">
+            </div>
+            <div class="frow">
+              <div class="lab">Langue de l'interface<span class="h">Le français est livré ; l'anglais est préparé.</span></div>
+              <div class="inline">
+                <input class="field" value="Français (fr)" style="max-width:180px">
+                <span class="pill">i18n prêt</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">Démarrage</div>
+          <div class="cb">
+            <div class="frow">
+              <div class="lab">Écran noir au démarrage<span class="h">Aucun contenu n'est envoyé aux sorties avant une action.</span></div>
+              <div class="inline"><span class="sw on"><i></i></span><span class="tiny dim">Activé (recommandé)</span></div>
+            </div>
+            <div class="frow">
+              <div class="lab">Ouvrir automatiquement<span class="h">Événement du jour sélectionné s'il existe.</span></div>
+              <div class="inline"><span class="sw on"><i></i></span><span class="tiny dim">Événement du jour</span></div>
+            </div>
+            <div class="frow">
+              <div class="lab">Profil appliqué au lancement<span class="h">Les sorties et looks sont restaurés tels quels.</span></div>
+              <input class="field" value="Dernier profil utilisé (ICC Pahou — Culte du dimanche)" style="max-width:340px">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">Données et sauvegardes <span class="spacer"></span><span class="pill warn">modifié</span></div>
+          <div class="cb">
+            <div class="frow">
+              <div class="lab">Sauvegarde automatique<span class="h">Après chaque écriture significative, au plus une fois par minute.</span></div>
+              <div class="inline"><span class="sw"><i></i></span><span class="tiny" style="color:#ffcf80">Désactivée — non appliqué</span></div>
+            </div>
+            <div class="frow">
+              <div class="lab">Sauvegardes conservées<span class="h">Les plus anciennes sont supprimées au-delà de ce nombre.</span></div>
+              <div class="inline"><input class="field" value="10" style="max-width:80px"><span class="tiny dim">archives</span></div>
+            </div>
+            <div class="frow">
+              <div class="lab">Avertir au-delà de<span class="h">Seuil de taille pour les médias importés (décision D-04).</span></div>
+              <div class="inline"><input class="field" value="500" style="max-width:90px"><span class="tiny dim">Mo par fichier</span></div>
+            </div>
+            <div class="warnbox">
+              ⚠ Désactiver la sauvegarde automatique signifie qu'une erreur de manipulation ne pourra pas être annulée.
+              Le diagnostic passera en avertissement si aucune sauvegarde n'existe depuis plus de 7 jours.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">Réseau local</div>
+          <div class="cb">
+            <div class="frow">
+              <div class="lab">Port du serveur<span class="h">En cas d'occupation, le suivant est choisi automatiquement.</span></div>
+              <div class="inline"><input class="field mono" value="8788" style="max-width:100px"><span class="pill ok">libre</span></div>
+            </div>
+            <div class="frow">
+              <div class="lab">Jeton d'accès<span class="h">Requis pour la télécommande et les sorties depuis un autre appareil.</span></div>
+              <div class="inline">
+                <input class="field mono" value="4F2K" style="max-width:110px">
+                <button class="btn sm">Régénérer</button>
+                <span class="tiny dim">Les pages déjà ouvertes seront déconnectées.</span>
+              </div>
+            </div>
+            <div class="frow">
+              <div class="lab">Catalogue en ligne<span class="h">Seule fonction autorisée à utiliser Internet. Désactivé par défaut.</span></div>
+              <div class="inline"><span class="sw"><i></i></span><span class="tiny dim">Désactivé · aucune requête sortante</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">Maintenance</div>
+          <div class="cb">
+            <div class="frow">
+              <div class="lab">Actions ponctuelles</div>
+              <div class="inline" style="flex-wrap:wrap;gap:6px">
+                <button class="btn sm">Vider le cache</button>
+                <button class="btn sm">Reconstruire l'index</button>
+                <button class="btn sm">Régénérer les miniatures</button>
+                <button class="btn sm">Ouvrir le dossier du projet</button>
+              </div>
+            </div>
+            <div class="frow">
+              <div class="lab">Espace utilisé</div>
+              <div class="tiny" style="color:var(--txt-2);line-height:1.7">
+                Bibliothèque <b>41,2 Mo</b> · Médias <b>3,8 Go</b> · Miniatures <b>212 Mo</b> · Sauvegardes <b>24 Mo</b><br>
+                <span class="dim">Espace libre sur le disque : 128,4 Go</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Journal -->
+      <div class="journal">
+        <div class="jh">
+          <span>📓</span>
+          <span class="t">Journal</span>
+          <span class="pill">dernier jour</span>
+          <span class="spacer"></span>
+          <button class="btn sm">⤓ Exporter</button>
+        </div>
+        <div class="jf">
+          <span class="field" style="max-width:74px">WARN + ERROR ▾</span>
+          <span class="field">Rechercher…</span>
+          <span class="pill">1 j ▾</span>
+        </div>
+        <div class="jl">
+          <div class="entry">
+            <span class="ts">18:04:12</span><span class="lv WARN">WARN</span>
+            <span class="ev">output.no_client</span>
+            <span class="ms">Bas centré : aucun client connecté</span>
+          </div>
+          <div class="entry">
+            <span class="ts">17:58:02</span><span class="lv ERROR">ERROR</span>
+            <span class="ev">catalog.fetch.timeout</span>
+            <span class="ms">Délai dépassé (8 s) — catalogue désactivé depuis</span>
+          </div>
+          <div class="entry">
+            <span class="ts">17:41:55</span><span class="lv WARN">WARN</span>
+            <span class="ev">backup.failed</span>
+            <span class="ms">Sauvegarde impossible : disque plein</span>
+          </div>
+          <div class="entry">
+            <span class="ts">17:02:10</span><span class="lv WARN">WARN</span>
+            <span class="ev">asset.too_large</span>
+            <span class="ms">« Concert-complet.mp4 » fait 1,8 Go</span>
+          </div>
+          <div class="entry">
+            <span class="ts">16:48:03</span><span class="lv WARN">WARN</span>
+            <span class="ev">bible.quickentry.invalid</span>
+            <span class="ms">Chapitre 99 inexistant pour Jean</span>
+          </div>
+          <div class="entry">
+            <span class="ts">16:12:44</span><span class="lv WARN">WARN</span>
+            <span class="ev">write.conflict</span>
+            <span class="ms">Scène modifiée dans un autre onglet</span>
+          </div>
+          <div class="entry">
+            <span class="ts">15:30:18</span><span class="lv ERROR">ERROR</span>
+            <span class="ev">ui.error</span>
+            <span class="ms">Module Médias : aperçu indisponible</span>
+          </div>
+        </div>
+        <div class="jf2">
+          <span>1 248 entrées · 412 Ko</span>
+          <span class="sp"></span>
+          <button class="btn sm ghost">Purger &gt; 7 jours</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Toast -->
+    <div class="toast">
+      <div class="th"><span>⛔</span> Erreur <span class="x">✕</span></div>
+      <div class="tb">Écriture impossible : le dossier est protégé ou plein.</div>
+      <div class="tf">
+        <button class="btn sm">Ouvrir le diagnostic</button>
+        <button class="btn sm">⧉ Copier</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Règles de la maquette — chapitres <code>docs/spec/06-studio.md</code>, <code>16</code> et <code>23</code></h3>
+  <ul>
+    <li><b>Une modification non appliquée</b> est signalée dans l'entête et sur le champ concerné : rien n'est enregistré implicitement (EF-01.10, EF-06.30).</li>
+    <li><b>La sauvegarde automatique</b> est active par défaut ; sa désactivation affiche un avertissement explicite et fait passer le diagnostic en orange (EF-30.11).</li>
+    <li><b>Le catalogue</b> est désactivé par défaut et l'indique : aucune requête sortante tant qu'il n'est pas activé (EF-27.1, ENF-01).</li>
+    <li><b>Le journal</b> est en lecture seule, filtrable et exportable ; chaque ligne porte un code d'évènement fermé (EF-28.6).</li>
+    <li><b>Un toast d'erreur</b> est copiable et journalisé (EF-06.33) ; il reste affiché jusqu'à fermeture.</li>
+  </ul>
+</div>
+
+</body>
+</html>

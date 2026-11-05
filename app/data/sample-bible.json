@@ -1,0 +1,23 @@
+{
+  "id": "bible_sample_fr",
+  "rev": 1,
+  "name": "Louis Segond 1910 — extraits",
+  "shortName": "LSG (extraits)",
+  "abbreviation": "LSG",
+  "language": "fr",
+  "direction": "ltr",
+  "source": {
+    "kind": "sample",
+    "format": "beblia",
+    "originalName": "extraits-lsg-1910",
+    "license": "Domaine public (1910)"
+  },
+  "counts": { "books": 3, "chapters": 4, "verses": 24 },
+  "books": [
+    { "num": 19, "name": "Psaumes", "abbr": "Ps", "chapters": 150 },
+    { "num": 23, "name": "Ésaïe", "abbr": "És", "chapters": 66 },
+    { "num": 43, "name": "Jean", "abbr": "Jn", "chapters": 21 }
+  ],
+  "favorites": [],
+  "annotations": {}
+}

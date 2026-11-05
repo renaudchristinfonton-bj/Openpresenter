@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-14 — Premier lancement et migration · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; align-items: start; }
+
+  .win { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .win .wh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #07080d; border-bottom: 1px solid var(--line); font-size: 10px; color: var(--txt-3); }
+  .win .wh .url { flex: 1; font-family: var(--mono); font-size: 10px; color: var(--txt-3); background: var(--bg-3); padding: 3px 9px; border-radius: 5px; }
+  .win .wb { padding: 18px; }
+
+  /* Assistant */
+  .steps { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .step { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--txt-3); }
+  .step .n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-2); font-size: 9px; font-weight: 800; }
+  .step.done .n { background: #34d39922; border-color: #34d39966; color: var(--ok); }
+  .step.on { color: var(--txt); font-weight: 700; }
+  .step.on .n { background: var(--accent); border-color: var(--accent); color: #17110a; }
+  .step .line { width: 34px; height: 1px; background: var(--line-2); }
+
+  .wb h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.02em; }
+  .wb .lead { margin: 0 0 16px; font-size: 11px; color: var(--txt-2); line-height: 1.6; }
+
+  .profiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .prof { border: 1px solid var(--line); border-radius: 9px; background: #0d1017; padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+  .prof.on { border-color: var(--accent); box-shadow: 0 0 0 2px #f5b94233; }
+  .prof .ic { width: 32px; height: 32px; border-radius: 8px; background: #171b25; display: grid; place-items: center; font-size: 15px; }
+  .prof .t { font-size: 12px; font-weight: 800; }
+  .prof .d { font-size: 10px; color: var(--txt-3); line-height: 1.5; min-height: 46px; }
+  .prof .tags { display: flex; flex-wrap: wrap; gap: 3px; }
+  .prof .tag { font-size: 8px; padding: 1px 5px; border-radius: 999px; background: #f5b94216; color: #f5b942cc; border: 1px solid #f5b94233; }
+  .prof .pv { height: 44px; border-radius: 5px; border: 1px solid var(--line-2); position: relative; overflow: hidden; }
+  .prof .pv .p { position: absolute; }
+  .prof .pick { margin-top: auto; font-size: 9px; color: var(--accent); font-weight: 700; }
+  .prof:not(.on) .pick { color: var(--txt-3); font-weight: 500; }
+
+  .wfoot { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .wfoot .sp { flex: 1; }
+  .wfoot .skip { font-size: 10px; color: var(--txt-3); text-decoration: underline; }
+
+  /* Migration */
+  .mig .wh .badge { margin-left: auto; }
+  .mig .wb { padding: 16px; }
+  .mig h3 { margin: 0 0 4px; font-size: 15px; }
+  .mig .lead { margin: 0 0 12px; font-size: 10px; color: var(--txt-2); line-height: 1.55; }
+
+  table.tbl { width: 100%; }
+  table.tbl td { font-size: 11px; padding: 6px 8px; }
+  table.tbl .num { text-align: right; font-family: var(--mono); font-size: 10px; color: var(--txt-2); }
+  table.tbl .sz { text-align: right; font-family: var(--mono); font-size: 10px; color: var(--txt-3); }
+  table.tbl tfoot td { border-top: 1px solid var(--line-2); font-weight: 700; color: var(--txt); }
+
+  .srcs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 12px 0; }
+  .srcopt { display: flex; gap: 8px; padding: 9px 10px; border-radius: 7px; border: 1px solid var(--line); background: #0d1017; font-size: 10px; align-items: flex-start; }
+  .srcopt.on { border-color: var(--accent); background: #f5b9420d; }
+  .srcopt .r { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line-2); flex: none; margin-top: 1px; }
+  .srcopt.on .r { border-color: var(--accent); box-shadow: inset 0 0 0 3px #0d1017, inset 0 0 0 8px var(--accent); }
+  .srcopt b { display: block; font-size: 10px; margin-bottom: 2px; }
+  .srcopt span { color: var(--txt-3); line-height: 1.45; }
+
+  .miniwarn { padding: 8px 10px; border-radius: 6px; background: #f59e0b10; border: 1px solid #f59e0b3c; font-size: 10px; color: #ffcf80; line-height: 1.5; margin-bottom: 12px; }
+  .inline-note { display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--txt-3); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html">10 Diag</a>
+  <a href="maq-11-sorties.html">11 Sorties</a>
+  <a href="maq-12-reglages.html">12 Réglages</a>
+  <a href="maq-13-catalogue.html">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html" class="on">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/ — premier démarrage</span>
+    <span>MAQ-14 · assistant et migration</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> tout premier démarrage sans donnée existante (assistant, étape 2 sur 3) et, à droite, l'écran de migration proposé lorsqu'une sauvegarde V1/V2 est détectée.</div>
+
+  <div class="wrap">
+
+    <!-- Assistant -->
+    <div class="win">
+      <div class="wh">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <span class="url">http://localhost:8788/</span>
+      </div>
+      <div class="wb">
+
+        <div class="steps">
+          <div class="step done"><span class="n">✓</span> Bienvenue</div>
+          <span class="line"></span>
+          <div class="step on"><span class="n">2</span> Profil</div>
+          <span class="line"></span>
+          <div class="step"><span class="n">3</span> Prêt</div>
+        </div>
+
+        <h2>Quel type de régie préparez-vous ?</h2>
+        <p class="lead">
+          Un profil règle les sorties, les looks et les scènes par défaut. Vous pourrez tout modifier ensuite,
+          et créer vos propres profils.
+        </p>
+
+        <div class="profiles">
+
+          <div class="prof on">
+            <div class="ic">🏛</div>
+            <div class="t">Église</div>
+            <div class="d">Culte du dimanche : projecteur en salle + bandeau pour le direct.</div>
+            <div class="tags"><span class="tag">2 sorties</span><span class="tag">Bible + chants</span></div>
+            <div class="pv" style="background:linear-gradient(135deg,#0c0910,#241018)">
+              <span class="p" style="left:8%;right:8%;bottom:12%;height:34%;background:rgba(8,10,16,.9);border-left:4px solid #f5b942;border-radius:3px"></span>
+              <span class="p" style="left:14%;bottom:22%;width:40%;height:3px;background:#ffffff55"></span>
+            </div>
+            <div class="pick">● Sélectionné</div>
+          </div>
+
+          <div class="prof">
+            <div class="ic">🎤</div>
+            <div class="t">Conférence</div>
+            <div class="d">Grand écran + habillage intervenant, texte très lisible de loin.</div>
+            <div class="tags"><span class="tag">1 sortie</span><span class="tag">Habillage</span></div>
+            <div class="pv" style="background:linear-gradient(135deg,#07131a,#0b2430)">
+              <span class="p" style="left:10%;top:14%;right:10%;height:22%;background:#e8eaf010;border-radius:2px"></span>
+              <span class="p" style="left:10%;bottom:16%;width:55%;height:14%;background:rgba(8,10,16,.9);border-left:4px solid #e8698f;border-radius:2px"></span>
+            </div>
+            <div class="pick">Choisir ce profil</div>
+          </div>
+
+          <div class="prof">
+            <div class="ic">🎬</div>
+            <div class="t">Stream live</div>
+            <div class="d">Deux sorties transparentes : bandeau bas et incrustation, prêtes pour OBS.</div>
+            <div class="tags"><span class="tag">2 sorties alpha</span><span class="tag">OBS</span></div>
+            <div class="pv alpha">
+              <span class="p" style="left:12%;right:12%;bottom:16%;height:26%;background:rgba(8,10,16,.92);border-left:4px solid #34d399;border-radius:3px"></span>
+            </div>
+            <div class="pick">Choisir ce profil</div>
+          </div>
+
+        </div>
+
+        <div class="wfoot">
+          <button class="btn sm ghost">← Retour</button>
+          <span class="skip">Importer des données existantes…</span>
+          <span class="sp"></span>
+          <span class="tiny dim">Vous pourrez changer de profil à tout moment.</span>
+          <button class="btn primary">Continuer →</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Migration -->
+    <div class="win mig">
+      <div class="wh">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <span class="url">/api/migrate/analyze</span>
+        <span class="badge pill">V1 détectée</span>
+      </div>
+      <div class="wb">
+
+        <h3>Importer des données existantes</h3>
+        <p class="lead">
+          OpenPresenter a trouvé une sauvegarde OpenPresenter 1 sur ce PC. Rien n'est modifié
+          avant votre confirmation.
+        </p>
+
+        <div class="srcs">
+          <div class="srcopt on">
+            <span class="r"></span>
+            <div><b>Sauvegarde OpenPresenter 1</b><span>openpresenter-sauvegarde-2026-08-09.json · 2,5 Mo</span></div>
+          </div>
+          <div class="srcopt">
+            <span class="r"></span>
+            <div><b>Données du navigateur</b><span>OpenPresenter 2 · IndexedDB · 214 Mo</span></div>
+          </div>
+          <div class="srcopt">
+            <span class="r"></span>
+            <div><b>Archive .openpresenter.zip</b><span>Choisir un fichier…</span></div>
+          </div>
+          <div class="srcopt">
+            <span class="r"></span>
+            <div><b>Dossier data d'OpenPresenter 1</b><span>Choisir un dossier…</span></div>
+          </div>
+        </div>
+
+        <div class="miniwarn">
+          ⚠ L'analyse est terminée : vérifiez le tableau avant d'importer. Une sauvegarde automatique
+          de l'état actuel sera créée avant toute écriture.
+        </div>
+
+        <table class="tbl">
+          <thead>
+            <tr><th>Élément</th><th style="text-align:right">Nombre</th><th style="text-align:right">Poids</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Bibles <span class="dim tiny">(LSG, BDS, KJV)</span></td><td class="num">3</td><td class="sz">41,2 Mo</td></tr>
+            <tr><td>Chants</td><td class="num">84</td><td class="sz">312 Ko</td></tr>
+            <tr><td>Médias <span class="dim tiny">dont 2 vidéos &gt; 500 Mo</span></td><td class="num">213</td><td class="sz">3,8 Go</td></tr>
+            <tr><td>Looks</td><td class="num">6</td><td class="sz">18 Ko</td></tr>
+            <tr><td>Réglages</td><td class="num">12</td><td class="sz">4 Ko</td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td>Total à importer</td><td class="num">318</td><td class="sz">3,84 Go</td></tr>
+          </tfoot>
+        </table>
+
+        <div class="inline-note">📄 Un journal détaillé sera téléchargeable après l'import (EF-26.4).</div>
+
+        <div class="wfoot">
+          <button class="btn sm ghost">Analyser une autre source</button>
+          <span class="sp"></span>
+          <button class="btn sm">Annuler</button>
+          <button class="btn primary">Importer</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="wrap" style="padding-top:0">
+    <div class="legend" style="grid-column:1/-1">
+      <h3>Règles de la maquette — chapitres <code>docs/spec/05-accueil.md</code> et <code>04</code> § 4.11</h3>
+      <ul>
+        <li><b>Trois profils livrés</b> — église, conférence, stream — sont proposés au premier lancement (EF-20.1) ; chacun montre un aperçu réel de sa sortie par défaut.</li>
+        <li><b>L'assistant est sautable</b> : « Importer des données existantes » et un profil par défaut permettent d'arriver à l'accueil en deux clics.</li>
+        <li><b>Aucune écriture avant confirmation</b> : l'analyse précède, le tableau chiffre, l'import ne démarre qu'après le bouton (EF-26.5).</li>
+        <li><b>Les fichiers volumineux sont annoncés</b> à l'analyse (2 vidéos &gt; 500 Mo) avant d'alourdir les sauvegardes (EF-02.6, D-04).</li>
+        <li><b>La migration est idempotente</b> : la relancer ne crée pas de doublons (EF-26.3, A-03b).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

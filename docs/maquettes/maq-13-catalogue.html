@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQ-13 — Catalogue en ligne · OpenPresenter</title>
+<link rel="stylesheet" href="assets/maq.css">
+<style>
+  .app { height: 700px; display: grid; grid-template-rows: 52px 48px 1fr 48px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+
+  .head { display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #07080d; border-bottom: 1px solid var(--line); }
+  .head h1 { margin: 0; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 900; }
+  .head .net { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--ok); }
+  .head .net .dot { box-shadow: 0 0 6px #34d39988; }
+
+  .tabs { display: flex; align-items: center; gap: 6px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--bg-3); }
+  .tabs .tab { padding: 5px 10px; border-radius: 5px; font-size: 11px; color: var(--txt-2); border: 1px solid transparent; }
+  .tabs .tab.on { background: #f5b9421c; color: var(--accent); border-color: #f5b94255; font-weight: 700; }
+  .tabs .sp { flex: 1; }
+  .tabs .field { max-width: 260px; font-size: 11px; padding: 5px 8px; }
+
+  .list { overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .src { display: flex; gap: 12px; padding: 11px 13px; background: #0d1017; border: 1px solid var(--line); border-radius: 8px; }
+  .src:hover { border-color: var(--line-2); }
+  .src .ic { width: 34px; height: 34px; border-radius: 7px; background: #171b25; display: grid; place-items: center; font-size: 16px; flex: none; }
+  .src .body { flex: 1; min-width: 0; }
+  .src .t { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+  .src .m { font-size: 10px; color: var(--txt-3); margin-top: 3px; line-height: 1.5; }
+  .src .m b { color: var(--txt-2); font-weight: 600; }
+  .src .acts { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .src .right { width: 120px; flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .src .size { font-family: var(--mono); font-size: 10px; color: var(--txt-3); }
+
+  .lic { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 700; border: 1px solid; }
+  .lic.ok { background: #34d39916; color: #6ee7b7; border-color: #34d39944; }
+  .lic.warn { background: #f59e0b16; color: #fbbf24; border-color: #f59e0b44; }
+  .lic.unknown { background: #ef536016; color: #ff8e97; border-color: #ef536044; }
+
+  .prog { width: 120px; height: 4px; border-radius: 999px; background: #222a3c; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 62%; background: var(--accent); }
+
+  .foot { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-top: 1px solid var(--line); background: #07080d; font-size: 10px; color: var(--txt-3); }
+  .foot .sp { flex: 1; }
+
+  .side { display: grid; grid-template-columns: 1fr 320px; gap: 14px; padding: 14px; align-items: start; }
+  .aside { display: flex; flex-direction: column; gap: 12px; }
+  .aside .legend { margin: 0; font-size: 10px; }
+  .aside .legend h3 { font-size: 10px; }
+
+  .preview-box { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .preview-box .ph2 { padding: 7px 10px; background: #0a0c11; border-bottom: 1px solid var(--line); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--txt-3); font-weight: 800; }
+  .dis { padding: 14px; font-size: 11px; color: var(--txt-2); line-height: 1.6; }
+  .dis b { color: var(--txt); }
+  .dis .sw { width: 34px; height: 19px; border-radius: 999px; background: #2a3142; border: 1px solid var(--line-2); position: relative; display: inline-block; vertical-align: middle; }
+  .dis .sw i { position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #8b93a5; display: block; }
+  .dis .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+  .offline { border: 1px solid #ef536044; background: #ef53600d; border-radius: 8px; padding: 10px 12px; font-size: 10px; color: #ffb3ba; line-height: 1.55; }
+</style>
+</head>
+<body>
+
+<div class="maq-bar">
+  <b>OpenPresenter · maquettes</b>
+  <a href="index.html">Sommaire</a>
+  <a href="maq-01-accueil.html">01 Accueil</a>
+  <a href="maq-02-lanceur.html">02 Lanceur</a>
+  <a href="maq-03-studio-bible.html">03 Bible</a>
+  <a href="maq-04-chants.html">04 Chants</a>
+  <a href="maq-05-editeur.html">05 Éditeur</a>
+  <a href="maq-06-liens.html">06 Liens</a>
+  <a href="maq-07-profils.html">07 Profils</a>
+  <a href="maq-08-plan.html">08 Plan</a>
+  <a href="maq-09-scene.html">09 Scène</a>
+  <a href="maq-10-diagnostic.html">10 Diag</a>
+  <a href="maq-11-sorties.html">11 Sorties</a>
+  <a href="maq-12-reglages.html">12 Réglages</a>
+  <a href="maq-13-catalogue.html" class="on">13 Catalogue</a>
+  <a href="maq-14-premier-lancement.html">14 Départ</a>
+</div>
+
+<div class="maq">
+  <div class="maq-head">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <span class="url">http://localhost:8788/studio.html#settings/catalog</span>
+    <span>MAQ-13 · catalogue en ligne</span>
+  </div>
+  <div class="maq-note"><b>État représenté :</b> catalogue <em>activé manuellement</em>, connexion disponible, un téléchargement en cours. L'état livré par défaut, désactivé, est représenté à droite.</div>
+
+  <div class="side">
+
+    <div class="app">
+      <div class="head">
+        <h1>Catalogue en ligne</h1>
+        <span class="spacer"></span>
+        <span class="net"><span class="dot ok"></span> Connecté · api.getbible.net</span>
+        <button class="btn sm">⚙ Sources</button>
+      </div>
+
+      <div class="tabs">
+        <span class="tab on">Bibles</span>
+        <span class="tab">Chants</span>
+        <span class="tab">Fonds</span>
+        <span class="tab">Logos</span>
+        <span class="sp"></span>
+        <input class="field" value="Rechercher une version, une langue…">
+      </div>
+
+      <div class="list">
+
+        <div class="src">
+          <div class="ic">📖</div>
+          <div class="body">
+            <div class="t">Louis Segond 1910 <span class="pill">déjà installée</span></div>
+            <div class="m">Beblia · <b>français (fr)</b> · 31 102 versets · <span class="lic ok">Domaine public</span></div>
+            <div class="m">Les fichiers sont vérifiés par empreinte avant écriture.</div>
+            <div class="acts">
+              <button class="btn sm" disabled>Installée</button>
+              <button class="btn sm ghost">Voir la source</button>
+            </div>
+          </div>
+          <div class="right"><span class="size">4,3 Mo</span></div>
+        </div>
+
+        <div class="src">
+          <div class="ic">📖</div>
+          <div class="body">
+            <div class="t">King James Version</div>
+            <div class="m">Beblia · <b>anglais (en)</b> · 31 102 versets · <span class="lic ok">Domaine public</span></div>
+            <div class="m">Format source : XML Beblia. <b>Licence affichée avant téléchargement.</b></div>
+            <div class="acts">
+              <button class="btn sm primary">Télécharger</button>
+              <button class="btn sm ghost">Voir la source</button>
+            </div>
+          </div>
+          <div class="right"><span class="size">4,8 Mo</span></div>
+        </div>
+
+        <div class="src" style="border-color:#f5b94255">
+          <div class="ic">📖</div>
+          <div class="body">
+            <div class="t">Bible du Semeur <span class="pill warn">à vérifier</span></div>
+            <div class="m">getBible · <b>français (fr)</b> · 5,1 Mo · <span class="lic warn">Licence à vérifier</span></div>
+            <div class="m">La licence de cette version n'est pas explicite dans la source. Vérifiez-la avant tout usage public.</div>
+            <div class="acts">
+              <button class="btn sm">Voir la licence</button>
+              <button class="btn sm">Télécharger quand même</button>
+            </div>
+          </div>
+          <div class="right"><span class="size">5,1 Mo</span></div>
+        </div>
+
+        <div class="src">
+          <div class="ic">📖</div>
+          <div class="body">
+            <div class="t">Nouvelle version…</div>
+            <div class="m">Téléchargement en cours · 2,7 Mo sur 4,4 Mo · vérification d'empreinte à la fin</div>
+            <div class="acts">
+              <div class="prog"><i></i></div>
+              <button class="btn sm">Annuler</button>
+            </div>
+          </div>
+          <div class="right"><span class="size">62 %</span><span class="tiny dim">8 s restantes</span></div>
+        </div>
+
+        <div class="src" style="opacity:.6">
+          <div class="ic">📖</div>
+          <div class="body">
+            <div class="t">Version non libre</div>
+            <div class="m">Source désactivée · <span class="lic unknown">Licence inconnue</span></div>
+            <div class="m">Le bouton de téléchargement reste désactivé tant que la licence n'est pas connue (EF-27.11).</div>
+            <div class="acts"><button class="btn sm" disabled>Télécharger</button></div>
+          </div>
+          <div class="right"><span class="size">—</span></div>
+        </div>
+
+      </div>
+
+      <div class="foot">
+        <span>💡</span>
+        <span>Vous pouvez aussi importer un fichier téléchargé manuellement.</span>
+        <button class="btn sm">Importer un fichier XML…</button>
+        <span class="sp"></span>
+        <span>Aucune donnée du projet n'est envoyée.</span>
+      </div>
+    </div>
+
+    <div class="aside">
+
+      <div class="preview-box">
+        <div class="ph2">État livré par défaut — désactivé</div>
+        <div class="dis">
+          <b>Catalogue en ligne</b> <span class="sw"><i></i></span><br>
+          Aucune connexion n'est utilisée. Le catalogue ne s'active que par une action explicite dans les réglages.
+          <div class="row">
+            <button class="btn sm">Activer le catalogue…</button>
+          </div>
+          <div class="tiny dim" style="margin-top:7px">Tant que cet interrupteur est éteint, le diagnostic affiche « Désactivé par réglage » et aucune requête sortante n'est émise (EF-27.4).</div>
+        </div>
+      </div>
+
+      <div class="offline">
+        <b>Hors-ligne</b><br>
+        « Aucune connexion Internet. » — le catalogue se ferme proprement, le reste de l'application continue de fonctionner normalement (A-16).
+      </div>
+
+      <div class="legend">
+        <h3>Règles — chapitre <code>docs/spec/17-catalogue.md</code></h3>
+        <ul>
+          <li><b>Seule fonction réseau</b> du logiciel, désactivée par défaut (P1).</li>
+          <li><b>La licence est toujours visible</b> avant le téléchargement (EF-27.9).</li>
+          <li><b>Une licence inconnue désactive</b> le bouton : pas de téléchargement ambigu (EF-27.11).</li>
+          <li><b>Empreinte vérifiée</b> avant écriture ; un échec annule tout (SEC-4, A-16c).</li>
+          <li><b>Délai maximal 8 s</b>, message explicite, aucun blocage (A-16d).</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

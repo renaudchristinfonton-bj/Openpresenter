@@ -194,6 +194,8 @@ function failureHint(message = '') {
 /** Garde la fenêtre ouverte pour qu'on puisse lire le message (macOS/Linux). */
 async function holdOpen() {
   if (process.platform === 'win32' || !process.stdin.isTTY) return;
+  // Les scripts .sh/.command tiennent déjà la fenêtre ouverte : pas deux prompts.
+  if (process.env.OPENPRESENTER_SHELL_HOLD === '1') return;
   line('');
   line('  Appuyez sur Entrée pour fermer cette fenêtre.');
   await new Promise((resolve) => {

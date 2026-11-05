@@ -186,3 +186,19 @@ test('chaque lanceur garde la fenêtre ouverte à la fin', async () => {
   const sh = await fs.readFile(path.join(ROOT, 'Diagnostic.sh'), 'utf8');
   assert.match(sh, /project\/\.lock|\.lock/, 'le diagnostic montre le verrou');
 });
+
+test('les scripts macOS/Linux ne rendent pas la fenêtre avant lecture', async () => {
+  for (const name of ['OpenPresenter.sh', 'OpenPresenter.command']) {
+    const text = await fs.readFile(path.join(ROOT, name), 'utf8');
+    assert.match(text, /Appuyez sur Entrée pour fermer cette fenêtre/, `${name} ne tient pas la fenêtre`);
+    assert.doesNotMatch(text, /^exec /m, `${name} utilise encore exec`);
+    assert.match(text, /CODE=\$\?/, `${name} n'inspecte pas le code de sortie`);
+  }
+  // Sur Windows, `pause` doit se trouver sur le chemin nominal, pas seulement
+  // dans les branches d'erreur : c'est ce qui a produit la fenêtre qui claque.
+  const lines = (await fs.readFile(path.join(ROOT, 'OpenPresenter.bat'), 'utf8')).split('\n');
+  const run = lines.findIndex((l) => l.includes('launcher\\launch.mjs'));
+  const pause = lines.findIndex((l, i) => i > run && l.trim().toLowerCase() === 'pause');
+  assert.ok(run > 0, 'le .bat ne lance pas le lanceur');
+  assert.ok(pause > run, 'le .bat ne met pas pause après le lancement');
+});

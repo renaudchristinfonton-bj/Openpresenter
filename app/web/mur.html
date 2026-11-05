@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mur des sorties — OpenPresenter</title>
 <link rel="stylesheet" href="/theme.css">
+<script type="module" src="/session.js"></script>
 <style>
   /* ==========================================================================
      Mur des sorties — chaque sortie est un cadre vivant (la vraie page de
@@ -84,6 +85,8 @@
 // Le mur ne diffuse rien : il ouvre la page de sortie de chaque sortie, donc il
 // montre exactement ce que voit OBS (même moteur, même scène, même jeton).
 // ---------------------------------------------------------------------------
+import { withToken } from '/session.js';
+
 const $ = (selector) => document.querySelector(selector);
 
 function toast(message) {
@@ -117,12 +120,12 @@ function card(output) {
         <span class="op-pill" data-state="${esc(output.id)}"><span class="op-dot"></span><span data-state-text="${esc(output.id)}">hors antenne</span></span>
       </div>
       <div class="frame ${output.transparent ? 'transparent' : ''}">
-        <iframe src="${esc(urlFor(output))}" title="Sortie ${esc(output.name)}" loading="lazy"></iframe>
+        <iframe src="${esc(withToken(`/o/${encodeURIComponent(output.id)}`))}" title="Sortie ${esc(output.name)}" loading="lazy"></iframe>
       </div>
       <div class="cell-foot">
         <code title="${esc(urlFor(output))}">${esc(urlFor(output))}</code>
         <button class="btn" data-copy="${esc(output.id)}">Copier</button>
-        <a class="btn" href="${esc(urlFor(output))}" target="_blank" rel="noopener">↗ Ouvrir</a>
+        <a class="btn" href="${esc(withToken(`/o/${encodeURIComponent(output.id)}`))}" target="_blank" rel="noopener">↗ Ouvrir</a>
         <a class="btn" href="/scene.html?output=${encodeURIComponent(output.id)}">Scènes</a>
       </div>
       <div class="cell-foot" style="border-top:0;color:var(--txt3);font-size:10.5px">

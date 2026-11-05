@@ -66,7 +66,7 @@ serveur local sans aucune dépendance npm, lanceur universel qui ouvre le naviga
 
 ```bash
 ./OpenPresenter.sh        # macOS : ./OpenPresenter.command   Windows : OpenPresenter.bat
-npm test                  # 290 contrôles — 0 échec
+npm test                  # 291 contrôles — 0 échec
 npm run schema:check      # 16 schémas de l'annexe 24, validés sur un projet réel
 npm run trace:check       # cohérence du cahier des charges, T1 → T16
 ```
@@ -311,8 +311,9 @@ OpenPresenter/
 │   ├── launcher/launch.mjs              # vérifications, port, ouverture du navigateur
 │   ├── src/core/                        # projet, assets, scènes, rendu, profils, plans, bible, chants
 │   └── web/                             # accueil, régie, scènes, plan, événements, mur, orateur, sortie
-│       └── theme.css                    # thème commun (design FREESTREAM)
-├── app/tests/                           # 290 contrôles (npm test)
+│       ├── theme.css                    # thème commun (design FREESTREAM)
+│       └── session.js                   # jeton réseau propagé (fetch, WebSocket, liens)
+├── app/tests/                           # 291 contrôles (npm test)
 ├── project/                             # VOS données (hors dépôt) — portable, exportable
 ├── docs/spec/                           # 29 chapitres de spécification
 ├── docs/maquettes/                      # maquettes de référence

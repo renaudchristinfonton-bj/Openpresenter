@@ -75,6 +75,7 @@
   .empty{padding:24px;text-align:center;color:var(--txt3);font-size:13px}
 </style>
 <link rel="stylesheet" href="/theme.css">
+<script type="module" src="/session.js"></script>
 </head>
 <body>
 
@@ -154,7 +155,7 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&
 const params = new URLSearchParams(location.search);
 const eventId = params.get('event') || '';
 const token = params.get('t') || '';
-const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : '');
+const withToken = (url) => (token ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(token)}` : url);
 
 const KIND_LABELS = {
   note: 'note', bible: 'verset', song: 'chant', media: 'média',

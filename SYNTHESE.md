@@ -45,6 +45,7 @@ Sur cette base, la synthèse ajoute trois choses que **aucune** branche n'avait 
 | **Thème commun FREESTREAM** (`app/web/theme.css`) | design FREESTREAM | une seule palette, un seul jeu de rayons/ombres/pastilles pour les 8 pages. Avant : 4 palettes voisines qui divergeaient |
 | **Coque « ProPresenter » du studio** | demande utilisateur | rail vertical de 6 modules + bibliothèque à gauche + moniteur d'aperçu au centre + colonne « À l'antenne » à droite avec la vraie sortie en direct |
 | **Vue orateur + Mur des sorties** | V1 (`vue_pasteur`, `mur_previews`) + FREESTREAM (orateur) | deux écrans qui manquaient à la V3 : l'écran retour de scène et la surveillance de toutes les sorties |
+| **Session réseau (`session.js`)** | correction d'un bug V3 | le jeton `?t=` n'était propagé que par 4 pages sur 8 : depuis un second poste, la régie répondait 401. Et sans jeton, `withToken()` renvoyait une chaîne vide → `fetch('')` → l'accueil affichait « Serveur injoignable ». Les deux sont corrigés et testés |
 
 Détail des ajouts :
 
@@ -63,7 +64,10 @@ Détail des ajouts :
 - Liaison de scène **`next`** — le contenu suivant voyage avec la diffusion
   (`nextText`), ce qui permet une sortie « cœur » (texte courant + annonce du suivant)
   façon FREESTREAM, sans requête supplémentaire.
-- `app/tests/synthese-ui.test.mjs` — 9 contrôles qui protègent ces acquis.
+- `app/web/session.js` — le jeton réseau (`?t=`) est transporté par toutes les pages :
+  `fetch`, WebSocket et liens internes. Sans lui, piloter depuis un second PC était
+  cassé (401) et l'accueil local affichait « serveur injoignable ».
+- `app/tests/synthese-ui.test.mjs` — 10 contrôles qui protègent ces acquis.
 
 ---
 
@@ -87,7 +91,7 @@ node app/server.mjs            # ou ./OpenPresenter.sh
 #   http://localhost:8788/regie      → la régie (rail + 2 moniteurs)
 #   http://localhost:8788/mur        → toutes les sorties en un écran
 #   http://localhost:8788/orateur    → l'écran retour de scène
-npm test                       # 290 contrôles — 0 échec
+npm test                       # 291 contrôles — 0 échec
 ```
 
 ---

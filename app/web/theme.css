@@ -146,6 +146,11 @@ a {
   background: rgba(255, 212, 121, .08);
 }
 
+/* L'attribut `hidden` doit toujours gagner (les composants sont en flex). */
+[hidden] {
+  display: none !important;
+}
+
 /* Étiquette « en direct » */
 .op-live {
   display: inline-flex;

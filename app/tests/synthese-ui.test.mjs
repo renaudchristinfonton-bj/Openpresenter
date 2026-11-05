@@ -121,3 +121,27 @@ test('la liaison « next » alimente une sortie cœur (contenu suivant)', async 
   // Sans contenu suivant : rien n'est affiché, jamais « undefined ».
   assert.equal(resolveBind('next', {}, contentFromPayload({ text: 'Seul' }, 'songs')), '');
 });
+
+test('le jeton réseau est transporté par toutes les pages', async () => {
+  const { TOKEN, withToken, needsToken } = await import('../web/session.js');
+  // Sans jeton (machine locale), l'URL reste intacte : c'était le bug qui faisait
+  // `fetch('')` → la page HTML elle-même → « serveur injoignable ».
+  assert.equal(TOKEN, '');
+  assert.equal(withToken('/api/health', ''), '/api/health');
+  assert.equal(withToken('/api/health', 'AB12'), '/api/health?t=AB12');
+  assert.equal(withToken('/api/live/show?x=1', 'AB12'), '/api/live/show?x=1&t=AB12');
+  // Jamais de doubler, jamais toucher une URL externe.
+  assert.equal(withToken('/api/health?t=ZZ', 'AB12'), '/api/health?t=ZZ');
+  assert.equal(withToken('https://exemple.tld/api/health', 'AB12'), 'https://exemple.tld/api/health');
+  assert.equal(needsToken('/api/outputs'), true);
+  assert.equal(needsToken('/ws?channel=op_studio'), true);
+  assert.equal(needsToken('/studio.html'), false);
+
+  for (const page of PAGES) {
+    const html = await read(page);
+    assert.match(html, /<script type="module" src="\/session\.js"><\/script>/, `${page} sans session.js`);
+  }
+  // Le moniteur du studio et les cadres du mur portent le jeton.
+  assert.match(await read('studio.html'), /const src = withToken\(raw\)/);
+  assert.match(await read('mur.html'), /withToken\(`\/o\/\$\{encodeURIComponent\(output\.id\)\}`\)/);
+});

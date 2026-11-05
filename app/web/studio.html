@@ -93,7 +93,9 @@
   .refbar{font-family:var(--mono);font-size:12px;color:var(--accent)}
   .counter{font-family:var(--mono);font-size:11px;color:var(--txt3)}
 
-  .stage{flex:1;min-height:0;display:grid;place-items:center;padding:14px;position:relative}
+  .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:16px;position:relative}
+  .work-monitor{width:100%;max-width:1000px;background:#05070c}
+  .work-monitor .screen{width:100%;max-width:1000px;border-radius:0;box-shadow:none}
   .screen{
     position:relative;width:100%;max-width:960px;aspect-ratio:16/9;
     background:#000;border-radius:8px;overflow:hidden;
@@ -106,6 +108,7 @@
   .screen{position:relative;overflow:hidden;padding:0}
   .op-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:top left}
   .stage-idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#2b3040;font-weight:600;font-size:15px}
+  .screen.idle{border:1px dashed var(--line2)}
   .screen.idle .op-stage{display:none}
   .screen:not(.idle) .stage-idle{display:none}
 
@@ -256,9 +259,10 @@
      Hérite des jetons FREESTREAM posés par /theme.css.
      ========================================================================== */
   header{
-    height:56px;padding:0 14px;gap:12px;flex-wrap:nowrap;
+    height:56px;padding:0 14px;gap:12px;flex-wrap:nowrap;overflow:hidden;
     background:linear-gradient(180deg,#141b29,#10151f);
   }
+  header .op-live,header .chip,header .op-pill{white-space:nowrap;flex-shrink:0}
   .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;flex-shrink:0}
   .brand .mark{width:30px;height:30px;border-radius:9px;font-size:11px}
   .brand-txt b{display:block;font-size:13px;font-weight:800;letter-spacing:.14em;color:var(--accent);line-height:1.1}
@@ -320,6 +324,18 @@
     .workspace{grid-template-columns:88px minmax(0,1fr)}
     .air{display:none}
   }
+  @media (max-height:820px){
+    .rail .mode,.rail-link{padding:6px 3px;gap:2px}
+    .rail .mode .ico svg,.rail-link .ico svg{width:19px;height:19px}
+    .rail-sep{margin:4px 0}
+  }
+  @media (max-width:1180px){ .who{display:none} }
+  @media (max-width:1080px){
+    header a.chip[href="/socle.html"],header a.chip[href="/plan.html"]{display:none}
+  }
+  @media (max-width:920px){
+    header a.chip[href="/mur.html"],header a.chip[href="/orateur.html"]{display:none}
+  }
   @media (max-width:860px){
     .workspace{grid-template-columns:72px minmax(0,1fr)}
     .rail .mode,.rail-link{width:58px}
@@ -330,6 +346,7 @@
   }
 </style>
 <link rel="stylesheet" href="/theme.css">
+<script type="module" src="/session.js"></script>
 </head>
 <body>
 
@@ -540,7 +557,6 @@
 
   <section class="stage-wrap">
     <div class="stage-bar">
-      <span class="op-pill acc" title="Ce moniteur montre le contenu en préparation ; il ne part à l’antenne qu’après « Diffuser »">Aperçu</span>
       <span class="refbar" id="refbar">—</span>
       <span class="counter" id="counter"></span>
       <span class="spacer"></span>
@@ -551,9 +567,16 @@
     </div>
 
     <div class="stage">
-      <div class="screen idle" id="screen">
-        <div class="op-stage" id="stage"></div>
-        <div class="stage-idle" id="preview">Aucun contenu à l’antenne</div>
+      <div class="op-monitor work-monitor">
+        <div class="op-monitor-bar">
+          <span>Travail · aperçu</span>
+          <span class="spacer"></span>
+          <span class="op-tag">WYSIWYG</span>
+        </div>
+        <div class="screen idle" id="screen">
+          <div class="op-stage" id="stage"></div>
+          <div class="stage-idle" id="preview">Aucun contenu à l’antenne</div>
+        </div>
       </div>
     </div>
 
@@ -576,9 +599,9 @@
     <a class="btn sm" href="/orateur.html">Orateur</a>
   </div>
   <div class="air-sec">
-    <h3>Depuis le début</h3>
+    <h3>Depuis l’ouverture</h3>
     <div class="air-elapsed" id="airElapsed">00:00:00</div>
-    <p class="op-note">Le compteur part du démarrage du serveur ; il remet la régie dans le rythme du culte.</p>
+    <p class="op-note">Compteur de séance : il repart à l’ouverture de la régie et sert de repère pendant le culte.</p>
   </div>
   <div class="air-sec">
     <h3>Repères</h3>
@@ -656,6 +679,7 @@ Couplet 1
 <div class="toast" id="toast"></div>
 
 <script type="module">
+import { withToken } from '/session.js';
 import { createEntry, STATE } from '/shared/bible/reference.mjs';
 import { navigate, currentItem, actionForKey, isTypingTarget, positionLabel } from '/shared/bible/navigation.mjs';
 // Le même moteur que la page de sortie : l'aperçu est la sortie (A-10).
@@ -2651,6 +2675,7 @@ async function boot() {
       const air = await fetch('/api/live/state', { cache: 'no-store' }).then((r) => r.json());
       for (const [id, entry] of Object.entries(air.channels || {})) onAir.set(id, entry.kind);
     } catch { /* rien à l'antenne */ }
+    paintAir();
     targets = new Set(outputs.filter((o) => o.targetByDefault !== false && o.receives?.bible !== false).map((o) => o.id));
     paintOutputs();
     paintBibleVersion();
@@ -2815,7 +2840,8 @@ function refreshAir() {
   const output = primaryOutput();
   if (!output) return;
   const frame = $('#airFrame');
-  const src = `/o/${encodeURIComponent(output.id)}`;
+  const raw = `/o/${encodeURIComponent(output.id)}`;
+  const src = withToken(raw);
   if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
   $('#airOpen').setAttribute('href', src);
   $('#airName').textContent = output.name;

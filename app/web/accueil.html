@@ -186,15 +186,15 @@
   <div class="live" id="livePill"><span class="dot"></span><span id="liveText">Rien à l’antenne</span></div>
   <span class="targets" id="targets"></span>
   <span class="spacer"></span>
-  <button class="btn danger" id="clearAll" disabled title="Tout couper (Échap)">⏹ Tout couper</button>
+  <button class="btn danger" id="clearAll" disabled title="Tout couper (Échap)">Tout couper</button>
 </header>
 
 <div class="context">
-  <span class="item">⏱ <span class="val" id="elapsed">00:00:00</span> <span class="tag">depuis le début</span></span>
-  <span class="item">⌚ <span class="val" id="clock">—</span></span>
-  <span class="item">📶 <span class="val" id="lan">local</span></span>
-  <span class="item">🖥 <span id="online">0 sortie en ligne</span></span>
-  <span class="item">🎛 <span class="val" id="activeProfile">—</span> <span class="tag">profil actif</span></span>
+  <span class="item"><span class="tag">durée</span> <span class="val" id="elapsed">00:00:00</span></span>
+  <span class="item"><span class="tag">heure</span> <span class="val" id="clock">—</span></span>
+  <span class="item"><span class="tag">réseau</span> <span class="val" id="lan">local</span></span>
+  <span class="item"><span id="online">0 sortie en ligne</span></span>
+  <span class="item"><span class="val" id="activeProfile">—</span> <span class="tag">profil actif</span></span>
   <span class="spacer"></span>
   <span class="tag" id="runtime"></span>
 </div>
@@ -203,7 +203,7 @@
   <div class="profiles-head">
     <h2>Profils</h2>
     <span class="spacer"></span>
-    <button class="btn sm" id="captureProfile" title="Enregistrer la configuration actuelle comme profil">＋ Enregistrer cette configuration</button>
+    <button class="btn sm" id="captureProfile" title="Enregistrer la configuration actuelle comme profil">+ Enregistrer cette configuration</button>
   </div>
   <div class="profile-grid" id="profileGrid"></div>
 </section>
@@ -243,7 +243,7 @@
 </dialog>
 
 <div class="main-action">
-  <button class="studio" id="openStudio">🎬 Ouvrir le Studio Unifié</button>
+  <button class="studio" id="openStudio">Ouvrir la régie</button>
   <div class="alt-links">
     <a href="/mur.html">Mur des sorties</a>
     <a href="/orateur.html">Vue orateur</a>
@@ -263,13 +263,13 @@
   <div class="box">
     <h2>Aujourd’hui</h2>
     <div class="counts" id="todayEvents">…</div>
-    <a href="/events.html">📅 Organisations et événements</a>
+    <a href="/events.html">Organisations et événements</a>
   </div>
   <div class="box">
     <h2>Projet</h2>
-    <a href="/api/export" download>📦 Exporter le projet</a>
-    <a href="/socle.html">🧹 Intégrité et diagnostic</a>
-    <a href="/api/project" target="_blank" rel="noopener">🗂 Voir la configuration</a>
+    <a href="/api/export" download>Exporter le projet</a>
+    <a href="/socle.html">Intégrité et diagnostic</a>
+    <a href="/api/project" target="_blank" rel="noopener">Voir la configuration</a>
   </div>
   <div class="box">
     <h2>Raccourcis</h2>
@@ -361,7 +361,7 @@ function paintAgenda(agenda) {
   const next = (agenda.upcoming || [])[0];
   const time = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   if (today.length) {
-    box.innerHTML = today.map((event) => `<span>📅 <b>${esc(event.name)}</b> · ${time(event.startsAt)}${
+    box.innerHTML = today.map((event) => `<span><b>${esc(event.name)}</b> · ${time(event.startsAt)}${
       event.cues ? ` · ${event.cues} étape(s)` : ''}</span>`).join('');
   } else if (next) {
     box.innerHTML = `<span>Prochain : <b>${esc(next.name)}</b> · ${

@@ -83,7 +83,7 @@
   <span class="mark">OP</span>
   <div class="title" id="planTitle">Plan de déroulement <small id="planSub">chargement…</small></div>
   <span class="spacer"></span>
-  <button class="btn" id="addCue" title="Ajouter une étape">＋ Étape</button>
+  <button class="btn" id="addCue" title="Ajouter une étape">+ Étape</button>
   <button class="btn" id="importPlan" title="Importer un déroulé (Ctrl+I)">⬆ Importer</button>
   <a class="btn" id="printPlan" href="#" target="_blank" rel="noopener">🖨 Imprimer</a>
   <button class="btn" id="resetPlan" title="Revenir à la première étape">↺ Réinitialiser</button>
@@ -199,7 +199,7 @@ const fmtDuration = (seconds) => {
 function paintCues() {
   const list = $('#cueList');
   if (!cues.length) {
-    list.innerHTML = '<div class="empty">Aucune étape. Utilisez « ＋ Étape » ou « ⬆ Importer ».</div>';
+    list.innerHTML = '<div class="empty">Aucune étape. Utilisez « + Étape » ou « ⬆ Importer ».</div>';
     return;
   }
   list.innerHTML = cues.map((cue, index) => `

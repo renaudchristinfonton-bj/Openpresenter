@@ -413,7 +413,7 @@
       <div class="row" style="margin-bottom:8px">
         <span class="chip" id="bibleVersion" title="Version utilisée pour la saisie et la diffusion">version —</span>
         <span class="spacer"></span>
-        <button class="btn sm" id="bibleOpenImport" title="Importer une version biblique (.xml)">＋ Bible</button>
+        <button class="btn sm" id="bibleOpenImport" title="Importer une version biblique (.xml)">+ Bible</button>
       </div>
       <div class="field active" id="field" tabindex="0" role="combobox" aria-expanded="false" aria-label="Recherche de référence biblique">
         <span class="prefix" id="prefix" hidden>Jean ▸</span>
@@ -443,7 +443,7 @@
     <div class="field-wrap">
       <div class="row">
         <input class="search" id="annSearch" type="search" placeholder="Rechercher une annonce…" aria-label="Rechercher une annonce">
-        <button class="btn primary" id="annNew" title="Nouvelle annonce">＋ Nouvelle</button>
+        <button class="btn primary" id="annNew" title="Nouvelle annonce">+ Nouvelle</button>
       </div>
       <div class="hint">Cliquez une annonce pour l’afficher sur les sorties cochées.</div>
     </div>
@@ -455,24 +455,24 @@
     <div class="field-wrap">
       <div class="row">
         <input class="search" id="songSearch" type="search" placeholder="Chant, auteur ou paroles…" aria-label="Rechercher un chant">
-        <button class="btn primary" id="songImport" title="Importer un chant (Ctrl+O)">＋ Importer</button>
+        <button class="btn primary" id="songImport" title="Importer un chant (Ctrl+O)">+ Importer</button>
       </div>
       <div class="hint">
         <kbd>↑</kbd><kbd>↓</kbd> parcourir · <kbd>↵</kbd> diffuser · <kbd>Maj</kbd>+<kbd>→</kbd> sauter une section
         · <kbd>1</kbd>…<kbd>9</kbd> aller à une étape · <kbd>Échap</kbd> couper
       </div>
     </div>
-    <h2>Sons <span class="spacer"></span><span class="chip" id="songCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
+    <h2>Chants <span class="spacer"></span><span class="chip" id="songCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
     <div class="songs" id="songList"></div>
     <h2>Conducteur <span class="spacer"></span><span class="chip" id="songInfo" style="border:none;background:none;color:var(--txt3)"></span></h2>
     <div class="arrangement">
       <label for="arrangement" style="font-size:11px;color:var(--txt3)">Ordre</label>
       <select id="arrangement" aria-label="Arrangement"></select>
-      <button class="btn sm" id="addArrangement" title="Dupliquer l’ordre courant dans un nouvel arrangement">＋</button>
+      <button class="btn sm" id="addArrangement" title="Dupliquer l’ordre courant dans un nouvel arrangement">+</button>
     </div>
     <div class="conductor" id="conductor"></div>
     <div class="quick">
-      <button class="btn sm" id="qAppend" title="Ajouter un refrain à la fin">＋ Refrain à la fin</button>
+      <button class="btn sm" id="qAppend" title="Ajouter un refrain à la fin">+ Refrain à la fin</button>
       <button class="btn sm" id="qRepeat" title="Répéter la section courante">↻ Répéter</button>
       <button class="btn sm" id="qSkip" title="Sauter la section courante">⤼ Sauter</button>
     </div>
@@ -482,7 +482,7 @@
     <div class="field-wrap">
       <div class="row">
         <input class="search" id="mediaSearch" type="search" placeholder="Nom du média… (image ou vidéo)" aria-label="Rechercher un média">
-        <button class="btn primary" id="mediaImport" title="Importer une image ou une vidéo (Ctrl+O)">＋ Importer</button>
+        <button class="btn primary" id="mediaImport" title="Importer une image ou une vidéo (Ctrl+O)">+ Importer</button>
       </div>
       <div class="hint">Un clic = à l’antenne · <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> parcourir · <kbd>↵</kbd> rediffuser · <kbd>Échap</kbd> couper</div>
     </div>
@@ -518,7 +518,7 @@
     <h2>Bandeaux enregistrés <span class="spacer"></span><span class="chip" id="ltCount" style="border:none;background:none;color:var(--txt3)"></span></h2>
     <div class="songs" id="ltList" style="max-height:none;flex:1"></div>
     <div class="quick">
-      <button class="btn sm" id="ltSave" title="Enregistrer ce nom et cette fonction dans le projet">＋ Enregistrer ce bandeau</button>
+      <button class="btn sm" id="ltSave" title="Enregistrer ce nom et cette fonction dans le projet">+ Enregistrer ce bandeau</button>
     </div>
    </div>
 
@@ -943,7 +943,7 @@ function paintSongs() {
   if (!items.length) {
     list.innerHTML = `<div class="empty-state">${songs.length
       ? 'Aucun chant ne correspond à la recherche.'
-      : `Aucun chant pour l’instant.<br>Cliquez sur <b>＋ Importer</b> et collez les paroles,
+      : `Aucun chant pour l’instant.<br>Cliquez sur <b>+ Importer</b> et collez les paroles,
          ou <button class="btn sm" id="sampleSongs" style="margin-top:8px">ajoutez deux chants d’exemple</button>.`}</div>`;
     $('#sampleSongs')?.addEventListener('click', loadSampleSongs);
     return;
@@ -1334,7 +1334,7 @@ function renderMedia() {
   $('#mediaCount').textContent = mediaItems.length ? `${mediaItems.length} fichier(s)` : '';
   if (!mediaItems.length) {
     grid.innerHTML = `<div class="empty-state">Aucun média ici pour l’instant.<br>
-      « ＋ Importer » copie le fichier dans le projet : il reste affichable hors ligne.</div>`;
+      « + Importer » copie le fichier dans le projet : il reste affichable hors ligne.</div>`;
     return;
   }
   grid.innerHTML = mediaItems.map((item, i) => `
@@ -1572,7 +1572,7 @@ function renderLtList() {
   const box = $('#ltList');
   $('#ltCount').textContent = ltPresets.length ? String(ltPresets.length) : '';
   if (!ltPresets.length) {
-    box.innerHTML = `<div class="empty-state">Aucun bandeau enregistré.<br>Renseignez un nom puis « ＋ Enregistrer ce bandeau ».</div>`;
+    box.innerHTML = `<div class="empty-state">Aucun bandeau enregistré.<br>Renseignez un nom puis « + Enregistrer ce bandeau ».</div>`;
     return;
   }
   box.innerHTML = ltPresets.map((item) => `
@@ -2278,7 +2278,7 @@ function renderAnnouncements() {
   if (!items.length) {
     list.innerHTML = `<div class="empty-state">${announcements.length
       ? 'Aucune annonce ne correspond.'
-      : 'Aucune annonce.<br>Cliquez sur <b>＋ Nouvelle</b> pour en écrire une.'}</div>`;
+      : 'Aucune annonce.<br>Cliquez sur <b>+ Nouvelle</b> pour en écrire une.'}</div>`;
     return;
   }
   list.innerHTML = items.map((item) => `

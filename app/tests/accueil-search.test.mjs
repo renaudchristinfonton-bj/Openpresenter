@@ -27,7 +27,10 @@ test('EF-05 : la racine ouvre l’accueil, le studio reste sur /studio.html', as
     for (const id of ['livePill', 'clearAll', 'cards', 'openStudio', 'clock', 'lan']) {
       assert.match(html, new RegExp(`id="${id}"`), id);
     }
-    assert.match(html, /Ouvrir le Studio Unifié/);
+    // L'action principale mène à la régie (libellé 2026-11).
+    assert.match(html, /Ouvrir la régie/);
+    assert.match(html, /href="\/mur.html"/);
+    assert.match(html, /href="\/orateur.html"/);
     // Le même moteur de rendu que la sortie (EF-05.2 / ENF-42).
     assert.match(html, /from '\/shared\/render\/engine\.mjs'/);
     assert.match(html, /mountScene\(/);

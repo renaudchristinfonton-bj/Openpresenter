@@ -19,6 +19,16 @@ OpenPresenter réunit tous les outils de projection dont une régie a besoin (Bi
 >
 > Les choix de fusion sont documentés dans **[`SYNTHESE.md`](SYNTHESE.md)**.
 
+### Aperçus
+
+| Régie (`/regie`) | Mur des sorties (`/mur`) |
+|---|---|
+| ![Régie : rail des modules, bibliothèque, moniteur d'aperçu et colonne « à l'antenne »](docs/captures/01-regie.png) | ![Mur : chaque sortie en direct avec son adresse OBS](docs/captures/03-mur.png) |
+
+| Vue orateur (`/orateur`) | Accueil (`/`) |
+|---|---|
+| ![Vue orateur : texte courant, contenu suivant, horloge](docs/captures/04-orateur.png) | ![Accueil : profils, cartes de sorties, bibliothèque](docs/captures/02-accueil.png) |
+
 ---
 
 ## Sommaire

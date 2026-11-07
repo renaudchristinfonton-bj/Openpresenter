@@ -1,10 +1,31 @@
 {
-  "name": "obs-relay-server",
-  "version": "1.0.0",
-  "description": "Petit serveur local qui sert vos pages OBS Control/Display et relaie les messages entre elles sur le réseau, pour piloter OBS depuis un navigateur normal ou un autre PC.",
+  "name": "openpresenter-local",
+  "version": "1.0.1",
+  "description": "OpenPresenter V1 : serveur local pour piloter Bible, Chants et scènes OBS, sans service cloud.",
   "private": true,
   "main": "sync-relay-server.js",
   "scripts": {
-    "start": "node sync-relay-server.js"
+    "start": "node sync-relay-server.js",
+    "start:app": "node desktop-launcher.js",
+    "build:windows": "node build-windows.mjs"
+  },
+  "pkg": {
+    "scripts": [
+      "desktop-launcher.js",
+      "sync-relay-server.js"
+    ],
+    "assets": [
+      "*.html",
+      "*.webmanifest",
+      "store.js",
+      "sw.js",
+      "css/**/*",
+      "js/**/*",
+      "vendor/**/*",
+      "icons/**/*"
+    ]
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.25.0"
   }
 }

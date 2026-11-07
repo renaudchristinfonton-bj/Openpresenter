@@ -6,6 +6,7 @@
   "scripts": {
     "check:syntax": "bash check-syntax.sh",
     "test:unit": "node test-live-mutex.mjs",
+    "test:v1-features": "node test-v1-features.mjs",
     "test:integration": "node test-integration.mjs",
     "test": "npm run check:syntax && npm run test:unit && npm run test:integration"
   },

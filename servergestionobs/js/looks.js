@@ -2,14 +2,14 @@
 // js/looks.js — Looks : habillage global de la régie (v2)
 // ============================================================
 // Un « look » = UN jeu de réglages qui peut être DIFFÉRENT pour la Bible et
-// les Paroles (mais sauvegardé et appliqué ensemble, en 1 clic) :
+// les Chants (mais sauvegardé et appliqué ensemble, en 1 clic) :
 //   { id, name, icon?, bible: {...}, lyrics: {...} }
 // Chaque réglage d'outil = champs displaySettings de l'outil (fond + opacité,
 // accent, texte, police, coins, image de fond dataURL, flou) + `layout` :
 // la géométrie de CHAQUE mode d'affichage (plein écran, bas centré, bas droite,
 // ruban défilant) — largeur/hauteur/écarts en % → comme les modèles de FreeShow.
 //
-// - 6 préréglages intégrés (identiques Bible/Paroles) ;
+// - 6 préréglages intégrés (identiques Bible/Chants) ;
 // - looks PERSONNALISÉS créés dans looks_editor.html, stockés dans le dossier
 //   du projet (data/looks/list.json via OpenStore) → portables ;
 // - application : persistée dans les réglages de chaque outil + diffusée en

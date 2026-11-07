@@ -2,7 +2,7 @@
 // js/ui.js — Helpers partagés (refactor, axe E)
 // ============================================================
 // Petits utilitaires identiques entre outils (lecture safe du localStorage,
-// conversion de couleurs). Auparavant dupliqués dans Bible et Paroles.
+// conversion de couleurs). Auparavant dupliqués dans Bible et Chants.
 (function () {
     'use strict';
 

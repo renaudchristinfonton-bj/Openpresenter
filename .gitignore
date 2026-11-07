@@ -3,3 +3,7 @@ servergestionobs/data/
 
 # Tests : dépendances npm locales (jouer « npm i » dans servergestionobs/tests)
 servergestionobs/tests/node_modules/
+
+# Application Windows empaquetée (diffusée en asset de release GitHub)
+servergestionobs/dist/
+servergestionobs/node_modules/

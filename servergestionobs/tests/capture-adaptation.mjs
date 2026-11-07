@@ -82,8 +82,8 @@ try {
     await shot('4-decoupage-bas-verrouille-part1.png', BASE + '/bible_control_display_pro.html?obs=true&res=1920x432&lockMode=bottom', { width: 1920, height: 432 }, renderBottomPart);
     // 5. Annotation avec contraste intelligent (jaune→texte sombre, bleu→texte blanc).
     await shot('5-annotation-contraste.png', BASE + '/bible_control_display_pro.html?obs=true&res=1280x720', { width: 1280, height: 720 }, renderAnnot);
-    // 6. Paroles adaptées au portrait.
-    await shot('6-paroles-adapt-portrait.png', BASE + '/lyrics_control_display_pro.html?obs=true&res=720x1280', { width: 720, height: 1280 }, () => renderDisplay(
+    // 6. Chants adaptées au portrait.
+    await shot('6-chants-adapt-portrait.png', BASE + '/lyrics_control_display_pro.html?obs=true&res=720x1280', { width: 720, height: 1280 }, () => renderDisplay(
         { reference: 'Grâce Infinie', sectionLabel: 'Refrain', text: 'Quand je marche dans la vallee\nde l\'ombre de la mort,\\ntu es avec moi.', mode: 'full', bgColor: 'rgba(20, 10, 40, 0.95)', accentColor: '#8b5cf6', textColor: '#ffffff', fontFamily: 'serif' },
         document.getElementById('obs-container'), document.getElementById('obs-card-element'), document.getElementById('obs-content-area'), document.getElementById('obs-bg-layer'), 'obs'));
 } finally {

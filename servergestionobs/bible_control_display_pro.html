@@ -38,8 +38,20 @@
         .scene-root { position: absolute; box-sizing: border-box; overflow: hidden; }
         .scene-root.tpl-mode-full     { top:3.7%; left:2.08%; width:95.84%; height:92.6%; padding: 7.4vh 5vw; border-top:2px solid var(--accent-color); border-bottom:2px solid var(--accent-color); }
         .scene-root.tpl-mode-screen80 { top:10%;   left:10%;    width:80%;    height:80%;    padding: 6vh 5vw;   border-top:6px solid var(--accent-color); border-bottom:6px solid var(--accent-color); }
-        .scene-root.tpl-mode-bottom   { bottom:5.56%; left:2%; width:96%;    height:25%;    padding: 2vh 2.5vw; border-left:8px solid var(--accent-color); }
+        .scene-root.tpl-mode-bottom   { bottom:5.56%; left:10%; width:80%;    height:25%;    padding: 2vh 2.5vw; border-left:8px solid var(--accent-color); box-shadow:0 20px 30px -10px rgba(0,0,0,.6); backdrop-filter:blur(8px); }
         .scene-root.tpl-mode-bottom-right{ bottom:5.56%; right:3%; width:80%;  height:25%;    padding: 2vh 2.5vw; border-right:8px solid var(--accent-color); }
+        /* Nouveau mode facultatif : composition pleine scène, transparente, pour le bas centré. */
+        .scene-root.tpl-mode-bottom-default { top:0; left:0; width:100%; height:100%; padding:0; border:0; }
+        .scene-root.tpl-mode-bottom-default .layer-content { overflow:visible; }
+        .scene-root.tpl-mode-bottom-default .blk-ref { white-space:normal; text-shadow:none; }
+        .scene-root.tpl-mode-bottom-default .blk-text { text-shadow:none; }
+        .scene-root.tpl-mode-bottom-default .blk-align-left .verse-line { align-self:stretch; }
+        .scene-root.tpl-mode-bottom-default .verse-number { color:#334155; font-family:'Inter',sans-serif; font-size:.65em; font-weight:800; line-height:0; margin-right:.45em; vertical-align:super; }
+        /* Ancien bas centré conservé : cadre sombre à liseré et référence/version séparées. */
+        .scene-root.tpl-mode-bottom .layer-content .blk-ref { white-space:normal; text-shadow:none; }
+        .scene-root.tpl-mode-bottom .blk-text { text-shadow:none; }
+        .scene-root.tpl-mode-bottom .blk-align-left .verse-line { align-self:stretch; }
+        .scene-root.tpl-mode-bottom .verse-number { color:#334155; font-family:'Inter',sans-serif; font-size:.65em; font-weight:800; line-height:0; margin-right:.45em; vertical-align:super; }
         .scene-root.has-bg-image .layer-bg-image { position:absolute; inset:0; z-index:0; background-size:cover; background-position:center; }
         .scene-root.has-bg-cover .layer-bg-image { position:absolute; top:0;left:0;width:100vw;height:100vh; z-index:0; background-size:cover; background-position:center; }
         .scene-root .layer-overlay { position:absolute; inset:0; z-index:1; background: var(--bg-color); border-radius: var(--shape-radius, 16px); pointer-events:none; }
@@ -50,10 +62,6 @@
         .scene-root .layer-content .blk-ref  { color: var(--accent-color); font-family:'Cinzel',serif; font-weight:800; white-space:nowrap; text-shadow:0 2px 8px rgba(0,0,0,.5); }
         .scene-root .layer-content .blk-text { color: var(--text-color); font-family:'Merriweather',serif; font-weight:600; line-height:1.35; text-shadow:0 2px 8px rgba(0,0,0,.5); display:flex; flex-direction:column; align-items:center; justify-content:center; }
         .scene-root .layer-content .blk-text .verse-line { display:block; }
-        .scene-root.tpl-mode-bottom .layer-content .blk-ref { white-space:normal; text-shadow:none; }
-        .scene-root.tpl-mode-bottom .blk-text { text-shadow:none; }
-        .scene-root.tpl-mode-bottom .blk-align-left .verse-line { align-self:stretch; }
-        .scene-root.tpl-mode-bottom .verse-number { color:#334155; font-family:'Inter',sans-serif; font-size:.65em; font-weight:800; line-height:0; margin-right:.45em; vertical-align:super; }
         .scene-root .layer-content .blk-badge{ position:absolute; background: var(--accent-color); color:#0b0f1a; font-family:'Inter',sans-serif; font-weight:800; border-radius:999px; padding:.35em 1em; }
         .scene-root.hide-ref .blk-ref, .scene-root.hide-ref .blk-badge { display:none !important; }
         .scene-root .blk-align-left   .verse-line{align-self:flex-start;text-align:left;}
@@ -436,7 +444,8 @@
                     <select id="obs-mode-select" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block p-2">
                         <option value="full" selected>Plein Écran (Centré)</option>
                         <option value="screen80">80% Écran (Centré)</option>
-                        <option value="bottom">Bas Centré</option>
+                        <option value="bottom">Bas Centré (classique)</option>
+                        <option value="bottom-default">Bas centré par défaut</option>
                         <option value="bottom-right">Bas Droite</option>
                         <option value="custom">Custom (libre)</option>
                         <option value="scrolling">Ruban Défilant</option>
@@ -448,8 +457,9 @@
                     ✨ Modèles (éditeur visuel)
                 </button>
 
-                <div id="verse-parts-nav" class="hidden items-center gap-1 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1" title="Verset long découpé : naviguez entre les parties (uniquement en modes Bas centré / Bas droite)">
+                <div id="verse-parts-nav" class="hidden items-center gap-1 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1" title="Verset long découpé : choisissez une partie ou parcourez-les avec les flèches">
                     <button id="btn-part-prev" type="button" class="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 text-white font-bold" title="Partie précédente">←</button>
+                    <div id="verse-part-buttons" class="flex items-center gap-1 max-w-[240px] overflow-x-auto" aria-label="Choisir une partie du verset"></div>
                     <span id="verse-parts-indicator" class="text-xs font-bold text-amber-400 min-w-[36px] text-center tabular-nums">1/1</span>
                     <button id="btn-part-next" type="button" class="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 text-white font-bold" title="Partie suivante">→</button>
                 </div>
@@ -658,7 +668,7 @@
                 </div>
                 <div class="flex items-center gap-2 mt-6">
                     <input type="checkbox" id="set-line-mode" class="w-5 h-5 accent-amber-500">
-                    <label for="set-line-mode" class="text-sm text-slate-300" title="Versets longs : affichage ligne par ligne. Sur les sorties « bas centré » et « bas droite » uniquement, un verset trop long est en plus découpé en plusieurs affichages successifs (boutons ← →). Les autres sorties ne sont pas affectées.">Afficher ligne par ligne (versets longs)</label>
+                    <label for="set-line-mode" class="text-sm text-slate-300" title="Les découpes de versets longs restent limitées aux sorties du bas : Bas centré classique, Bas centré par défaut et Bas droite. En plein écran, le verset reste toujours entier.">Afficher ligne par ligne (versets longs)</label>
                 </div>
                 <div class="flex items-center gap-2 mt-2">
                     <input type="checkbox" id="set-hide-ref" class="w-5 h-5 accent-amber-500">
@@ -898,9 +908,11 @@
                         <h4>Versets longs (découpage ProPresenter/FreeShow)</h4>
                         <select id="tpl-split-mode" class="tpl-select w-full">
                             <option value="none">Affichage complet (pas de split)</option>
-                            <option value="auto">Découper automatiquement en plusieurs diapositives</option>
+                            <option value="auto">Découper automatiquement en caractères (modèles classiques)</option>
+                            <option value="words">Découpage équilibré en mots (bas centré par défaut)</option>
                         </select>
-                        <div class="tpl-row mt-2"><label>Caractères / partie</label><input type="range" id="tpl-split-chars" min="80" max="400" step="10"><span id="tpl-split-chars-v" style="width:34px;text-align:right;">180</span></div>
+                        <div class="tpl-row mt-2" id="tpl-split-chars-row"><label>Caractères / partie</label><input type="range" id="tpl-split-chars" min="80" max="400" step="10"><span id="tpl-split-chars-v" style="width:34px;text-align:right;">180</span></div>
+                        <div class="tpl-row mt-2" id="tpl-split-words-row" style="display:none"><label>Mots max / partie</label><input type="range" id="tpl-split-words" min="8" max="40" step="1"><span id="tpl-split-words-v" style="width:34px;text-align:right;">22</span></div>
                         <label class="flex items-center gap-2 text-[11px] text-slate-400 mt-2"><input type="checkbox" id="tpl-split-lines">Afficher plusieurs lignes à l'intérieur d'une diapositive</label>
                         <p class="text-[10px] text-slate-500 mt-2">En mode split, les flèches ← → (et clics sur les bords de la carte OBS) font défiler les parties. Le split ne s'active QUE si le verset dépasse la longueur.</p>
                     </div>
@@ -996,13 +1008,23 @@
                     }
                 };
                 case 'bottom': return {
-                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#2563eb', textColor:'#111827',
-                    shapeRadius:12, bgOpacity:0, transparent:true, bgCover:false, lowerThirdSchema:2,
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#f59e0b', textColor:'#ffffff',
+                    shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
                     splitMode: 'auto', splitChars: 180, splitByLines: true,
                     blocks: {
-                        ref:   {visible:true, x:74, y:18, w:50, h:30, fontSize:24, font:'Inter',       weight:800, color:'#ffffff', align:'center', letterSpacing:0, shadow:0, bg:'#2563eb', bgRadius:12},
-                        badge: {visible:false,x:74, y:18, w:50, h:30, fontSize:22, font:'Inter',       weight:800, color:'#ffffff', align:'center', bg:'#2563eb'},
-                        text:  {visible:true, x:50, y:70, w:98, h:56, fontSize:44, font:'Merriweather',weight:600, color:'#111827', align:'left',   letterSpacing:0, shadow:0, lineHeight:1.3, bg:'#f8fafc', bgRadius:8, bgPadding:18}
+                        ref:   {visible:true, x:29, y:20, w:56, h:22, fontSize:38, font:'Cinzel',      weight:800, color:'#f59e0b', align:'left',   letterSpacing:1, shadow:0},
+                        badge: {visible:true, x:82, y:20, w:18, h:20, fontSize:22, font:'Inter',       weight:800, color:'#0b0f1a', align:'center', bg:'#f59e0b'},
+                        text:  {visible:true, x:50, y:66, w:90, h:62, fontSize:46, font:'Merriweather',weight:600, color:'#ffffff', align:'center', letterSpacing:0, shadow:2, lineHeight:1.35}
+                    }
+                };
+                case 'bottom-default': return {
+                    bgImage: null, bgColor: 'rgba(15,23,42,0.92)', accentColor:'#2563eb', textColor:'#111827',
+                    shapeRadius:12, bgOpacity:0, transparent:true, bgCover:false, lowerThirdSchema:2,
+                    splitMode: 'words', splitChars: 180, splitWords: 22, minSplitParts: 4, minSplitWordThreshold: 40, splitByLines: false,
+                    blocks: {
+                        ref:   {visible:true, x:74, y:14, w:52, h:25, fontSize:30, font:'Inter', weight:800, color:'#ffffff', align:'center', letterSpacing:0, shadow:0, bg:'linear-gradient(110deg,#1678eb 0%,#2938d6 100%)', bgRadius:0, bgPadding:12, shape:'trapezoid'},
+                        badge: {visible:false,x:74, y:14, w:52, h:25, fontSize:22, font:'Inter', weight:800, color:'#ffffff', align:'center', bg:'#2563eb'},
+                        text:  {visible:true, x:50, y:74, w:94, h:44, fontSize:48, font:'Inter', weight:500, color:'#111827', align:'left', letterSpacing:0, shadow:0, lineHeight:1.3, bg:'rgba(248,250,252,0.9)', bgRadius:14, bgPadding:22}
                     }
                 };
                 case 'bottom-right': return {
@@ -1036,13 +1058,21 @@
             customMargin: 8,
             customRefPos: '',
             // Templates éditables PAR MODE : null = rendu historique (comme avant).
-            templates: { full:null, screen80:null, bottom:null, 'bottom-right':null }
+            templates: { full:null, screen80:null, bottom:null, 'bottom-default':null, 'bottom-right':null }
         };
         let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
 
         function loadDisplaySettings() {
             const stored = safeParseLocal('bibleDisplaySettings', null);
             displaySettings = stored ? { ...DEFAULT_DISPLAY_SETTINGS, ...stored } : { ...DEFAULT_DISPLAY_SETTINGS };
+            displaySettings.templates = Object.assign({}, DEFAULT_DISPLAY_SETTINGS.templates, (stored && stored.templates) || {});
+            // Les versions précédentes sauvegardaient parfois le nouveau look sous "bottom".
+            // Le déplacer vers son mode distinct évite de remplacer le bas centré historique.
+            const oldBottomTemplate = displaySettings.templates.bottom;
+            if (oldBottomTemplate && Number(oldBottomTemplate.lowerThirdSchema || 0) >= 2) {
+                if (!displaySettings.templates['bottom-default']) displaySettings.templates['bottom-default'] = oldBottomTemplate;
+                displaySettings.templates.bottom = null;
+            }
         }
 
         function saveDisplaySettings() {
@@ -1353,7 +1383,7 @@
         // Canal de communication avec OBS (local + relais réseau)
         const bc = new RemoteChannel('obs_bible_channel');
         bc.onStatusChange(updateSyncBadge);
-        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Chants / Médias) :
         // gérée par le module partagé js/live-mutex.js, installé plus bas, JUSTE
         // APRÈS la détection du mode — plus aucune variable utilisée avant sa
         // déclaration (c'est ce type d'erreur qui avait cassé le module Médias).
@@ -1399,7 +1429,7 @@
             });
         }
 
-        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Chants / Médias) :
         // quand la Bible passe à l'antenne, les deux autres se masquent, et
         // réciproquement. Le Lower Third reste permanent (hors exclusion).
         // Déclaré ici, APRÈS la détection du mode : isObsMode et clearOBS()
@@ -1445,11 +1475,11 @@
                 if (data.action === 'show') {
                     const cfg = lockedMode ? Object.assign({}, data.config, { mode: lockedMode }) : data.config;
                     renderDisplay(cfg, container, card, contentArea);
-                    // Indicateurs "partie précédente/suivante" actifs pour TOUS les
-                    // modes quand le verset est découpé (pas seulement bottom/right
-                    // — à la FreeShow, le split fonctionne aussi en plein écran en
-                    // passant par un rendu bandeau-bas automatique).
-                    card.classList.toggle('has-parts', !!(cfg.parts && cfg.parts.length > 1));
+                    // Les parties ne sont prises en compte que par les modes « bas ».
+                    // Un lien OBS plein écran verrouillé doit toujours garder le verset entier,
+                    // même si le contrôleur diffuse simultanément les parties du bandeau.
+                    const supportsParts = ['bottom', 'bottom-default', 'bottom-right'].includes(cfg.mode);
+                    card.classList.toggle('has-parts', supportsParts && !!(window.__lastParts && window.__lastParts.length > 1));
                 }
             };
         }
@@ -1514,43 +1544,7 @@
 function pickTemplate(config) {
     const mode = config.mode;
     const saved = (displaySettings.templates && displaySettings.templates[mode]) || null;
-    if (!saved) return defaultTemplateFor(mode);
-
-    const template = JSON.parse(JSON.stringify(saved));
-    // Mise à niveau douce des anciens modèles bas-centre : conserver les réglages
-    // personnalisés, mais ajouter les deux zones indépendantes du nouveau lower third.
-    if (mode === 'bottom' && Number(template.lowerThirdSchema || 0) < 2) {
-        const defaults = defaultTemplateFor('bottom');
-        const oldBlocks = template.blocks || {};
-        const oldRef = oldBlocks.ref || {};
-        const oldText = oldBlocks.text || {};
-        const oldRefWasDefault = oldRef.x === 25 && oldRef.y === 28 && oldRef.w === 42 && oldRef.h === 40;
-        const oldTextWasDefault = oldText.x === 50 && oldText.y === 70 && oldText.w === 90 && oldText.h === 55;
-
-        template.blocks = {
-            ...defaults.blocks,
-            ...oldBlocks,
-            ref: { ...defaults.blocks.ref, ...oldRef },
-            badge: { ...defaults.blocks.badge, ...(oldBlocks.badge || {}) },
-            text: { ...defaults.blocks.text, ...oldText },
-        };
-        if (oldRefWasDefault) {
-            ['x', 'y', 'w', 'h'].forEach(key => { template.blocks.ref[key] = defaults.blocks.ref[key]; });
-        }
-        if (oldTextWasDefault) {
-            ['x', 'y', 'w', 'h'].forEach(key => { template.blocks.text[key] = defaults.blocks.text[key]; });
-        }
-        if (!Object.prototype.hasOwnProperty.call(oldRef, 'bg')) template.blocks.ref.bg = defaults.blocks.ref.bg;
-        if (!Object.prototype.hasOwnProperty.call(oldRef, 'bgRadius')) template.blocks.ref.bgRadius = defaults.blocks.ref.bgRadius;
-        if (oldRef.color === '#f59e0b') template.blocks.ref.color = defaults.blocks.ref.color;
-        if (!Object.prototype.hasOwnProperty.call(oldText, 'bg')) template.blocks.text.bg = defaults.blocks.text.bg;
-        if (!Object.prototype.hasOwnProperty.call(oldText, 'bgRadius')) template.blocks.text.bgRadius = defaults.blocks.text.bgRadius;
-        if (!Object.prototype.hasOwnProperty.call(oldText, 'bgPadding')) template.blocks.text.bgPadding = defaults.blocks.text.bgPadding;
-        if (oldText.color === '#ffffff') template.blocks.text.color = defaults.blocks.text.color;
-        template.transparent = true;
-        template.lowerThirdSchema = 2;
-    }
-    return template;
+    return saved ? JSON.parse(JSON.stringify(saved)) : defaultTemplateFor(mode);
 }
 
 // Découpage intelligent de verset long : respecte la ponctuation
@@ -1578,6 +1572,44 @@ function splitSmart(text, maxChars) {
     return parts;
 }
 
+// Découpe un verset selon un budget de mots, en équilibrant les parties et en
+// préférant une fin de phrase proche du point de coupe. Les longs versets ont
+// au minimum quatre parties afin de rester lisibles au bas de l'écran.
+function splitByWordBudget(text, maxWords = 22, minParts = 4, minWordThreshold = 40) {
+    const cleanText = String(text || '').trim();
+    const words = cleanText.split(/\s+/).filter(Boolean);
+    const budget = Math.max(1, Math.round(Number(maxWords) || 22));
+    const requiredParts = Math.max(1, Math.round(Number(minParts) || 4));
+    if (!cleanText || words.length < Math.max(1, Number(minWordThreshold) || 40)) return cleanText ? [cleanText] : [''];
+
+    const partCount = Math.max(requiredParts, Math.ceil(words.length / budget));
+    const parts = [];
+    let start = 0;
+    for (let partIndex = 0; partIndex < partCount; partIndex++) {
+        const partsLeft = partCount - partIndex;
+        const wordsLeft = words.length - start;
+        const targetSize = Math.ceil(wordsLeft / partsLeft);
+        let end = partIndex === partCount - 1 ? words.length : start + targetSize;
+        const latestEnd = Math.min(words.length - (partsLeft - 1), start + budget);
+        end = Math.min(end, latestEnd);
+
+        if (partIndex < partCount - 1) {
+            const minEnd = Math.min(end, start + Math.max(3, Math.floor(targetSize * 0.65)));
+            for (let candidate = end; candidate >= minEnd; candidate--) {
+                if (/[.!?;:,]$/.test(words[candidate - 1] || '')) {
+                    end = candidate;
+                    break;
+                }
+            }
+        }
+        if (end <= start) end = Math.min(words.length - (partsLeft - 1), start + 1);
+        parts.push(words.slice(start, end).join(' '));
+        start = end;
+    }
+    if (start < words.length) parts[parts.length - 1] += ' ' + words.slice(start).join(' ');
+    return parts.filter(Boolean);
+}
+
 // Génère le HTML d'une scène à calques.
 // scalePx : facteur d'échelle pour les tailles de police (1 = 1920px,
 // plus petit dans l'éditeur ou la preview miniature).
@@ -1591,11 +1623,17 @@ function renderSceneHTML(config, scalePx = 1) {
     let partIndex = config.partIndex || 0;
     const splitMode = tpl ? tpl.splitMode : (config.lineMode ? 'auto' : 'none');
     const splitChars = (tpl && tpl.splitChars) || 200;
-    if (splitMode !== 'none' && !config.textHtml && displayText && displayText.length > splitChars) {
-        parts = splitSmart(displayText, splitChars);
-        if (parts.length < 2) parts = null;
+    const supportsVerseParts = ['bottom', 'bottom-default', 'bottom-right'].includes(mode);
+    if (supportsVerseParts && !config.textHtml && displayText) {
+        if (splitMode === 'words' && ['bottom', 'bottom-default'].includes(mode)) {
+            parts = splitByWordBudget(displayText, tpl.splitWords || 22, tpl.minSplitParts || 4, tpl.minSplitWordThreshold || 40);
+            if (parts.length < 2) parts = null;
+        } else if (splitMode !== 'none' && splitMode !== 'words' && displayText.length > splitChars) {
+            parts = splitSmart(displayText, splitChars);
+            if (parts.length < 2) parts = null;
+        }
     }
-    if (config.parts && config.parts.length > 1) { parts = config.parts; }
+    if (supportsVerseParts && config.parts && config.parts.length > 1) { parts = config.parts; }
     if (parts && parts.length > 1) {
         displayText = parts[Math.min(partIndex, parts.length - 1)];
     }
@@ -1630,6 +1668,7 @@ function renderSceneHTML(config, scalePx = 1) {
         const sh = b.shadow > 0 ? `0 ${b.shadow*scalePx/2}px ${b.shadow*scalePx}px rgba(0,0,0,${0.3+b.shadow/30})` : 'none';
         const bgRadius = b.bgRadius != null ? (typeof b.bgRadius === 'number' ? `${b.bgRadius}px` : b.bgRadius) : '999px';
         const bgPadding = b.bgPadding != null ? `${b.bgPadding*scalePx}px` : `${fs*0.25}px ${fs*0.9}px`;
+        const shape = b.shape === 'trapezoid' ? 'clip-path:polygon(7% 0,100% 0,93% 100%,0 100%);' : '';
         return [
             `left:${b.x}%;top:${b.y}%;width:${b.w}%;` + (b.h?`height:${b.h}%;`:''),
             `font-size:${fs}px;`,
@@ -1643,17 +1682,17 @@ function renderSceneHTML(config, scalePx = 1) {
             `font-style:${b.italic?'italic':'normal'};`,
             `line-height:${b.lineHeight||1.35};`,
             `padding:${(b.padding||0)}px;`,
-            b.bg ? `background:${b.bg};border-radius:${bgRadius};padding:${bgPadding};` : '',
+            b.bg ? `background:${b.bg};border-radius:${bgRadius};padding:${bgPadding};${shape}` : '',
         ].join('');
     }
 
     // Texte : lignes séparées si splitByLines ou trop long. En bas-centre,
     // le numéro du premier verset est inclus dans le bloc clair, devant le texte.
     let textInner;
-    const verseNumberHtml = mode === 'bottom' && config.verseNumber != null
+    const verseNumberHtml = mode === 'bottom-default' && config.verseNumber != null && (!parts || partIndex === 0)
         ? `<sup class="verse-number">${escapeHtml(String(config.verseNumber))}</sup>` : '';
     if (config.textHtml) {
-        textInner = mode === 'bottom' && verseNumberHtml
+        textInner = mode === 'bottom-default' && verseNumberHtml
             ? `<span class="verse-line">${verseNumberHtml}${config.textHtml}</span>`
             : config.textHtml;
     } else {
@@ -1671,15 +1710,18 @@ function renderSceneHTML(config, scalePx = 1) {
         }
     }
 
-    const refContent = mode === 'bottom'
+    const separateBottomBadge = ['bottom', 'bottom-right'].includes(mode)
+        && blocks.badge && blocks.badge.visible && !hideRef && config.version && !config.dual
+        && blocks.ref && blocks.badge.x !== blocks.ref.x;
+    const refContent = mode === 'bottom-default'
         ? `${escapeHtml(config.reference || '')}${config.version && !config.dual ? ` <span class="verse-version">(${escapeHtml(config.version)})</span>` : ''}`
-        : `📖 ${config.reference}${config.version && !config.dual ? ` <span class="blk-badge" style="${blockStyle(blocks.badge)};position:relative;display:inline-block;margin-left:12px;vertical-align:middle;">${config.version}</span>` : ''}`;
+        : `📖 ${config.reference}${config.version && !config.dual && !separateBottomBadge ? ` <span class="blk-badge" style="${blockStyle(blocks.badge)};position:relative;display:inline-block;margin-left:12px;vertical-align:middle;">${config.version}</span>` : ''}`;
     const refHtml = (blocks.ref && blocks.ref.visible && !hideRef)
         ? `<div class="blk blk-ref blk-align-${blocks.ref.align||'center'}" style="${blockStyle(blocks.ref)}">${refContent}</div>`
         : '';
-    // Badge indépendant (utile pour le placer ailleurs que dans la référence).
-    // En bas-centre, référence et version forment un seul cartouche de métadonnées.
-    const badgeHtml = (mode !== 'bottom' && blocks.badge && blocks.badge.visible && !hideRef && config.version && !config.dual && blocks.ref && blocks.badge && blocks.badge.x !== blocks.ref.x)
+    // Badge indépendant utile aux anciens modèles bas; le nouveau modèle garde
+    // référence et version réunies dans son cartouche bleu.
+    const badgeHtml = (mode !== 'bottom-default' && blocks.badge && blocks.badge.visible && !hideRef && config.version && !config.dual && blocks.ref && blocks.badge && blocks.badge.x !== blocks.ref.x)
         ? `<div class="blk blk-badge" style="${blockStyle(blocks.badge)}">${config.version}</div>` : '';
     const textHtml = (blocks.text && blocks.text.visible)
         ? `<div class="blk blk-text blk-align-${blocks.text.align||'center'}" style="${blockStyle(blocks.text)}">${textInner}</div>` : '';
@@ -1801,9 +1843,12 @@ function renderDisplay(config, container, card, contentArea, opts) {
         // "bandeau bas" bien lisible à la FreeShow/ProPresenter.
         let renderMode = config.mode;
         if (config.parts && config.parts.length > 1) {
-            // Split actif → toujours utiliser le layout "bottom" (bandeau bas)
-            // pour une lisibilité optimale, quel que soit le mode choisi.
-            renderMode = 'bottom';
+            // Le nouveau bas centré garde exactement son décor pour chaque partie.
+            // Les anciens modes cadrés conservent leur rendu historique; le plein écran
+            // n'est jamais transformé en bandeau par le simple fait d'un découpage.
+            if (config.mode === 'bottom-default') renderMode = 'bottom-default';
+            else if (config.mode === 'full' || config.mode === 'screen80') renderMode = config.mode;
+            else renderMode = 'bottom';
             card.classList.add('has-parts');
         } else {
             card.classList.remove('has-parts');
@@ -1966,16 +2011,11 @@ function autoFitLayers(root) {
             // Event Listeners UI
             document.getElementById('xml-upload').addEventListener('change', handleFileUpload);
             document.getElementById('book-search').addEventListener('input', handleSearch);
+            document.getElementById('book-search').addEventListener('keydown', handleBookSearchEnter);
             document.getElementById('btn-clear-obs').addEventListener('click', clearOBS);
             // Découpage des versets longs : navigation entre les parties (← →).
             document.getElementById('btn-part-prev').addEventListener('click', () => navigatePart(-1));
             document.getElementById('btn-part-next').addEventListener('click', () => navigatePart(1));
-            document.addEventListener('keydown', (e) => {
-                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-                if (!document.getElementById('verse-parts-nav') || document.getElementById('verse-parts-nav').classList.contains('hidden')) return;
-                if (e.key === 'ArrowLeft') navigatePart(-1);
-                if (e.key === 'ArrowRight') navigatePart(1);
-            });
             document.getElementById('btn-delete-version').addEventListener('click', deleteCurrentVersion);
             document.getElementById('btn-multiselect').addEventListener('click', toggleSelectionMode);
             document.getElementById('smart-input').addEventListener('input', handleSmartInput);
@@ -2430,16 +2470,46 @@ function autoFitLayers(root) {
             }
         };
 
+        function normalizeBookSearch(value) {
+            return String(value || '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '');
+        }
+
+        function getBookSearchMatches(value) {
+            const query = normalizeBookSearch(value);
+            if (!query) return [];
+            return currentBooks()
+                .map(book => ({ book, normalizedName: normalizeBookSearch(book.name) }))
+                .filter(item => item.normalizedName.includes(query))
+                .sort((a, b) => {
+                    const aPrefix = a.normalizedName.startsWith(query) ? 0 : 1;
+                    const bPrefix = b.normalizedName.startsWith(query) ? 0 : 1;
+                    return aPrefix - bPrefix || a.book.name.localeCompare(b.book.name, 'fr', { sensitivity: 'base', numeric: true });
+                })
+                .map(item => item.book);
+        }
+
+        function handleBookSearchEnter(e) {
+            if (e.key !== 'Enter') return;
+            const firstMatch = getBookSearchMatches(e.currentTarget.value)[0];
+            if (!firstMatch) return;
+            e.preventDefault();
+            selectBook(firstMatch.name);
+        }
+
         function handleSearch(e) {
-            const query = e.target.value.toLowerCase().trim();
+            const rawQuery = e.target.value.trim();
+            const query = rawQuery.toLowerCase();
             const books = currentBooks();
             if (query === '') {
                 renderBooksList(books);
                 return;
             }
 
-            // 1) Correspondance par nom de livre
-            const bookMatches = books.filter(b => b.name.toLowerCase().includes(query));
+            // 1) Correspondance par nom de livre, insensible aux accents et séparateurs
+            // (ex. « E-S » ou « J-E »). Les correspondances de préfixe remontent en tête.
+            const bookMatches = getBookSearchMatches(rawQuery);
             if (bookMatches.length > 0) {
                 renderBooksList(bookMatches);
                 return;
@@ -2515,6 +2585,8 @@ function autoFitLayers(root) {
 
             const smartInput = document.getElementById('smart-input');
             smartInput.value = '';
+            const bookSearch = document.getElementById('book-search');
+            if (bookSearch) bookSearch.value = '';
 
             renderChaptersGrid(book);
             renderBooksList(currentBooks());
@@ -2700,7 +2772,10 @@ function autoFitLayers(root) {
 
                 if (activeChapterNum != parts[0]) selectChapter(parts[0]);
                 triggerDisplay(book.name, parts[0], [parts[1]]);
-                document.getElementById('smart-input').value = '';
+                const smartInput = document.getElementById('smart-input');
+                smartInput.value = '';
+                // Libère les flèches du clavier pour la navigation immédiatement après projection.
+                smartInput.blur();
             }
         }
 
@@ -2917,24 +2992,21 @@ function autoFitLayers(root) {
 
             const combinedText = texts.join(' ');
 
-            // Découpage des versets longs — piloté par l'OPTION « ligne par ligne »,
-            // PAS par le mode du contrôleur : les parties sont calculées et diffusées
-            // Découpage intelligent des versets longs : on utilise le RÉGLAGE DU
-            // TEMPLATE DU MODE COURANT (splitMode / splitChars). splitMode='auto'
-            // = on découpe en plusieurs diapositives qu'on navigue avec ← → ou
-            // par clic sur les bords de la carte. Ne s'applique pas aux versets
-            // annotés (HTML qui ne doit pas être coupé).
+            // Le découpage n'est calculé que pour les sorties bas; le plein écran
+            // reçoit toujours le texte complet, même si une autre Source OBS verrouillée
+            // affiche en parallèle un bandeau découpé. Les annotations restent intactes.
             let parts = null;
             const mode = document.getElementById('obs-mode-select').value;
+            const supportsVerseParts = ['bottom', 'bottom-default', 'bottom-right'].includes(mode);
             // Toujours partir du template par défaut du mode, puis appliquer les
-            // personnalisations si elles existent. Garantit que splitMode est
-            // toujours défini ('none' en full/screen80 par défaut, 'auto' en
-            // bottom/bas-droite par défaut), même si l'utilisateur n'a jamais
-            // ouvert l'éditeur.
+            // personnalisations si elles existent, même si l'éditeur n'a jamais été ouvert.
             const tplForSplit = Object.assign({}, defaultTemplateFor(mode), (displaySettings.templates && displaySettings.templates[mode]) || {});
             const splitMode = (tplForSplit && tplForSplit.splitMode) || 'none';
             const splitChars = (tplForSplit && tplForSplit.splitChars) || VERSE_SPLIT_MAX_CHARS;
-            if (splitMode === 'auto' && combinedText.length > splitChars * 0.8 && !annotatedHtml) {
+            if (supportsVerseParts && splitMode === 'words' && ['bottom', 'bottom-default'].includes(mode) && !annotatedHtml) {
+                parts = splitByWordBudget(combinedText, tplForSplit.splitWords || 22, tplForSplit.minSplitParts || 4, tplForSplit.minSplitWordThreshold || 40);
+                if (parts.length < 2) parts = null;
+            } else if (supportsVerseParts && splitMode === 'auto' && combinedText.length > splitChars * 0.8 && !annotatedHtml) {
                 parts = splitSmart(combinedText, splitChars);
                 if (parts.length < 2) parts = null;
             }
@@ -3004,12 +3076,12 @@ function autoFitLayers(root) {
             if (displaySettings.layout) config.layout = displaySettings.layout;
             if (parts) { config.parts = parts; config.partIndex = partIndex; }
 
-            onAir = { bookName, chapterNum, verseNums: sortedNums, parts: parts || null, partIndex: parts ? partIndex : 0 };
+            onAir = { bookName, chapterNum, verseNums: sortedNums, mode, parts: parts || null, partIndex: parts ? partIndex : 0 };
             updatePartsNav();
 
             // 1. Envoyer à OBS via BroadcastChannel
             bc.postMessage({ action: 'show', config });
-            // 2. Exclusion mutuelle : signaler aux autres outils (Paroles, Médias) de se couper.
+            // 2. Exclusion mutuelle : signaler aux autres outils (Chants, Médias) de se couper.
             mutex.show();
 
             // 2. Mettre à jour la Preview Locale
@@ -3079,9 +3151,35 @@ function autoFitLayers(root) {
             const hasParts = !!(onAir && onAir.parts && onAir.parts.length > 1);
             nav.classList.toggle('hidden', !hasParts);
             nav.classList.toggle('flex', hasParts);
-            if (hasParts) {
-                document.getElementById('verse-parts-indicator').innerText = `${(onAir.partIndex || 0) + 1}/${onAir.parts.length}`;
-            }
+            const buttons = document.getElementById('verse-part-buttons');
+            if (buttons) buttons.replaceChildren();
+            if (!hasParts) return;
+
+            const currentIndex = Math.max(0, Math.min(onAir.parts.length - 1, Number(onAir.partIndex) || 0));
+            document.getElementById('verse-parts-indicator').innerText = `${currentIndex + 1}/${onAir.parts.length}`;
+            const previous = document.getElementById('btn-part-prev');
+            const next = document.getElementById('btn-part-next');
+            previous.disabled = currentIndex === 0;
+            next.disabled = currentIndex === onAir.parts.length - 1;
+            previous.classList.toggle('opacity-40', previous.disabled);
+            next.classList.toggle('opacity-40', next.disabled);
+
+            if (!buttons) return;
+            onAir.parts.forEach((part, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = String(index + 1);
+                button.className = `min-w-7 h-7 px-1 rounded text-[11px] font-bold transition-colors ${index === currentIndex ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`;
+                button.setAttribute('aria-label', `Afficher la partie ${index + 1} sur ${onAir.parts.length}`);
+                button.setAttribute('aria-pressed', String(index === currentIndex));
+                const preview = String(part || '').replace(/\s+/g, ' ').trim();
+                button.title = `Partie ${index + 1}/${onAir.parts.length} — ${preview.slice(0, 90)}${preview.length > 90 ? '…' : ''}`;
+                button.addEventListener('click', () => {
+                    if (!onAir || index === (Number(onAir.partIndex) || 0)) return;
+                    triggerDisplay(onAir.bookName, onAir.chapterNum, onAir.verseNums, null, { partIndex: index });
+                });
+                buttons.appendChild(button);
+            });
         }
 
         // ============================================================
@@ -3255,7 +3353,8 @@ function autoFitLayers(root) {
             const MODES = [
                 { id: 'full', label: 'Plein écran' },
                 { id: 'screen80', label: '80% écran' },
-                { id: 'bottom', label: 'Bas centré' },
+                { id: 'bottom', label: 'Bas centré (classique)' },
+                { id: 'bottom-default', label: 'Bas centré par défaut' },
                 { id: 'bottom-right', label: 'Bas droite' },
             ];
 
@@ -3311,7 +3410,9 @@ function autoFitLayers(root) {
                     bgImage: state.bgImage, bgBlur:18,
                     transparent: !!state.transparent, hideRef:false, bgCover: !!state.bgCover,
                     lineMode: state.splitMode === 'auto',
-                    parts: (state.splitMode==='auto' && state.splitChars) ? splitSmart(sample.text, state.splitChars) : null,
+                    parts: state.splitMode === 'words' && ['bottom', 'bottom-default'].includes(currentEditMode)
+                        ? splitByWordBudget(sample.text, state.splitWords || 22, state.minSplitParts || 4, state.minSplitWordThreshold || 40)
+                        : (state.splitMode === 'auto' && state.splitChars ? splitSmart(sample.text, state.splitChars) : null),
                     partIndex: 0,
                 };
                 // On injecte le template courant dans displaySettings.templates pour
@@ -3438,9 +3539,21 @@ function autoFitLayers(root) {
                 document.getElementById('tpl-bg-cover').checked = !!state.bgCover;
                 const splitModeEl = document.getElementById('tpl-split-mode');
                 if (splitModeEl) {
-                    splitModeEl.value = state.splitMode || 'none';
-                    const sc=document.getElementById('tpl-split-chars');sc.value=state.splitChars||180;sc.disabled=(state.splitMode==='none');
-                    document.getElementById('tpl-split-chars-v').innerText=state.splitChars||180;
+                    const splitMode = state.splitMode || 'none';
+                    splitModeEl.value = splitMode;
+                    const wordMode = splitMode === 'words';
+                    const wordsOption = splitModeEl.querySelector('option[value="words"]');
+                    if (wordsOption) wordsOption.disabled = !['bottom', 'bottom-default'].includes(currentEditMode);
+                    const sc = document.getElementById('tpl-split-chars');
+                    const sw = document.getElementById('tpl-split-words');
+                    sc.value = state.splitChars || 180;
+                    sc.disabled = splitMode === 'none' || wordMode;
+                    document.getElementById('tpl-split-chars-v').innerText = state.splitChars || 180;
+                    sw.value = state.splitWords || 22;
+                    sw.disabled = !wordMode;
+                    document.getElementById('tpl-split-words-v').innerText = state.splitWords || 22;
+                    document.getElementById('tpl-split-chars-row').style.display = wordMode ? 'none' : 'flex';
+                    document.getElementById('tpl-split-words-row').style.display = wordMode ? 'flex' : 'none';
                     document.getElementById('tpl-split-lines').checked = !!state.splitByLines;
                 }
                 // Bloc
@@ -3503,8 +3616,9 @@ function autoFitLayers(root) {
             bindProp('tpl-radius', v=>{state.shapeRadius=+v;});
             bindProp('tpl-transparent', v=>{state.transparent=v;});
             bindProp('tpl-bg-cover', v=>{state.bgCover=v;});
-            bindProp('tpl-split-mode', v=>{state.splitMode=v;document.getElementById('tpl-split-chars').disabled=(v==='none');});
+            bindProp('tpl-split-mode', v=>{state.splitMode=v;});
             bindProp('tpl-split-chars', v=>{state.splitChars=+v;document.getElementById('tpl-split-chars-v').innerText=v;});
+            bindProp('tpl-split-words', v=>{state.splitWords=+v;document.getElementById('tpl-split-words-v').innerText=v;});
             bindProp('tpl-split-lines', v=>{state.splitByLines=v;});
 
             // Toolbar mise en forme
@@ -3559,10 +3673,14 @@ function autoFitLayers(root) {
             document.getElementById('tpl-btn-apply').onclick=()=>{
                 if(!displaySettings.templates)displaySettings.templates={};
                 displaySettings.templates[currentEditMode]=JSON.parse(JSON.stringify(state));
-                displaySettings.bgColor=state.bgColor;displaySettings.accentColor=state.accentColor;
-                displaySettings.textColor=state.textColor;displaySettings.shapeRadius=state.shapeRadius;
-                displaySettings.bgImage=state.bgImage;displaySettings.bgCover=!!state.bgCover;
-                displaySettings.transparent=!!state.transparent;displaySettings.bgBlur=18;
+                // Le mode facultatif possède ses propres couleurs/fonds; enregistrer ce modèle
+                // ne doit pas modifier les réglages du plein écran ni ceux des modes classiques.
+                if (currentEditMode !== 'bottom-default') {
+                    displaySettings.bgColor=state.bgColor;displaySettings.accentColor=state.accentColor;
+                    displaySettings.textColor=state.textColor;displaySettings.shapeRadius=state.shapeRadius;
+                    displaySettings.bgImage=state.bgImage;displaySettings.bgCover=!!state.bgCover;
+                    displaySettings.transparent=!!state.transparent;displaySettings.bgBlur=18;
+                }
                 saveDisplaySettings();closeEditor();refreshOnAirDisplay();
                 showToast('Modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » enregistré ✨');
             };

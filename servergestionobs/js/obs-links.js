@@ -2,7 +2,7 @@
 // js/obs-links.js — Module partagé (refactor, axe E)
 // ============================================================
 // Construit le panneau "liens OBS" (lien général + liens à mode fixe) et gère la
-// copie dans le presse-papier. Auparavant dupliqué dans Bible, Paroles et Lower Third.
+// copie dans le presse-papier. Auparavant dupliqué dans Bible, Chants et Lower Third.
 //
 // + Sorties personnalisées (axe A) : résolution d'écran de sortie LIBRE (WxH)
 //   et MODE D'ADAPTATION, pour que TOUT soit toujours visible et s'adapte à

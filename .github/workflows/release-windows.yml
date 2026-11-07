@@ -1,0 +1,81 @@
+name: Build OpenPresenter Windows app
+
+on:
+  push:
+    branches:
+      - arena/01a04f03-openpresenter
+    paths:
+      - 'servergestionobs/**'
+      - '.github/workflows/release-windows.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out this branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: servergestionobs/package-lock.json
+
+      - name: Install packager
+        working-directory: servergestionobs
+        run: npm ci
+
+      - name: Build standalone Windows executable
+        working-directory: servergestionobs
+        run: npm run build:windows
+
+      - name: Smoke-test the packaged application on Windows
+        shell: pwsh
+        working-directory: servergestionobs
+        run: |
+          $env:PORT = '18787'
+          $env:OPENPRESENTER_NO_BROWSER = '1'
+          $env:OPENPRESENTER_DATA_DIR = Join-Path $env:RUNNER_TEMP 'openpresenter-exe-data'
+          $app = Start-Process -FilePath (Join-Path $PWD 'dist/OpenPresenter.exe') -PassThru -NoNewWindow
+          try {
+            $response = $null
+            for ($i = 0; $i -lt 40; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri 'http://127.0.0.1:18787/' -UseBasicParsing -TimeoutSec 2
+                break
+              } catch {
+                Start-Sleep -Milliseconds 500
+              }
+            }
+            if (-not $response -or $response.StatusCode -ne 200 -or $response.Content -notmatch 'OpenPresenter') {
+              throw 'OpenPresenter.exe did not serve the Command Center successfully.'
+            }
+            $bible = Invoke-WebRequest -Uri 'http://127.0.0.1:18787/bible_control_display_pro.html?obs=true&lockMode=bottom-default' -UseBasicParsing -TimeoutSec 10
+            if ($bible.StatusCode -ne 200 -or $bible.Content -notmatch 'bottom-default') {
+              throw 'The packaged OBS Bible URL or resources were not served.'
+            }
+            Write-Host 'OpenPresenter.exe served the Command Center and the standard OBS URL.'
+          } finally {
+            Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Publish executable to GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: v1.0.1
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; not replacing a published asset."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
+            servergestionobs/dist/OpenPresenter.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "OpenPresenter V1.0.1 — Windows" \
+            --notes "Application Windows autonome pour OpenPresenter V1. L'exécutable démarre le serveur local et ouvre le Command Center dans le navigateur. Les données restent dans %LOCALAPPDATA%\\OpenPresenter\\data; les URL OBS habituelles sur le port 8787 sont conservées."

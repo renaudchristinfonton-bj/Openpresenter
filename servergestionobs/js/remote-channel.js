@@ -2,7 +2,7 @@
 // js/remote-channel.js — Module partagé (refactor, axe E)
 // ============================================================
 // Historiquement, la classe RemoteChannel et la fonction updateSyncBadge étaient
-// dupliquées à l'identique dans les 4 outils (Bible, Paroles, Médias, Lower Third).
+// dupliquées à l'identique dans les 4 outils (Bible, Chants, Médias, Lower Third).
 // Centralisées ici, une seule version sert tous les outils.
 //
 // RemoteChannel — pont réseau optionnel au-dessus de BroadcastChannel.
@@ -90,7 +90,7 @@
 
         // Convertit récursivement tout Blob en base64 pour le transport JSON (WebSocket),
         // et inversement à la réception. Nécessaire par ex. pour les fonds image/vidéo du
-        // module Paroles, qui passent par de vrais objets Blob avec BroadcastChannel natif.
+        // module Chants, qui passent par de vrais objets Blob avec BroadcastChannel natif.
         async _serialize(value) {
             if (value instanceof Blob) {
                 const dataUrl = await new Promise((resolve, reject) => {

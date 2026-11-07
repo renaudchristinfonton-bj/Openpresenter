@@ -1,7 +1,7 @@
 {
   "name": "OpenPresenter — Régie live",
   "short_name": "OpenPresenter",
-  "description": "Régie live locale : Bible, paroles, médias, titres, minuteur et écrans compagnons — pilotable depuis n'importe quel navigateur du réseau.",
+  "description": "Régie live locale : Bible, chants, médias, titres, minuteur et écrans compagnons — pilotable depuis n'importe quel navigateur du réseau.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,7 +1,7 @@
 // ============================================================
 // js/live-mutex.js — Exclusion mutuelle des sorties plein écran
 // ============================================================
-// Règle produit : si UN des trois outils « plein écran » (Bible, Paroles,
+// Règle produit : si UN des trois outils « plein écran » (Bible, Chants,
 // Médias) passe à l'antenne, les deux autres se masquent automatiquement.
 // Le Lower Third est PERMANENT : il ne participe jamais à cette exclusion.
 //

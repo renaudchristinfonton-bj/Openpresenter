@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * Serveur relais pour les outils "OBS Control/Display" (Bible, Paroles, Lower Third).
+ * Serveur relais pour les outils "OBS Control/Display" (Bible, Chants, Lower Third).
  *
  * Rôle :
  *  1) Servir les fichiers HTML (les 3 outils) en http://, comme un mini-site local.
@@ -37,9 +37,14 @@ const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT, 10) || 8787;
 const ROOT_DIR = __dirname;
-// Dossier de stockage des données utilisateur (favoris, chants, présets...) pour que
-// vos réglages "vous suivent" d'un PC à l'autre sur le réseau.
-const DATA_DIR = path.join(ROOT_DIR, 'data');
+const IS_PACKAGED = !!process.pkg;
+// En développement, les données restent dans servergestionobs/data. Dans le .exe,
+// les ressources sont empaquetées en lecture seule : les données utilisateur vont
+// dans AppData (modifiable via OPENPRESENTER_DATA_DIR pour une installation portable).
+const USER_DATA_HOME = process.env.LOCALAPPDATA || process.env.APPDATA || os.homedir();
+const DATA_DIR = process.env.OPENPRESENTER_DATA_DIR || (IS_PACKAGED
+    ? path.join(USER_DATA_HOME, 'OpenPresenter', 'data')
+    : path.join(ROOT_DIR, 'data'));
 
 const MIME_TYPES = {
     '.webmanifest': 'application/manifest+json; charset=utf-8',
@@ -539,6 +544,7 @@ server.listen(PORT, () => {
     console.log('  Serveur relais OBS démarré ✅');
     console.log('========================================================');
     console.log(`  Sur ce PC        : http://localhost:${PORT}/`);
+    if (IS_PACKAGED) console.log(`  Données          : ${DATA_DIR}`);
     ips.forEach(ip => console.log(`  Depuis le réseau  : http://${ip}:${PORT}/`));
     console.log('');
     if (files.length) {
@@ -565,3 +571,5 @@ server.listen(PORT, () => {
         }
     }, 6000);
 });
+
+module.exports = { server, PORT, ROOT_DIR, DATA_DIR };

@@ -183,7 +183,7 @@
         <span class="hi">🎛️</span>
         <div>
             <h2>Studio Unifié</h2>
-            <p>La régie tout-en-un : Bible, Paroles, Médias et Titres dans une seule fenêtre.</p>
+            <p>La régie tout-en-un : Bible, Chants, Médias et Titres dans une seule fenêtre.</p>
         </div>
         <span class="spacer"></span>
         <a class="btn-hero" href="studio_unifie.html" target="_blank">▶ Ouvrir le Studio Unifié</a>
@@ -193,7 +193,7 @@
     <div class="card-box">
         <h3 class="card-title">🎨 Looks — habillage global en 1 clic</h3>
         <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
-            Applique instantanément un jeu de couleurs et de formes à la <b>Bible</b> et aux <b>Paroles</b>
+            Applique instantanément un jeu de couleurs et de formes à la <b>Bible</b> et aux <b>Chants</b>
             (fond, accent, texte, coins) — sur tous les contrôleurs ouverts, et durablement.
             Les réglages manuels de chaque outil restent prioritaires si vous les modifiez ensuite.
         </p>
@@ -222,7 +222,7 @@
     <div class="card-box">
         <h3 class="card-title">🎬 Installation dans OBS <span style="text-transform:none; letter-spacing:0; color:var(--muted); font-weight:600;">(facultatif, en 1 clic)</span></h3>
         <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px; line-height:1.5;">
-            Crée automatiquement les Sources Navigateur (Bible, Paroles, Médias, Titres) et les scènes de
+            Crée automatiquement les Sources Navigateur (Bible, Chants, Médias, Titres) et les scènes de
             présentation dans OBS. Prérequis : activez <b>obs-websocket</b> dans OBS
             (Outils &gt; WebSocket Server Settings, noter le port 4455 et le mot de passe).
         </p>
@@ -325,12 +325,13 @@
         { label: 'Plein écran', q: '?obs=true' },
         { label: '80% écran', q: '?obs=true&lockMode=screen80' },
         { label: 'Bas centré', q: '?obs=true&lockMode=bottom' },
+        { label: 'Bas centré par défaut', q: '?obs=true&lockMode=bottom-default' },
         { label: 'Bas droite', q: '?obs=true&lockMode=bottom-right' },
         { label: 'Ruban défilant', q: '?obs=true&lockMode=scrolling' }
     ];
     var TOOLS = [
         { key: 'bible',  icon: '📖', name: 'Bible',           color: 'var(--bible)',  desc: 'Versets par livre/chapitre/verset, import XML, favoris.', file: 'bible_control_display_pro.html', modes: MODES_BIBLE },
-        { key: 'lyrics', icon: '🎤', name: 'Paroles',         color: 'var(--lyrics)', desc: 'Chants découpés en sections, fond image/vidéo.', file: 'lyrics_control_display_pro.html', modes: MODES_BIBLE },
+        { key: 'lyrics', icon: '🎤', name: 'Chants',         color: 'var(--lyrics)', desc: 'Chants découpés en sections, fond image/vidéo.', file: 'lyrics_control_display_pro.html', modes: MODES_BIBLE },
         { key: 'media',  icon: '🖼️', name: 'Médias',          color: 'var(--media)',  desc: 'Images, vidéos, PDF et PowerPoint, organisés par groupes.', file: 'media_control_display_pro.html', modes: [{ label: 'Plein écran', q: '?obs=true' }] },
         { key: 'lt',     icon: '🏷️', name: 'Lower Third',     color: 'var(--lt)',     desc: 'Titres et bandeaux animés, logo, animations.', file: 'obs_lower_third_ultimate_studio.html', modes: [{ label: 'Titres (OBS)', q: '?obs=1' }] },
         { key: 'cue',    icon: '📋', name: 'File de déroulement', color: '#f43f5e',   desc: 'Composez l\u2019ordre de service et enchaînez en une touche (mobile-friendly).', file: 'cue_list.html', modes: [], controller: 'Contrôleur mobile' },
@@ -439,8 +440,10 @@
             return [
                 { name: 'BIBLE PLEIN ECRAN',   url: b + 'bible_control_display_pro.html?obs=true' },
                 { name: 'BIBLE BAS CENTRE',    url: b + 'bible_control_display_pro.html?obs=true&lockMode=bottom' },
-                { name: 'PAROLES PLEIN ECRAN', url: b + 'lyrics_control_display_pro.html?obs=true' },
-                { name: 'PAROLES BAS CENTRE',  url: b + 'lyrics_control_display_pro.html?obs=true&lockMode=bottom' },
+                { name: 'BIBLE BAS CENTRE PAR DEFAUT', url: b + 'bible_control_display_pro.html?obs=true&lockMode=bottom-default' },
+                { name: 'CHANTS PLEIN ECRAN', url: b + 'lyrics_control_display_pro.html?obs=true' },
+                { name: 'CHANTS BAS CENTRE',  url: b + 'lyrics_control_display_pro.html?obs=true&lockMode=bottom' },
+                { name: 'CHANTS BAS CENTRE PAR DEFAUT', url: b + 'lyrics_control_display_pro.html?obs=true&lockMode=bottom-default' },
                 { name: 'MEDIAS + PRESENTATIONS', url: b + 'media_control_display_pro.html?obs=true' },
                 { name: 'TITRES',              url: b + 'obs_lower_third_ultimate_studio.html?obs=1' }
             ];
@@ -526,7 +529,7 @@
             }
             log(createdSrc ? 'Sources créées : ' + createdSrc : 'Aucune nouvelle source à créer.');
 
-            var scenes = ['PRESENTATION PLEIN ECRAN', 'PRESENTATION BAS CENTRE', 'TITRES'];
+            var scenes = ['PRESENTATION PLEIN ECRAN', 'PRESENTATION BAS CENTRE', 'PRESENTATION BAS CENTRE PAR DEFAUT', 'TITRES'];
             var createdScn = 0;
             for (var sc of scenes) {
                 if (existingScn.indexOf(sc) >= 0) { log('  - Scène existante, ignorée : ' + sc); continue; }
@@ -536,8 +539,9 @@
             log(createdScn ? 'Scènes créées : ' + createdScn : 'Aucune nouvelle scène à créer.');
 
             var sceneMap = {
-                'PRESENTATION PLEIN ECRAN': ['BIBLE PLEIN ECRAN', 'PAROLES PLEIN ECRAN', 'MEDIAS + PRESENTATIONS'],
-                'PRESENTATION BAS CENTRE': ['MEDIAS + PRESENTATIONS', 'BIBLE BAS CENTRE', 'PAROLES BAS CENTRE'],
+                'PRESENTATION PLEIN ECRAN': ['BIBLE PLEIN ECRAN', 'CHANTS PLEIN ECRAN', 'MEDIAS + PRESENTATIONS'],
+                'PRESENTATION BAS CENTRE': ['MEDIAS + PRESENTATIONS', 'BIBLE BAS CENTRE', 'CHANTS BAS CENTRE'],
+                'PRESENTATION BAS CENTRE PAR DEFAUT': ['MEDIAS + PRESENTATIONS', 'BIBLE BAS CENTRE PAR DEFAUT', 'CHANTS BAS CENTRE PAR DEFAUT'],
                 'TITRES': ['TITRES']
             };
             for (var sc2 of scenes) {
@@ -743,7 +747,7 @@
             b.className = 'btn-action';
             b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + p.bible.accentColor + ';';
             b.innerHTML = '<span style="width:14px;height:14px;border-radius:4px;background:' + p.bible.accentColor + ';display:inline-block;"></span>' + p.icon + ' ' + p.name;
-            b.title = 'Appliquer le look « ' + p.name + ' » à la Bible et aux Paroles';
+            b.title = 'Appliquer le look « ' + p.name + ' » à la Bible et aux Chants';
             b.onclick = function () {
                 OpenLooks.applyPreset(p.id);
                 document.querySelectorAll('#looks-row button').forEach(function (x) { x.style.background = ''; });
@@ -760,7 +764,7 @@
                 b.className = 'btn-action';
                 b.style.cssText = 'display:flex;align-items:center;gap:6px;border:1px solid ' + ((l.bible && l.bible.accentColor) || '#334155') + ';';
                 b.innerHTML = (l.icon || '🎨') + ' ' + l.name;
-                b.title = 'Appliquer le look « ' + l.name + ' » (Bible : ' + (l.bible && l.bible.accentColor || '?') + ' · Paroles : ' + (l.lyrics && l.lyrics.accentColor || '?') + ')';
+                b.title = 'Appliquer le look « ' + l.name + ' » (Bible : ' + (l.bible && l.bible.accentColor || '?') + ' · Chants : ' + (l.lyrics && l.lyrics.accentColor || '?') + ')';
                 b.onclick = function () { OpenLooks.apply(l); };
                 var del = document.createElement('button');
                 del.className = 'btn-action';

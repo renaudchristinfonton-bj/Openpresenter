@@ -2,7 +2,7 @@
 // tests/test-integration.mjs — Test d'intégration navigateur complet
 // ============================================================
 // Démarre le serveur relais (sync-relay-server.js), ouvre dans Chromium :
-//   - contexte A : les 3 contrôleurs (Bible, Paroles, Médias)
+//   - contexte A : les 3 contrôleurs (Bible, Chants, Médias)
 //   - contexte B : les 3 sorties OBS (?obs=true)
 // Deux contextes distincts = pas de BroadcastChannel partagé : toute la
 // communication passe par le relais WebSocket, exactement comme entre un
@@ -11,8 +11,8 @@
 // Vérifie (priorités du document de transfert) :
 //   S1. l'AJOUT DE MÉDIAS fonctionne (bug critique historique) + sauvegarde
 //       portabilité data/media/items.json après le debounce ;
-//   S2. l'AJOUT DE CHANTS (Paroles) fonctionne + data/lyrics/songs.json ;
-//   S3. l'EXCLUSION MUTUELLE Bible/Paroles/Médias dans les deux sens,
+//   S2. l'AJOUT DE CHANTS (Chants) fonctionne + data/lyrics/songs.json ;
+//   S3. l'EXCLUSION MUTUELLE Bible/Chants/Médias dans les deux sens,
 //       via les vraies fonctions triggerDisplay / pushLive ;
 //   S4. les autres pages (Studio, index, mur, cue list, lower third)
 //       se chargent sans erreur JavaScript.
@@ -161,7 +161,7 @@ try {
     check('Le fichier contient 2 médias encodés (base64)', Array.isArray(mediaJson) && mediaJson.length === 2
         && mediaJson.every(i => i.blob && i.blob.__blob64));
 
-    // ============ S2. AJOUT DE CHANT (Paroles) ============
+    // ============ S2. AJOUT DE CHANT (Chants) ============
     console.log('▶ S2. Ajout d\'un chant…');
     const songs = await lyricsCtrl.evaluate(async () => {
         editorSections = [
@@ -179,9 +179,9 @@ try {
     check('Portabilité : data/lyrics/songs.json créé sur le serveur', Array.isArray(songsJson) && songsJson.length === 1);
 
     // ============ S3. EXCLUSION MUTUELLE (via relais, comme 2 PC) ============
-    console.log('▶ S3. Exclusion mutuelle Bible / Paroles / Médias…');
+    console.log('▶ S3. Exclusion mutuelle Bible / Chants / Médias…');
 
-    // a) Médias à l'antenne → media OBS visible, Bible et Paroles masquées.
+    // a) Médias à l'antenne → media OBS visible, Bible et Chants masquées.
     await mediaCtrl.evaluate(() => {
         const it = items.find(i => i.type === 'image');
         if (!it) throw new Error('aucun média image disponible');
@@ -189,29 +189,29 @@ try {
     });
     check('a) Médias : sortie OBS visible', await waitVisible(mediaObs, '1'));
     check('a) …Bible masquée', await waitVisible(bibleObs, '0'));
-    check('a) …Paroles masquées', await waitVisible(lyricsObs, '0'));
+    check('a) …Chants masquées', await waitVisible(lyricsObs, '0'));
 
     // b) Bible à l'antenne → Médias se coupent (contrôleur ET sortie).
     await bibleCtrl.evaluate(() => triggerDisplay('Livre E2E', 1, [1], 'Au commencement était la Parole de test.'));
     check('b) Bible : sortie OBS visible', await waitVisible(bibleObs, '1'));
     check('b) …Médias masqués', await waitVisible(mediaObs, '0'));
-    check('b) …Paroles masquées', await waitVisible(lyricsObs, '0'));
+    check('b) …Chants masquées', await waitVisible(lyricsObs, '0'));
     const mediaOnAir = await mediaCtrl.evaluate(() => onAir);
     check('b) …le contrôleur Médias a libéré l\'antenne (onAir=null)', mediaOnAir === null, JSON.stringify(mediaOnAir));
 
-    // c) Paroles à l'antenne → Bible se coupe.
+    // c) Chants à l'antenne → Bible se coupe.
     await lyricsCtrl.evaluate((sid) => triggerDisplay(sid, ['sec1']), songs[0].id);
-    check('c) Paroles : sortie OBS visible', await waitVisible(lyricsObs, '1'));
+    check('c) Chants : sortie OBS visible', await waitVisible(lyricsObs, '1'));
     check('c) …Bible masquée', await waitVisible(bibleObs, '0'));
     check('c) …Médias masqués', await waitVisible(mediaObs, '0'));
 
-    // d) Retour aux Médias → Paroles se coupent (cycle complet).
+    // d) Retour aux Médias → Chants se coupent (cycle complet).
     await mediaCtrl.evaluate(() => {
         const it = items.find(i => i.type === 'image');
         pushLive(it, {});
     });
     check('d) Médias : de nouveau visibles (cycle complet)', await waitVisible(mediaObs, '1'));
-    check('d) …Paroles masquées', await waitVisible(lyricsObs, '0'));
+    check('d) …Chants masquées', await waitVisible(lyricsObs, '0'));
 
     // ============ S4. Chargement des autres pages (sans erreur JS) ============
     console.log('▶ S4. Chargement des autres pages…');
@@ -598,7 +598,7 @@ try {
     await pastor.goto(BASE + '/vue_pasteur.html', { waitUntil: 'load', timeout: 30000 });
     await pastor.waitForTimeout(900);
     const framesInfo = await pastor.evaluate(() => Array.from(document.querySelectorAll('#stage-box iframe')).map(f => f.src.split('/').pop().split('?')[0]));
-    check('Vue Pasteur : 4 sorties embarquées (Bible/Paroles/Médias/Titre)', framesInfo.length === 4, JSON.stringify(framesInfo));
+    check('Vue Pasteur : 4 sorties embarquées (Bible/Chants/Médias/Titre)', framesInfo.length === 4, JSON.stringify(framesInfo));
 
     // --- Le minuteur utilisateur, intégré : contrôleur (régie) → affichage (pasteur) ---
     const timerCtl = await ctxA.newPage();
@@ -767,7 +767,7 @@ try {
     const bibleLook = await bibleCtrl.waitForFunction(() => displaySettings.accentColor === '#facc15', { timeout: 8000 }).then(() => true).catch(() => false);
     check('Bible : look reçu en direct (accent #facc15)', bibleLook);
     const lyricsLook = await lyricsCtrl.waitForFunction(() => displaySettings.accentColor === '#facc15', { timeout: 8000 }).then(() => true).catch(() => false);
-    check('Paroles : look reçu en direct', lyricsLook);
+    check('Chants : look reçu en direct', lyricsLook);
     const lookPersisted = await bibleCtrl.evaluate(() => JSON.parse(localStorage.getItem('bibleDisplaySettings') || '{}').accentColor);
     check('Look persisté (survit au rechargement)', lookPersisted === '#facc15', lookPersisted);
     await ccPage.close().catch(() => {});
@@ -779,7 +779,7 @@ try {
     cuePage.on('dialog', (d) => d.accept().catch(() => {})); // « remplacer la file »
     await cuePage.goto(BASE + '/cue_list.html', { waitUntil: 'load', timeout: 30000 });
     await cuePage.waitForTimeout(1200); // laisse les iframes des outils charger
-    // Chant disponible pour l'appariement par titre (dans l'iframe Paroles de la file).
+    // Chant disponible pour l'appariement par titre (dans l'iframe Chants de la file).
     await cuePage.evaluate(() => {
         const w = frames.lyrics();
         w.eval("songs.push({ id: 's_e2e', title: 'Chant E2E', artist: '', sections: [{ id: 'sec1', label: 'Couplet 1', text: 'Ligne un' }] }); renderSongsList();");
@@ -864,14 +864,14 @@ try {
         const p = f && f.contentDocument ? f.contentDocument.getElementById('preview-container') : null;
         return p && p.style.opacity === '1';
     }, { timeout: 8000 }).then(() => true).catch(() => false);
-    check('Entrée = le chant est diffusé (préview Paroles active)', triggered);
+    check('Entrée = le chant est diffusé (préview Chants active)', triggered);
     await studio.fill('#us-input', 'e2e-image-1');
     await studio.waitForTimeout(500);
     const mediaHit = await studio.evaluate(() => Array.from(document.querySelectorAll('#us-results .us-item')).map(e => e.innerText).join(' || '));
     check('Recherche unifiée : média trouvé (groupe 🖼️)', /e2e-image-1/.test(mediaHit), mediaHit.slice(0, 80));
     await studio.close().catch(() => {});
 
-    // ============ S16. ÉDITEUR DE LOOKS (personnalisés, Bible/Paroles distincts) ============
+    // ============ S16. ÉDITEUR DE LOOKS (personnalisés, Bible/Chants distincts) ============
     console.log('▶ S16. Éditeur de Looks : créer, enregistrer, appliquer…');
     // a) Vue pasteur : le tiroir renvoie vers le VRAI contrôleur (file réorganisable).
     const adminChk = await ctxA.newPage();
@@ -884,7 +884,7 @@ try {
     await adminChk.close().catch(() => {});
     check('Vue pasteur (tiroir) : ouvre le contrôle du minuteur avec file', !drawer.oldPresets && drawer.hasLink, JSON.stringify(drawer));
 
-    // b) Créer un look dans l'éditeur : nom + accents DIFFÉRENTS Bible/Paroles + géométrie bas.
+    // b) Créer un look dans l'éditeur : nom + accents DIFFÉRENTS Bible/Chants + géométrie bas.
     const editor = await ctxA.newPage();
     trackErrors(editor, 'looks-editor');
     editor.on('dialog', (d) => d.accept().catch(() => {}));
@@ -897,7 +897,7 @@ try {
     await editor.evaluate(() => { document.getElementById('st-accent').dispatchEvent(new Event('input')); });
     await editor.fill('#g-bottom-width', '60');
     await editor.evaluate(() => { document.getElementById('g-bottom-width').dispatchEvent(new Event('input')); });
-    // Paroles : accent cyan (distinct).
+    // Chants : accent cyan (distinct).
     await editor.click('#tab-lyrics');
     await editor.fill('#st-accent', '#06b6d4');
     await editor.evaluate(() => { document.getElementById('st-accent').dispatchEvent(new Event('input')); });
@@ -907,7 +907,7 @@ try {
     try { looksJson = await (await fetch(BASE + '/data/looks/list.json')).json(); } catch (e) { /* absent */ }
     check('Éditeur : look enregistré dans data/looks/list.json', Array.isArray(looksJson) && looksJson.some(l => l.name === 'Culte E2E'));
     const saved = looksJson && looksJson.find(l => l.name === 'Culte E2E');
-    check('Éditeur : réglages DISTINCTS Bible/Paroles dans le même look', !!(saved && saved.bible && saved.lyrics && saved.bible.accentColor === '#e11d48' && saved.lyrics.accentColor === '#06b6d4'), JSON.stringify(saved && { b: saved.bible.accentColor, l: saved.lyrics.accentColor }));
+    check('Éditeur : réglages DISTINCTS Bible/Chants dans le même look', !!(saved && saved.bible && saved.lyrics && saved.bible.accentColor === '#e11d48' && saved.lyrics.accentColor === '#06b6d4'), JSON.stringify(saved && { b: saved.bible.accentColor, l: saved.lyrics.accentColor }));
     await editor.close().catch(() => {});
 
     // c) Le look apparaît sur la carte du Command Center et s'applique en direct.
@@ -921,7 +921,7 @@ try {
     const gotIt = await bibleCtrl.waitForFunction(() => displaySettings.accentColor === '#e11d48' && displaySettings.layout && displaySettings.layout.bottom && displaySettings.layout.bottom.width === '60%', { timeout: 8000 }).then(() => true).catch(() => false);
     check('Look appliqué : Bible reçoit accent + géométrie (en direct)', gotIt);
     const lyricsGot = await lyricsCtrl.waitForFunction(() => displaySettings.accentColor === '#06b6d4', { timeout: 8000 }).then(() => true).catch(() => false);
-    check('Look appliqué : Paroles reçoit SON accent (distinct)', lyricsGot);
+    check('Look appliqué : Chants reçoit SON accent (distinct)', lyricsGot);
     await cc2.close().catch(() => {});
 
     // d) La géométrie s'applique réellement à la projection (bas centré → 60% de largeur).
@@ -951,7 +951,7 @@ try {
     check('Plein écran : animation « glisser ↑ » appliquée au cadre (OBS)', animClass);
     await lyricsCtrl.evaluate(() => triggerDisplay(songs[0].id, ['sec1']));
     const animZoom = await lyricsObs.waitForFunction(() => document.getElementById('obs-card-element').className.includes('look-anim-zoom'), { timeout: 8000 }).then(() => true).catch(() => false);
-    check('Paroles : SA propre animation (zoom) appliquée', animZoom);
+    check('Chants : SA propre animation (zoom) appliquée', animZoom);
     await cc3.close().catch(() => {});
 
 } finally {

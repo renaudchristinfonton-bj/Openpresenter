@@ -82,21 +82,21 @@
         .lyric-line { display: block; }
         .lyric-line + .lyric-line { margin-top: 0.45em; }
         /* Bas-centre : chaque ligne devient un bandeau noir indépendant, sans titre ni section. */
-        .scene-root.tpl-mode-bottom .blk-text { align-items: center; text-align: center; }
-        .scene-root.tpl-mode-bottom .blk-text .lyric-line {
+        .scene-root.tpl-mode-bottom-default .blk-text { align-items: center; text-align: center; }
+        .scene-root.tpl-mode-bottom-default .blk-text .lyric-line {
             display: block; width: fit-content; max-width: 100%; box-sizing: border-box;
             margin: .12em auto 0; padding: .08em .55em;
             background: #000; color: #fff !important; text-align: center;
             text-shadow: none; white-space: normal;
         }
-        .scene-root.tpl-mode-bottom .blk-text .lyric-line + .lyric-line { margin-top: .28em; }
+        .scene-root.tpl-mode-bottom-default .blk-text .lyric-line + .lyric-line { margin-top: .28em; }
 
-        /* Transition fluide des paroles : seul le texte fait un fondu avec un léger
+        /* Transition fluide des chants : seul le texte fait un fondu avec un léger
            défilement vertical. Le fond reste stable (il n'est PAS recréé entre sections). */
         @keyframes lyricFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .lyric-line { animation: lyricFadeUp 0.45s cubic-bezier(0.16,1,0.3,1); }
 
-        /* Titre / artiste / section : discrets, en bas du cadre — le texte des paroles reste
+        /* Titre / artiste / section : discrets, en bas du cadre — le texte des chants reste
            le seul élément visuellement fort à l'écran (modes full / screen80 / bottom / bottom-right). */
         .lyric-meta { color: var(--text-color, #ffffff); opacity: 0.5; font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 0.3px; text-align: inherit; overflow-wrap: break-word; word-break: break-word; }
         .lyric-meta .meta-dot { opacity: 0.7; margin: 0 2px; }
@@ -121,7 +121,7 @@
         }
         .obs-bottom-right .lyric-meta-bottom { text-align: right; }
 
-        /* En mode bas centré, les lignes de paroles doivent être centrées (pas alignées à gauche). */
+        /* En mode bas centré, les lignes de chants doivent être centrées (pas alignées à gauche). */
         .obs-bottom, .obs-bottom-right { text-align: center; }
         .obs-bottom-right .lyric-text { text-align: right; }
 
@@ -160,11 +160,12 @@
         .preset-btn { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(139,92,246,0.15); color: #c4b5fd; font-weight: 700; }
         .preset-btn:hover { background: rgba(139,92,246,0.3); }
 
-        /* === SCENE A CALQUES UNIFIEE (editeur/preview/OBS paroles) === */
+        /* === SCENE A CALQUES UNIFIEE (editeur/preview/OBS chants) === */
         .scene-root{position:absolute;box-sizing:border-box;overflow:hidden;}
         .scene-root.tpl-mode-full{top:3.7%;left:2.08%;width:95.84%;height:92.6%;padding:7vh 5vw;border-top:2px solid var(--accent-color);border-bottom:2px solid var(--accent-color);}
         .scene-root.tpl-mode-screen80{top:10%;left:10%;width:80%;height:80%;padding:6vh 5vw;border-top:6px solid var(--accent-color);border-bottom:6px solid var(--accent-color);}
         .scene-root.tpl-mode-bottom{bottom:5.56%;left:10%;width:80%;height:25%;padding:2vh 2.5vw;border-left:8px solid var(--accent-color);}
+        .scene-root.tpl-mode-bottom-default{top:0;left:0;width:100%;height:100%;padding:0;border:0;}
         .scene-root.tpl-mode-bottom-right{bottom:5.56%;right:3%;width:80%;height:25%;padding:2vh 2.5vw;border-right:8px solid var(--accent-color);}
         .scene-root.has-bg-image .layer-bg-image{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;}
         .scene-root.has-bg-cover .layer-bg-image{position:absolute;top:0;left:0;width:100vw;height:100vh;z-index:0;background-size:cover;background-position:center;}
@@ -188,7 +189,7 @@
         .parts-hint-left,.parts-hint-right{position:absolute;top:0;bottom:0;width:16%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.25);font-size:48px;font-weight:800;pointer-events:none;opacity:0;transition:opacity .2s;z-index:5;}
         .parts-hint-left{left:0;}.parts-hint-right{right:0;}
         .has-parts:hover .parts-hint-left,.has-parts:hover .parts-hint-right{opacity:1;}
-        /* Editeur WYSIWYG paroles - meme design que Bible mais accent violet */
+        /* Editeur WYSIWYG chants - meme design que Bible mais accent violet */
         #tpl-editor-lyr{position:fixed;inset:0;z-index:100;background:rgba(5,8,15,.92);backdrop-filter:blur(12px);display:none;flex-direction:column;color:#f1f5f9;font-family:'Inter',system-ui,sans-serif;}
         #tpl-editor-lyr.open{display:flex;}
         #tpl-editor-lyr .tpl-topbar{background:linear-gradient(90deg,#1e1b4b,#312e81);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(139,92,246,.4);gap:10px;}
@@ -275,10 +276,19 @@
                     <select id="obs-mode-select" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg focus:ring-violet-500 focus:border-violet-500 block p-2">
                         <option value="full" selected>Plein Écran (Centré)</option>
                         <option value="screen80">80% Écran (Centré)</option>
-                        <option value="bottom">Bas Centré</option>
+                        <option value="bottom">Bas Centré (classique)</option>
+                        <option value="bottom-default">Bas centré par défaut</option>
                         <option value="bottom-right">Bas Droite</option>
                         <option value="scrolling">Ruban Défilant</option>
                     </select>
+                </div>
+
+                <div class="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/80 px-2 py-1" aria-label="Taille du texte projeté">
+                    <span class="text-[10px] text-slate-400 mr-1">Texte</span>
+                    <button id="btn-lyrics-text-smaller" type="button" class="w-7 h-7 rounded bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold" title="Réduire le texte projeté de 10%" aria-label="Réduire le texte">A−</button>
+                    <span id="lyrics-text-scale-value" class="min-w-[38px] text-center text-[10px] text-violet-300 font-bold tabular-nums">100%</span>
+                    <button id="btn-lyrics-text-larger" type="button" class="w-7 h-7 rounded bg-violet-500 hover:bg-violet-400 text-slate-900 text-xs font-bold" title="Agrandir le texte projeté de 10%" aria-label="Agrandir le texte">A+</button>
+                    <button id="btn-lyrics-text-reset" type="button" class="w-6 h-7 rounded text-slate-400 hover:text-white text-xs" title="Rétablir la taille normale">↺</button>
                 </div>
 
                 <button id="btn-open-settings" class="bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-500 hover:to-purple-400 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-violet-500/25">
@@ -592,7 +602,9 @@
             fontFamily: 'Poppins',
             shapeRadius: 20,
             bgBlur: 18,
-            bgMediaType: 'none' // 'none' | 'image' | 'video'
+            bgMediaType: 'none', // 'none' | 'image' | 'video'
+            textScale: 100,
+            templates: { full:null, screen80:null, bottom:null, 'bottom-default':null, 'bottom-right':null }
         };
         let displaySettings = { ...DEFAULT_DISPLAY_SETTINGS };
         let displaySettingsMediaBlob = null; // Blob en mémoire (image ou vidéo)
@@ -618,6 +630,13 @@
         function loadDisplaySettingsJSON() {
             const stored = safeParseLocal('lyricsDisplaySettings', null);
             displaySettings = stored ? { ...DEFAULT_DISPLAY_SETTINGS, ...stored } : { ...DEFAULT_DISPLAY_SETTINGS };
+            displaySettings.templates = Object.assign({}, DEFAULT_DISPLAY_SETTINGS.templates, (stored && stored.templates) || {});
+            displaySettings.textScale = Math.max(70, Math.min(170, Number(displaySettings.textScale) || 100));
+            const oldBottomTemplate = displaySettings.templates.bottom;
+            if (oldBottomTemplate && Number(oldBottomTemplate.lowerThirdSchema || 0) >= 2) {
+                if (!displaySettings.templates['bottom-default']) displaySettings.templates['bottom-default'] = oldBottomTemplate;
+                displaySettings.templates.bottom = null;
+            }
         }
 
         function saveDisplaySettingsJSON() {
@@ -626,6 +645,26 @@
             } catch (e) { /* silencieux */ }
             // Synchronise aussi vers le serveur (axe A) pour que les réglages "suivent" l'utilisateur.
             if (window.OpenStore) { try { OpenStore.set('lyrics', 'displaySettings', displaySettings); } catch (e) { /* silencieux */ } }
+        }
+
+        function updateLyricsTextScaleControls() {
+            const scale = Math.max(70, Math.min(170, Number(displaySettings.textScale) || 100));
+            displaySettings.textScale = scale;
+            const value = document.getElementById('lyrics-text-scale-value');
+            const smaller = document.getElementById('btn-lyrics-text-smaller');
+            const larger = document.getElementById('btn-lyrics-text-larger');
+            if (value) value.textContent = scale + '%';
+            if (smaller) smaller.disabled = scale <= 70;
+            if (larger) larger.disabled = scale >= 170;
+        }
+
+        function setLyricsTextScale(value) {
+            const scale = Math.max(70, Math.min(170, Math.round(Number(value) || 100)));
+            if (scale === Number(displaySettings.textScale)) return;
+            displaySettings.textScale = scale;
+            updateLyricsTextScaleControls();
+            saveDisplaySettingsJSON();
+            if (onAir) triggerDisplay(onAir.songId, onAir.sectionIds, { partIndex: onAir.partIndex || 0 });
         }
 
         
@@ -840,7 +879,7 @@
                 else if (data.side==='prev' && idx>0) triggerDisplay(song.id,[song.sections[idx-1].id]);
             }
         };
-        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Chants / Médias) :
         // gérée par le module partagé js/live-mutex.js, installé plus bas, JUSTE
         // APRÈS la détection du mode — plus aucune variable utilisée avant sa
         // déclaration (c'est ce type d'erreur qui avait cassé le module Médias).
@@ -876,12 +915,12 @@
             // Filet de sécurité : une erreur d'initialisation ne doit jamais laisser
             // la page muette — elle est tracée (et affichée) pour être corrigée.
             Promise.resolve(initControllerMode()).catch((err) => {
-                console.error('[Paroles] Erreur d\'initialisation :', err);
+                console.error('[Chants] Erreur d\'initialisation :', err);
             });
         }
 
-        // Exclusion mutuelle des 3 outils plein écran (Bible / Paroles / Médias) :
-        // quand les Paroles passent à l'antenne, les deux autres se masquent, et
+        // Exclusion mutuelle des 3 outils plein écran (Bible / Chants / Médias) :
+        // quand les Chants passent à l'antenne, les deux autres se masquent, et
         // réciproquement. Le Lower Third reste permanent (hors exclusion).
         // Déclaré ici, APRÈS la détection du mode : isObsMode et clearOBS()
         // existent déjà à ce stade.
@@ -922,7 +961,7 @@
         // ============================================================
         // RENDU PARTAGÉ (OBS + Live Preview) — avec anti-débordement auto
         // ============================================================
-        // Les paroles sont saisies avec de vrais retours à la ligne : on découpe donc simplement
+        // Les textes des chants sont saisis avec de vrais retours à la ligne : on découpe donc simplement
         // sur les sauts de ligne (contrairement aux versets bibliques, pas besoin de couper à la ponctuation).
         function splitTextIntoLines(text) {
             const lines = String(text).split(/\n+/).map(l => l.trim()).filter(Boolean);
@@ -930,7 +969,7 @@
         }
 
         // Ligne discrète "titre — artiste · section", affichée en bas du cadre, bien plus petite
-        // et bien moins contrastée que le texte des paroles, qui reste l'élément principal.
+        // et bien moins contrastée que le texte des chants, qui reste l'élément principal.
         function buildMetaLine(config, fontSize) {
             const parts = [config.reference];
             if (config.sectionLabel) parts.push(config.sectionLabel);
@@ -938,7 +977,7 @@
         }
 
         // Méta épinglée tout en bas du bandeau (modes bas centré / bas droite) : très petite,
-        // très discrète, pour ne pas entrer en concurrence avec les paroles.
+        // très discrète, pour ne pas entrer en concurrence avec les chants.
         function buildMetaFooter(config) {
             const parts = [config.reference];
             if (config.sectionLabel) parts.push(config.sectionLabel);
@@ -1020,8 +1059,8 @@
         }
 
 // ============================================================
-// MOTEUR DE RENDU UNIFIE PAROLES (editeur/preview/OBS) + EDITEUR WYSIWYG
-// Blocs : title (titre), section (Couplet/Refrain), text (paroles)
+// MOTEUR DE RENDU UNIFIE CHANTS (editeur/preview/OBS) + EDITEUR WYSIWYG
+// Blocs : title (titre), section (Couplet/Refrain), text (chants)
 // ============================================================
 function defaultLyricsTemplateFor(mode) {
     switch(mode) {
@@ -1047,12 +1086,22 @@ function defaultLyricsTemplateFor(mode) {
         };
         case 'bottom': return {
             bgImage:null, bgColor:'rgba(15,23,42,0.92)', accentColor:'#8b5cf6', textColor:'#ffffff',
+            shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+            splitMode:'auto', splitChars:100, splitByLines:true,
+            blocks:{
+                title:{visible:true,x:50,y:88,w:70,h:10,fontSize:20,font:'Poppins',weight:600,color:'#94a3b8',align:'center',letterSpacing:1,shadow:1},
+                section:{visible:true,x:18,y:30,w:28,h:24,fontSize:20,font:'Poppins',weight:700,color:'#fff',align:'center',bg:'#8b5cf6'},
+                text:{visible:true,x:50,y:60,w:86,h:60,fontSize:40,font:'Poppins',weight:600,color:'#ffffff',align:'center',letterSpacing:0,shadow:4,lineHeight:1.4}
+            }
+        };
+        case 'bottom-default': return {
+            bgImage:null, bgColor:'rgba(15,23,42,0.92)', accentColor:'#8b5cf6', textColor:'#ffffff',
             shapeRadius:0, bgOpacity:0, transparent:true, bgCover:false, lowerThirdSchema:2,
             splitMode:'auto', splitChars:100, splitByLines:true,
             blocks:{
                 title:{visible:false,x:50,y:88,w:70,h:10,fontSize:20,font:'Poppins',weight:600,color:'#94a3b8',align:'center',letterSpacing:1,shadow:1},
                 section:{visible:false,x:18,y:30,w:28,h:24,fontSize:20,font:'Poppins',weight:700,color:'#fff',align:'center',bg:'#8b5cf6'},
-                text:{visible:true,x:50,y:66,w:92,h:64,fontSize:40,font:'Poppins',weight:600,color:'#ffffff',align:'center',letterSpacing:0,shadow:0,lineHeight:1.25}
+                text:{visible:true,x:50,y:76,w:92,h:36,fontSize:48,font:'Poppins',weight:600,color:'#ffffff',align:'center',letterSpacing:0,shadow:0,lineHeight:1.25}
             }
         };
         case 'bottom-right': return {
@@ -1083,8 +1132,8 @@ function lyricsSplitSmart(text,maxChars){
 function pickLyricsTemplate(mode) {
     const saved=(displaySettings.templates&&displaySettings.templates[mode])||null;
     const template=saved?JSON.parse(JSON.stringify(saved)):defaultLyricsTemplateFor(mode);
-    if(mode==='bottom'){
-        const defaults=defaultLyricsTemplateFor('bottom');
+    if(mode==='bottom-default'){
+        const defaults=defaultLyricsTemplateFor('bottom-default');
         const oldBlocks=template.blocks||{};
         template.blocks={
             ...defaults.blocks,
@@ -1093,7 +1142,6 @@ function pickLyricsTemplate(mode) {
             section:{...defaults.blocks.section,...(oldBlocks.section||{}),visible:false},
             text:{...defaults.blocks.text,...(oldBlocks.text||{})}
         };
-        // La sortie bas-centre ne contient que les paroles, sur fond transparent.
         template.transparent=true;
         template.lowerThirdSchema=2;
     }
@@ -1123,9 +1171,9 @@ function renderLyricsSceneHTML(config,scalePx){
     const bgLayer=bgImage?`<div class="layer-bg-image" style="background-image:url('${String(bgImage).replace(/'/g,"\\'")}');"></div>`:'';
     const overlayLayer=transparent?'':`<div class="layer-overlay"></div>`;
     const blocks=(tpl&&tpl.blocks)?tpl.blocks:defaultLyricsTemplateFor(mode).blocks;
-    function blockStyle(b){
+    function blockStyle(b, multiplier){
         if(!b)return 'display:none;';
-        const fs=b.fontSize*scalePx;const ff=b.font||'Poppins';
+        const fs=b.fontSize*scalePx*(multiplier||1);const ff=b.font||'Poppins';
         const w=b.fontWeight||(b.bold?700:600);
         const dec=[b.underline?'underline':'',b.strike?'line-through':''].filter(Boolean).join(' ')||'none';
         const sh=b.shadow>0?`0 ${b.shadow*scalePx/2}px ${b.shadow*scalePx}px rgba(0,0,0,${0.3+b.shadow/30})`:'none';
@@ -1141,20 +1189,21 @@ function renderLyricsSceneHTML(config,scalePx){
     const rawLines=displayText.split('\n').filter(l=>l.trim()!=='');
     const lines=rawLines.length>1?rawLines:(tpl&&tpl.splitByLines?lyricsSplitSmart(displayText,Math.round((tpl.splitChars||120)*0.7)):[displayText]);
     textInner=lines.map(l=>`<span class="lyric-line">${l}</span>`).join('');
-    const showMetadata=mode!=='bottom';
+    const showMetadata=mode!=='bottom-default';
     const titleHtml=(showMetadata&&blocks.title&&blocks.title.visible&&!hideTitle)
         ?`<div class="blk blk-title blk-align-${blocks.title.align||'center'}" style="${blockStyle(blocks.title)}">🎵 ${config.reference||''}</div>`:'';
     const sectionHtml=(showMetadata&&blocks.section&&blocks.section.visible&&config.sectionLabel&&!hideTitle)
         ?`<div class="blk blk-section blk-align-${blocks.section.align||'center'}" style="${blockStyle(blocks.section)}">${config.sectionLabel||''}</div>`:'';
+    const textScale=Math.max(0.5,Math.min(2,(Number(config.textScale)||100)/100));
     const textHtml=(blocks.text&&blocks.text.visible)
-        ?`<div class="blk blk-text blk-align-${tb.align||'center'}" style="${blockStyle(tb)}">${textInner}</div>`:'';
+        ?`<div class="blk blk-text blk-align-${tb.align||'center'}" style="${blockStyle(tb,textScale)}">${textInner}</div>`:'';
     const classes=['scene-root','anim-show',`tpl-mode-${mode}`,transparent?'obs-transparent':'',bgCover?'has-bg-cover':(bgImage?'has-bg-image':''),hideTitle?'hide-title':'',(parts&&parts.length>1&&splitMode!=='none')?'has-parts':''].filter(Boolean).join(' ');
     window.__lastLyricParts=parts;window.__lastLyricPartIndex=partIndex;
     return `<div class="${classes}" style="${cssVars}">${bgLayer}${overlayLayer}<div class="layer-content">${titleHtml}${sectionHtml}${textHtml}</div></div>`;
 }
 function renderLyricsScrollingHTML(config,scalePx){
     scalePx=scalePx||1;
-    const fontFam=config.fontFamily||'Poppins';const fs=46*scalePx;const refFs=36*scalePx;
+    const fontFam=config.fontFamily||'Poppins';const textScale=Math.max(.7,Math.min(1.7,(Number(config.textScale)||100)/100));const fs=46*scalePx*textScale;const refFs=36*scalePx;
     const wordCount=String(config.text||'').split(/\s+/).filter(Boolean).length;
     const speed=Math.max(15,Math.min(70,wordCount*0.55));
     const flat=(config.text||'').split('\n').join(' — ');
@@ -1162,14 +1211,14 @@ function renderLyricsScrollingHTML(config,scalePx){
 }
 
 // ============================================================
-// EDITEUR WYSIWYG PAROLES
+// EDITEUR WYSIWYG CHANTS
 // ============================================================
 function initLyricsTemplateEditor() {
     const editor=document.getElementById('tpl-editor-lyr');
     const canvasRoot=document.getElementById('tpl-lyr-canvas-root');
     const overlay=document.getElementById('tpl-lyr-edit-overlay');
     const modeTabsEl=document.getElementById('tpl-lyr-mode-tabs');
-    const MODES=[{id:'full',label:'Plein écran'},{id:'screen80',label:'80% écran'},{id:'bottom',label:'Bas centré'},{id:'bottom-right',label:'Bas droite'}];
+    const MODES=[{id:'full',label:'Plein écran'},{id:'screen80',label:'80% écran'},{id:'bottom',label:'Bas centré (classique)'},{id:'bottom-default',label:'Bas centré par défaut'},{id:'bottom-right',label:'Bas droite'}];
     function sampleVerse(){
         if(onAir&&onAir.songId){const song=songs.find(s=>s.id===onAir.songId);if(song){const sec=song.sections.find(s=>s.id===onAir.sectionIds[onAir.sectionIds.length-1]);if(sec)return{reference:song.title+(song.artist?' — '+song.artist:''),sectionLabel:sec.label,text:sec.text};}}
         return{reference:'Mon chant — Artiste',sectionLabel:'Refrain',text:'Quel ami fidèle et tendre,\nQue de se reposer sur Toi !\nDe tout souci se décharger,\nEt de tout remettre à Ta foi.'};
@@ -1232,16 +1281,16 @@ function initLyricsTemplateEditor() {
         document.getElementById('tpl-lyr-radius').value=state.shapeRadius||0;
         const transparentToggle=document.getElementById('tpl-lyr-transparent');
         transparentToggle.checked=!!state.transparent;
-        transparentToggle.disabled=currentEditMode==='bottom';
-        transparentToggle.title=currentEditMode==='bottom'?'Le fond reste transparent en bas-centre pour ne laisser apparaître que les bandeaux de chant.':'';
+        transparentToggle.disabled=currentEditMode==='bottom-default';
+        transparentToggle.title=currentEditMode==='bottom-default'?'Le fond reste transparent pour ne laisser apparaître que les bandes de chant.':'';
         document.getElementById('tpl-lyr-bg-cover').checked=!!state.bgCover;
         const splitEl=document.getElementById('tpl-lyr-split-mode');if(splitEl){splitEl.value=state.splitMode||'none';const sc=document.getElementById('tpl-lyr-split-chars');sc.value=state.splitChars||120;sc.disabled=(state.splitMode==='none');document.getElementById('tpl-lyr-split-chars-v').innerText=state.splitChars||120;document.getElementById('tpl-lyr-split-lines').checked=!!state.splitByLines;}
         const noBlock=document.getElementById('tpl-lyr-no-block');const props=document.getElementById('tpl-lyr-block-props');
         document.querySelectorAll('#tpl-lyr-block-picker button').forEach(btn=>{
             const k=btn.dataset.block;const v=!!(state.blocks[k]&&state.blocks[k].visible);
-            const bottomMetadata=currentEditMode==='bottom'&&k!=='text';
+            const bottomMetadata=currentEditMode==='bottom-default'&&k!=='text';
             btn.disabled=bottomMetadata;
-            btn.title=bottomMetadata?'Les métadonnées sont masquées en bas-centre.':'';
+            btn.title=bottomMetadata?'Les métadonnées sont masquées dans ce mode.':'';
             btn.style.opacity=bottomMetadata?'.45':'';
             btn.classList.toggle('active',v&&selected===k);const d=btn.querySelector('.dot');if(d)d.style.background=v?'#c4b5fd':'#475569';
         });
@@ -1288,7 +1337,7 @@ function initLyricsTemplateEditor() {
     document.getElementById('tpl-lyr-btn-undo').onclick=undo;
     document.getElementById('tpl-lyr-btn-reset-mode').onclick=()=>{if(!confirm('Réinitialiser le modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » ?'))return;state=defaultLyricsTemplateFor(currentEditMode);state.mode=currentEditMode;pushHistory();rebuildCanvas();updatePropsPanel();};
     document.getElementById('tpl-lyr-btn-cancel').onclick=closeEditor;
-    document.getElementById('tpl-lyr-btn-apply').onclick=()=>{if(!displaySettings.templates)displaySettings.templates={};displaySettings.templates[currentEditMode]=JSON.parse(JSON.stringify(state));displaySettings.bgColor=state.bgColor;displaySettings.accentColor=state.accentColor;displaySettings.textColor=state.textColor;displaySettings.shapeRadius=state.shapeRadius;if(state.bgImage){if(!confirm('Enregistrer cette image de fond dans le rendu paroles (remplace le fond image/video actuel) ?'))return;}displaySettings.bgImage=state.bgImage;displaySettings.bgCover=!!state.bgCover;displaySettings.transparent=!!state.transparent;saveDisplaySettingsJSON();closeEditor();refreshOnAirDisplay();showToast('Modèle paroles « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » enregistré ✨');};
+    document.getElementById('tpl-lyr-btn-apply').onclick=()=>{if(!displaySettings.templates)displaySettings.templates={};displaySettings.templates[currentEditMode]=JSON.parse(JSON.stringify(state));if(currentEditMode!=='bottom-default'){displaySettings.bgColor=state.bgColor;displaySettings.accentColor=state.accentColor;displaySettings.textColor=state.textColor;displaySettings.shapeRadius=state.shapeRadius;if(state.bgImage){if(!confirm('Enregistrer cette image de fond dans le rendu des chants (remplace le fond image/video actuel) ?'))return;}displaySettings.bgImage=state.bgImage;displaySettings.bgCover=!!state.bgCover;displaySettings.transparent=!!state.transparent;}saveDisplaySettingsJSON();closeEditor();refreshOnAirDisplay();showToast('Modèle « '+(MODES.find(m=>m.id===currentEditMode)||{}).label+' » enregistré ✨');};
     function openEditor(){sample=sampleVerse();currentEditMode=document.getElementById('obs-mode-select').value;if(!MODES.find(m=>m.id===currentEditMode))currentEditMode='full';loadTemplate(currentEditMode);renderModeTabs();pushHistory();selected='text';editor.classList.add('open');requestAnimationFrame(()=>{rebuildCanvas();updatePropsPanel();});document.addEventListener('keydown',editorKeyHandler);window.addEventListener('resize',rebuildCanvas);}
     function closeEditor(){editor.classList.remove('open');document.removeEventListener('keydown',editorKeyHandler);window.removeEventListener('resize',rebuildCanvas);}
     function editorKeyHandler(e){if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;if(e.key==='Escape'){closeEditor();e.preventDefault();return;}if(!selected||!state.blocks[selected]){if(e.key==='Tab'){selected='text';drawOverlay();updatePropsPanel();e.preventDefault();}return;}const b=state.blocks[selected];const step=e.shiftKey?5:1;
@@ -1299,7 +1348,7 @@ function initLyricsTemplateEditor() {
     btn.addEventListener('click',openEditor);
 }
 
-// Raccourcis clavier globaux paroles
+// Raccourcis clavier globaux chants
 function initLyricsKeyboardShortcuts(){
     document.addEventListener('keydown',(e)=>{
         if(document.getElementById('tpl-editor-lyr').classList.contains('open'))return;
@@ -1378,6 +1427,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
             }
 
             const fontFam = config.fontFamily || 'Poppins';
+            const textScale = Math.max(0.7, Math.min(1.7, (Number(config.textScale) || 100) / 100));
             const wordCount = config.text.split(/\s+/).filter(Boolean).length;
 
             const lines = splitTextIntoLines(config.text);
@@ -1395,17 +1445,17 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                     <div class="ticker-wrapper" style="font-family: '${fontFam}', sans-serif; font-size: calc(var(--adapt-h, 1080px) * 40 / 1080);">
                         <div class="ticker-content">
                             <span class="lyric-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">🎵 ${config.reference} <span class="section-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.sectionLabel}</span> :</span>
-                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
+                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * ${46*textScale} / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
                         </div>
                         <div class="ticker-content">
                             <span class="lyric-ref mr-6" style="font-size: calc(var(--adapt-h, 1080px) * 36 / 1080);">🎵 ${config.reference} <span class="section-badge" style="font-size: calc(var(--adapt-h, 1080px) * 24 / 1080); padding: 4px 12px;">${config.sectionLabel}</span> :</span>
-                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * 46 / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
+                            <span class="lyric-text" style="font-size: calc(var(--adapt-h, 1080px) * ${46*textScale} / 1080); width: auto; max-width: none; margin: 0;">${flatText}</span>
                         </div>
                     </div>
                 `;
             } else if (config.mode === 'bottom') {
                 modeClass = 'obs-bottom';
-                // En bas-centre, seules les paroles sont rendues : aucun titre, artiste,
+                // En bas-centre, seul le texte des chants est rendu : aucun titre, artiste,
                 // nom de chant ou libellé de section ne doit apparaître.
                 html = `
                     <div class="w-full h-full flex flex-col items-center justify-center">
@@ -1440,13 +1490,13 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
 
             // Modes standard (full/screen80/bottom/bottom-right) : RENDU À CALQUES
             // SYSTÉMATIQUE (WYSIWYG 1:1), avec le template par défaut si aucun template
-            // personnalisé n'a été sauvegardé. Si le split des paroles longues est
+            // personnalisé n'a été sauvegardé. Si le split des chants longs est
             // actif → force automatiquement un layout bandeau-bas à la FreeShow.
             const useLayers = config.mode !== 'scrolling';
             if (useLayers) {
                 let renderMode = config.mode;
                 if (config.parts && config.parts.length > 1) {
-                    renderMode = 'bottom';
+                    renderMode = config.mode === 'bottom-default' ? 'bottom-default' : 'bottom';
                 }
                 card.className = '';
                 card.style.cssText = 'position:absolute;inset:0;margin:0;padding:0;background:transparent;border:none;box-shadow:none;overflow:hidden;';
@@ -1642,6 +1692,10 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
         // ============================================================
         async function initControllerMode() {
             loadDisplaySettingsJSON();
+            updateLyricsTextScaleControls();
+            document.getElementById('btn-lyrics-text-smaller').addEventListener('click', () => setLyricsTextScale((Number(displaySettings.textScale) || 100) - 10));
+            document.getElementById('btn-lyrics-text-larger').addEventListener('click', () => setLyricsTextScale((Number(displaySettings.textScale) || 100) + 10));
+            document.getElementById('btn-lyrics-text-reset').addEventListener('click', () => setLyricsTextScale(100));
             initSettingsPanel();
             // L'éditeur WYSIWYG est marqué dans le HTML après ce script :
             // attendre la fin du parsing pour pouvoir l'initialiser sans null.
@@ -1725,7 +1779,10 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                     OpenStore.pullIfLocalEmpty('lyrics', 'displaySettings', o => o && o.bgColor),
                     OpenStore.pullIfLocalEmpty('lyrics', 'lastSongId', v => !!v),
                 ]).then(([settingsChanged]) => {
-                    if (settingsChanged) loadDisplaySettingsJSON();
+                    if (settingsChanged) {
+                        loadDisplaySettingsJSON();
+                        updateLyricsTextScaleControls();
+                    }
                 }).catch(() => { /* silencieux */ });
             }
 
@@ -1996,6 +2053,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                 accentColor: displaySettings.accentColor,
                 textColor: displaySettings.textColor,
                 fontFamily: displaySettings.fontFamily,
+                textScale: Number(displaySettings.textScale) || 100,
                 shapeRadius: displaySettings.shapeRadius,
                 bgBlur: displaySettings.bgBlur,
                 bgMediaType: displaySettings.bgMediaType,
@@ -2016,9 +2074,9 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
 
             if (displaySettings.layout) config.layout = displaySettings.layout;
 
-            // Split des paroles longues selon le template du mode
+            // Split des chants longs selon le template du mode
             const lyrMode = document.getElementById('obs-mode-select').value;
-            const lyrTpl = (displaySettings.templates && displaySettings.templates[lyrMode]) || null;
+            const lyrTpl = Object.assign({}, defaultLyricsTemplateFor(lyrMode), (displaySettings.templates && displaySettings.templates[lyrMode]) || {});
             if (lyrTpl && lyrTpl.splitMode === 'auto' && combinedText.length > (lyrTpl.splitChars||120)*0.8) {
                 config.parts = lyricsSplitSmart(combinedText, lyrTpl.splitChars || 120);
                 if (config.parts.length < 2) config.parts = null;
@@ -2109,7 +2167,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
             container.innerHTML = '';
 
             if (editorSections.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-500 italic text-center py-4">Aucune section. Collez des paroles ci-dessus ou ajoutez une section avec les boutons.</p>';
+                container.innerHTML = '<p class="text-xs text-slate-500 italic text-center py-4">Aucune section. Collez le texte du chant ci-dessus ou ajoutez une section avec les boutons.</p>';
                 return;
             }
 
@@ -2126,7 +2184,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                             <button type="button" data-role="delete" class="p-1.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400" title="Supprimer">🗑</button>
                         </div>
                     </div>
-                    <textarea data-role="text" rows="4" class="bg-slate-800 border border-slate-600 text-white text-sm rounded p-2 w-full" placeholder="Paroles de cette section...">${escapeHtml(sec.text)}</textarea>
+                    <textarea data-role="text" rows="4" class="bg-slate-800 border border-slate-600 text-white text-sm rounded p-2 w-full" placeholder="Texte de cette section...">${escapeHtml(sec.text)}</textarea>
                 `;
 
                 row.querySelector('[data-role="label"]').addEventListener('input', (e) => { sec.label = e.target.value; });
@@ -2339,7 +2397,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
         <label class="flex items-center gap-2 text-[11px] text-slate-300 mt-2"><input type="checkbox" id="tpl-lyr-transparent">Fond transparent (caméra/vidéo OBS visible)</label>
       </div>
       <div class="tpl-section">
-        <h4>Paroles longues</h4>
+        <h4>Textes de chant longs</h4>
         <select id="tpl-lyr-split-mode" class="tpl-select">
           <option value="none">Affichage complet</option>
           <option value="auto">Découper automatiquement</option>

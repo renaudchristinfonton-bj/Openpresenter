@@ -57,7 +57,7 @@
 <div class="app">
     <div class="form">
         <h1>🎨 Éditeur de Looks</h1>
-        <p class="sub">Créez un habillage complet — couleurs, police, coins, photo de fond et <b>géométrie de chaque mode</b> (plein écran, bas centré, bas droite, défilement). Un seul look peut régler <b>différemment</b> la Bible et les Paroles.</p>
+        <p class="sub">Créez un habillage complet — couleurs, police, coins, photo de fond et <b>géométrie de chaque mode</b> (plein écran, bas centré, bas droite, défilement). Un seul look peut régler <b>différemment</b> la Bible et les Chants.</p>
 
         <div class="row">
             <label>Nom du look</label>
@@ -72,7 +72,7 @@
 
         <div class="tabs">
             <div class="tab active" id="tab-bible">📖 Bible</div>
-            <div class="tab" id="tab-lyrics">🎤 Paroles</div>
+            <div class="tab" id="tab-lyrics">🎤 Chants</div>
         </div>
         <div class="link-note"><input type="checkbox" id="lk-link" checked> Lié : les mêmes réglages pour les deux</div>
 
@@ -105,7 +105,7 @@
         <p class="hint">La photo est enregistrée DANS le look (il reste portable avec le dossier du projet).</p>
 
         <div class="sect">Géométrie des modes (%)</div>
-        <p class="hint">Laissez vide pour la géométrie par défaut. Les réglages s'appliquent à l'outil affiché (Bible ou Paroles).</p>
+        <p class="hint">Laissez vide pour la géométrie par défaut. Les réglages s'appliquent à l'outil affiché (Bible ou Chants).</p>
         <div id="geo">
             <div class="row"><label style="min-width:130px">⛶ Plein écran</label>
                 L <input type="text" id="g-full-width" placeholder="96%">< H <input type="text" id="g-full-height" placeholder="93%">< Haut <input type="text" id="g-full-top" placeholder="4%">
@@ -137,7 +137,8 @@
             <select id="pv-mode" style="max-width:200px">
                 <option value="full">Plein écran</option>
                 <option value="screen80">80 % écran</option>
-                <option value="bottom">Bas centré</option>
+                <option value="bottom">Bas centré (classique)</option>
+                <option value="bottom-default">Bas centré par défaut</option>
                 <option value="bottom-right">Bas droite</option>
                 <option value="scrolling">Ruban défilant</option>
             </select>
@@ -145,7 +146,7 @@
         </div>
         <div class="frames">
             <div class="pv"><span class="tag">📖 BIBLE</span><div class="stage" id="stage-bible"><iframe src="bible_control_display_pro.html?obs=true"></iframe></div></div>
-            <div class="pv"><span class="tag">🎤 PAROLES</span><div class="stage" id="stage-lyrics"><iframe src="lyrics_control_display_pro.html?obs=true"></iframe></div></div>
+            <div class="pv"><span class="tag">🎤 CHANTS</span><div class="stage" id="stage-lyrics"><iframe src="lyrics_control_display_pro.html?obs=true"></iframe></div></div>
         </div>
     </div>
 </div>
@@ -155,7 +156,7 @@
     'use strict';
 
     const FONTS = ['Merriweather', 'Cinzel', 'Montserrat', 'Playfair Display', 'Lora', 'EB Garamond', 'Inter'];
-    const MODES = ['full', 'screen80', 'bottom', 'bottom-right', 'scrolling'];
+    const MODES = ['full', 'screen80', 'bottom', 'bottom-default', 'bottom-right', 'scrolling'];
 
     // Brouillons par outil (settings + layout par mode).
     const draft = {

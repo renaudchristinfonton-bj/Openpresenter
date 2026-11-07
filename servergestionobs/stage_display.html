@@ -75,7 +75,7 @@
     // ============================================================
     // Affiche : horloge, minuteur en cours (timer_channel), message de la régie
     // (pasteur_channel), section de chant COURANTE en très grand, et la section
-    // SUIVANTE en plus discret (config.next envoyé par le contrôleur Paroles).
+    // SUIVANTE en plus discret (config.next envoyé par le contrôleur Chants).
     // Tout arrive par le relais : cet écran peut tourner sur n'importe quel
     // appareil du réseau (tablette en coulisses, etc.).
 
@@ -87,7 +87,7 @@
         document.getElementById('clock').innerText = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
     }, 500);
 
-    // ---- Paroles : section courante + suivante ----
+    // ---- Chants : section courante + suivante ----
     var lyrics = null;
     try {
         var lc = new RemoteChannel('obs_lyrics_channel');

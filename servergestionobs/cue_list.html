@@ -186,7 +186,7 @@
                 <label>Type</label>
                 <select id="add-kind">
                     <option value="bible">📖 Verset biblique</option>
-                    <option value="lyrics">🎤 Paroles / section</option>
+                    <option value="lyrics">🎤 Chant / section</option>
                     <option value="media">🖼️ Média</option>
                     <option value="lt">🏷️ Lower third (présentateur)</option>
                     <option value="note">📝 Note / étape (rien à diffuser)</option>
@@ -233,7 +233,7 @@
 
         const KIND_COLOR = { bible: 'var(--bible)', lyrics: 'var(--lyrics)', media: 'var(--media)', lt: 'var(--lt)', clear: 'var(--muted)' };
         const KIND_ICON = { bible: '📖', lyrics: '🎤', media: '🖼️', lt: '🏷️', clear: '⬛' };
-        const KIND_NAME = { bible: 'Bible', lyrics: 'Paroles', media: 'Média', lt: 'Titre', clear: 'Couper' };
+        const KIND_NAME = { bible: 'Bible', lyrics: 'Chants', media: 'Média', lt: 'Titre', clear: 'Couper' };
 
         // Accès aux iframes
         const frames = {
@@ -573,10 +573,10 @@
         // ============================================================
         // CSV texte simple : une ligne par étape —
         //   « Jean 3:16 »              → verset biblique (recherche réelle à la diffusion)
-        //   « Grâce Infinie »          → chant correspondant (si trouvé dans les Paroles)
+        //   « Grâce Infinie »          → chant correspondant (si trouvé dans les chants)
         //   sinon                      → note/étape structurelle
         // JSON Planning Center (export plan) : les items deviennent des étapes,
-        // les chants sont appariés par titre quand ils existent dans les Paroles.
+        // les chants sont appariés par titre quand ils existent dans les chants.
         function normalizeTitle(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
 
         function findSongByTitle(title) {

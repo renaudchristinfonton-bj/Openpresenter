@@ -1,4 +1,4 @@
-# Serveur relais OBS — Bible / Paroles / Lower Third
+# Serveur relais OBS — Bible / Chants / Lower Third
 
 ## Le problème que ça résout
 
@@ -21,31 +21,36 @@ de BroadcastChannel. Résultat :
 Rien ne change dans la façon dont vous utilisez les outils au quotidien — juste la façon
 dont vous les ouvrez.
 
-## Installation (une seule fois)
+## Application Windows (sans installation de Node.js)
+
+Téléchargez **OpenPresenter.exe** depuis les [releases GitHub](https://github.com/renaudchristinfonton-bj/Openpresenter/releases/latest), puis double-cliquez dessus. L'application démarre le serveur local et ouvre le Command Center dans votre navigateur par défaut. Le navigateur et les Sources OBS continuent d'utiliser les mêmes URL (`localhost:8787` par défaut).
+
+Les fichiers de l'application restent locaux. Dans la version `.exe`, les données (chants, favoris et réglages) sont enregistrées dans `%LOCALAPPDATA%\OpenPresenter\data`; elles ne sont pas écrites à côté de l'exécutable. Au premier démarrage, autorisez OpenPresenter dans le pare-feu Windows si vous souhaitez le piloter depuis d'autres appareils du réseau.
+
+## Installation depuis les sources (Node.js)
 
 1. Installez [Node.js](https://nodejs.org/) (version LTS) si ce n'est pas déjà fait.
-   Vérifiez avec `node -v` dans un terminal — il faut voir un numéro de version.
-2. Gardez tous les fichiers de ce dossier ensemble : `sync-relay-server.js`, et vos 3
-   fichiers `.html` (déjà mis à jour et inclus ici).
+2. Gardez tous les fichiers de ce dossier ensemble : le serveur, les pages `.html`, les polices et les ressources locales.
+3. Pour reconstruire l'exécutable Windows, ouvrez un terminal dans `servergestionobs/`, puis lancez `npm ci` et `npm run build:windows`. Le résultat apparaît dans `servergestionobs/dist/OpenPresenter.exe`.
 
-Aucune installation de dépendance n'est nécessaire (le serveur n'utilise que Node.js pur).
+Le serveur lancé depuis les sources n'utilise que Node.js pur; le paquet de compilation `@yao-pkg/pkg` n'est nécessaire que pour reconstruire le `.exe`.
 
 ## Démarrage
 
-**Windows** : double-cliquez sur `demarrer-windows.bat`
-**Mac / Linux** : double-cliquez sur `demarrer-mac-linux.command` (ou lancez
-`./demarrer-mac-linux.command` dans un terminal ; sur Mac il faudra peut-être
-`chmod +x demarrer-mac-linux.command` une fois — le script essaie aussi de le
-faire automatiquement pour vous)
+**Windows, sans Node.js** : double-cliquez sur `OpenPresenter.exe`.
+**Depuis les sources** : Windows — `demarrer-windows.bat`; Mac / Linux — `demarrer-mac-linux.command` (ou lancez `./demarrer-mac-linux.command` dans un terminal ; sur Mac il faudra peut-être `chmod +x demarrer-mac-linux.command` une fois).
 
-Ou en ligne de commande, depuis ce dossier :
+Ou en ligne de commande depuis les sources, dans ce dossier :
 ```
-node sync-relay-server.js
+npm start
 ```
+(équivalent : `node sync-relay-server.js`). Cette méthode requiert Node.js.
 
-### Ce que le script vérifie tout seul avant de démarrer
+### Vérifications des lanceurs depuis les sources
 
-À chaque lancement, le script fait 4 vérifications et vous guide en cas de
+Les contrôles ci-dessous concernent les scripts `.bat` / `.command` et le lancement par Node.js. Ils ne s'appliquent pas à `OpenPresenter.exe`, qui embarque son propre moteur Node.js et ne demande aucune installation de Node.
+
+À chaque lancement par script, le programme fait 4 vérifications et vous guide en cas de
 problème (rien à faire si tout est vert) :
 
 1. **Node.js est-il installé ?** Sinon, il vous donne le lien de téléchargement
@@ -128,7 +133,7 @@ second PC apparaîtra en direct dans OBS sur le premier PC.
   (en ouvrant les fichiers directement) — c'est juste que dans ce cas, vous retombez
   dans la limitation d'origine (obligé de tout garder dans les docks OBS).
 
-## Exclusion mutuelle des 3 outils (Bible / Paroles / Médias)
+## Exclusion mutuelle des 3 outils (Bible / Chants / Médias)
 
 **La règle :** si l'un des trois outils « plein écran » passe à l'antenne, les deux
 autres se coupent automatiquement. Exemple : un verset s'affiche → le média en cours
@@ -149,8 +154,9 @@ projet : ne rien casser) :
 
 ```
 cd servergestionobs/tests
-npm install        # une seule fois (télécharge Playwright + Chromium)
-npm test           # syntaxe des pages + exclusion mutuelle + intégration navigateur
+npm install             # une seule fois (télécharge Playwright + Chromium)
+npm run test:v1-features # recherche, découpe/fullscreen, navigation et Chants dans Chromium
+npm test                # syntaxe des pages + exclusion mutuelle + intégration navigateur
 ```
 
 - `check-syntax.sh` : vérifie la syntaxe JavaScript de tous les blocs `<script>`
@@ -163,12 +169,11 @@ npm test           # syntaxe des pages + exclusion mutuelle + intégration navig
   ajout de chant, exclusion mutuelle dans les 4 sens, chargement de toutes les
   pages sans erreur. C'est le test qui a validé la correction du bug d'ajout.
 
-**Après chaque modification du code, relancez `npm test`.** Si vous touchez à
-l'ajout de médias ou de paroles, c'est la garantie que ça marche toujours.
+**Après chaque modification du code, relancez les tests concernés.** Pour la recherche Bible, les modes de projection et les commandes de taille des Chants, lancez `npm run test:v1-features`; le test d'intégration couvre aussi les ajouts de médias et de chants.
 
 ## Résolution de sortie personnalisée (tous les outils)
 
-Dans chaque outil (Bible, Paroles, Médias, Lower Third), saisissez une taille
+Dans chaque outil (Bible, Chants, Médias, Lower Third), saisissez une taille
 **libre** `largeur × hauteur` dans le panneau « Résolution de sortie » : le lien
 OBS devient `...?obs=true&res=1280x720` (Lower Third : `?obs=1&res=...`), avec
 bouton **Copier**. Le contenu s'adapte à votre écran grâce au **mode
@@ -207,21 +212,19 @@ foncé) pour rester toujours lisible. La mise en forme est enregistrée par vers
 (et suit le dossier `data/`) et apparaît telle quelle à la projection. Le bouton
 ✏️ passe en orange quand un verset est annoté.
 
-## Découpage des versets longs (uniquement les sorties « bas »)
+## Recherche biblique par nom de livre
 
-Le découpage est piloté par l'option **« Afficher ligne par ligne (versets
-longs) »** des réglages d'affichage — pas par le mode du contrôleur. Quand elle
-est active et qu'un verset dépasse ~160 caractères, il est découpé en parties
-lisibles (~150 caractères, coupure à l'espace) et des boutons **← →** avec un
-indicateur **x/y** apparaissent (aussi les flèches du clavier).
+Dans le contrôleur Bible, tapez un début de nom comme **E-S** ou **J-E** : les livres correspondants filtrent la liste sans tenir compte des accents ni des séparateurs, avec les préfixes en premier. **Entrée** choisit directement le premier résultat et place le curseur dans la saisie chapitre-verset; entrez par exemple `8 9`, puis appuyez encore sur **Entrée** pour projeter Esther 8:9. La recherche plein texte existante reste disponible.
 
-**Seules les sorties « Bas centré » et « Bas droite » affichent une partie à la
-fois** : le lien général quand le mode sélectionné est « bas », ou les liens
-verrouillés `?obs=true&lockMode=bottom` / `lockMode=bottom-right` du panneau de
-liens. Toutes les autres sorties (plein écran, 80%, ruban défiler) affichent
-toujours le verset **ENTIER** et ne sont en aucun cas affectées — vous pouvez
-donc diffuser en même temps un verset complet au plein écran et par parties en
-bandeau bas. Un verset annoté (✏️) n'est jamais découpé.
+## Nouveau mode Bible « Bas centré par défaut »
+
+Le style reproduit le modèle fourni : cartouche bleu en trapèze en haut à droite et panneau clair pour le verset. Il est facultatif et séparé des modèles classiques. Choisissez **Bas centré par défaut** dans le contrôleur ou utilisez dans OBS `?obs=true&lockMode=bottom-default`. Le mode **Bas centré** historique, les couleurs et les réglages du plein écran gardent leurs propres valeurs.
+
+Dans ce nouveau mode, les versets d'au moins 40 mots sont découpés en parties équilibrées d'au plus 22 mots par défaut (réglable dans l'éditeur, de 8 à 40), avec au moins quatre parties pour un long verset tel qu'Esther 8:9. Les boutons numérotés permettent d'aller directement à n'importe quelle partie; les flèches du clavier parcourent les parties avant de passer au verset suivant. Les annotations ne sont pas coupées. Cette option n'altère pas le plein écran.
+
+## Chants
+
+Le contrôleur utilise désormais le libellé **Chants**. Les boutons **A− / A+** agrandissent ou réduisent le texte projeté, sans dépendre de la taille du champ de saisie. **Bas centré par défaut** est aussi disponible comme option distincte : lignes blanches sur de petits fonds noirs serrés derrière le texte; les anciennes mises en page restent accessibles.
 
 ## Sauvegardes globales (Command Center)
 
@@ -234,7 +237,7 @@ résolution, bibliothèques IndexedDB avec les médias, données du dossier `dat
 
 `vue_pasteur.html` — l'écran à installer face au pasteur (tablette, PC, TV) :
 - **3/5 de l'écran** : tout ce qui se passe réellement à l'antenne (les sorties
-  Bible / Paroles / Médias / Titres y sont embarquées en direct, avec un libellé
+  Bible / Chants / Médias / Titres y sont embarquées en direct, avec un libellé
   « en direct » et un badge quand un titre est affiché) ;
 - **1/5 : minuteur** — horloge + compte à rebours ou chronomètre, libellé
   (« Prédication »…), couleurs d'alerte (orange à 5 min, rouge à 1 min, clignotant
@@ -274,7 +277,7 @@ Depuis cette version, **tout est local** — coupez Internet, tout fonctionne :
 ## Looks — habillage global en 1 clic + ÉDITEUR complet
 
 Sur la page d'accueil (`/`), la carte **🎨 Looks** applique instantanément un
-habillage à la **Bible** et aux **Paroles** : 6 préréglages (Sobre, Festif,
+habillage à la **Bible** et aux **Chants** : 6 préréglages (Sobre, Festif,
 Carême, Noël, Aube, Mission) **+ vos looks personnalisés** créés dans
 **`looks_editor.html`** (bouton « Créer / modifier un look »). Tout est appliqué
 **en direct** sur les contrôleurs ouverts et **persisté** (suit le dossier `data/`).
@@ -284,7 +287,7 @@ Carême, Noël, Aube, Mission) **+ vos looks personnalisés** créés dans
 - **photo de fond** (enregistrée DANS le look, portable) + **flou** ;
 - **géométrie de chaque mode** : plein écran, 80 % écran, bas centré, bas droite,
   ruban défilant — largeur, hauteur, écarts, en % (vide = défaut) ;
-- **Bible et Paroles réglées séparément dans un même look** (onglets 📖/🎤,
+- **Bible et Chants réglées séparément dans un même look** (onglets 📖/🎤,
   case « Lié » pour tout régler identiquement) ;
 - **aperçu en direct** avec les vraies pages de projection ;
 - enregistrer (autant de looks que voulu), recharger, modifier, supprimer.
@@ -304,5 +307,5 @@ Dans la **File de déroulement** (`cue_list.html`), bouton **⬆️ Importer un 
   « Grâce Infinie » est appariée au chant du même nom (première section), toute
   autre ligne devient une **note structurelle** (repère du culte, rien n'est diffusé) ;
 - **JSON Planning Center** (export d'un plan) : les items deviennent des étapes,
-  les chants sont appariés par titre quand ils existent dans vos Paroles.
+  les chants sont appariés par titre quand ils existent dans vos chants.
 Choisissez ensuite « remplacer la file » ou « ajouter à la fin ».

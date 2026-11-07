@@ -62,14 +62,14 @@ const tick = (ms = 20) => new Promise((r) => setTimeout(r, ms));
     const m = LiveMutex.claim('media', (by) => hidden.media.push(by));
     b.show();
     await tick();
-    check('Bible masque Paroles', hidden.lyrics.length === 1 && hidden.lyrics[0] === 'bible');
+    check('Bible masque Chants', hidden.lyrics.length === 1 && hidden.lyrics[0] === 'bible');
     check('Bible masque Médias', hidden.media.length === 1 && hidden.media[0] === 'bible');
     check('Bible ne se masque pas elle-même', hidden.bible.length === 0);
-    // Puis les Médias prennent l'antenne : Bible et Paroles se masquent.
+    // Puis les Médias prennent l'antenne : Bible et Chants se masquent.
     m.show();
     await tick();
     check('Médias masquent Bible (retour)', hidden.bible.length === 1 && hidden.bible[0] === 'media');
-    check('Médias masquent Paroles (2e masquage)', hidden.lyrics.length === 2 && hidden.lyrics[1] === 'media');
+    check('Médias masquent Chants (2e masquage)', hidden.lyrics.length === 2 && hidden.lyrics[1] === 'media');
     check('Médias masquées une seule fois (par la Bible), jamais par elles-mêmes', hidden.media.length === 1 && hidden.media[0] === 'bible');
     check("Aucune exception ne s'est échappée du module", w.thrown.length === 0);
 }
@@ -90,7 +90,7 @@ const tick = (ms = 20) => new Promise((r) => setTimeout(r, ms));
     m.channel.deliver({ action: 'show', source: 'bible' });
     b.channel.deliver({ action: 'show', source: 'bible' }); // self → ignoré
     await tick();
-    check('Doublons : Paroles reste masquée (compteur stable)', lyricsHidden === afterFirst.lyricsHidden + 1 && lyricsHidden >= 1);
+    check('Doublons : Chants reste masquée (compteur stable)', lyricsHidden === afterFirst.lyricsHidden + 1 && lyricsHidden >= 1);
     check('Doublons : Médias reste masqué (compteur stable)', mediaHidden === afterFirst.mediaHidden + 1 && mediaHidden >= 1);
     check('Doublons : Bible ne s\'est jamais masquée', bibleHidden === 0);
     check('Doublons : aucune exception', w.thrown.length === 0);

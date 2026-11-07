@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lyrics Pro Controller - OBS</title>
+    <title>Contrôleur des chants - OBS</title>
     <link rel="manifest" href="manifest.webmanifest">
     <!-- Importation des polices -->
     <link rel="stylesheet" href="vendor/fonts/fonts.css">
@@ -81,6 +81,15 @@
         .obs-bottom-right .lyric-text { margin-left: auto; margin-right: 0; }
         .lyric-line { display: block; }
         .lyric-line + .lyric-line { margin-top: 0.45em; }
+        /* Bas-centre : chaque ligne devient un bandeau noir indépendant, sans titre ni section. */
+        .scene-root.tpl-mode-bottom .blk-text { align-items: center; text-align: center; }
+        .scene-root.tpl-mode-bottom .blk-text .lyric-line {
+            display: block; width: fit-content; max-width: 100%; box-sizing: border-box;
+            margin: .12em auto 0; padding: .08em .55em;
+            background: #000; color: #fff !important; text-align: center;
+            text-shadow: none; white-space: normal;
+        }
+        .scene-root.tpl-mode-bottom .blk-text .lyric-line + .lyric-line { margin-top: .28em; }
 
         /* Transition fluide des paroles : seul le texte fait un fondu avec un léger
            défilement vertical. Le fond reste stable (il n'est PAS recréé entre sections). */
@@ -244,7 +253,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="font-display font-bold text-xl text-white tracking-wide">Lyrics Pro Controller</h1>
+                    <h1 class="font-display font-bold text-xl text-white tracking-wide">Contrôleur des chants</h1>
                     <p class="text-xs text-slate-400" id="songs-info">Chargement...</p>
                 </div>
                 <span id="sync-badge" class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-700 text-slate-400 ml-3">
@@ -432,7 +441,7 @@
             </div>
 
             <div class="mb-5 p-4 rounded-xl bg-slate-900/50 border border-slate-700/50">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Coller des paroles (analyse automatique)</label>
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Coller un chant (analyse automatique)</label>
                 <textarea id="editor-paste-box" rows="5" class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 w-full" placeholder="Astuce: utilisez [Couplet 1], [Refrain], [Pont]... sur leur propre ligne pour délimiter les sections. Sinon, séparez simplement les blocs par une ligne vide."></textarea>
                 <div class="flex justify-end mt-2">
                     <button id="btn-parse-paste" class="bg-violet-500 hover:bg-violet-400 text-slate-900 font-bold px-4 py-2 rounded-lg text-xs">Analyser et ajouter les sections</button>
@@ -1038,12 +1047,12 @@ function defaultLyricsTemplateFor(mode) {
         };
         case 'bottom': return {
             bgImage:null, bgColor:'rgba(15,23,42,0.92)', accentColor:'#8b5cf6', textColor:'#ffffff',
-            shapeRadius:16, bgOpacity:92, transparent:false, bgCover:false,
+            shapeRadius:0, bgOpacity:0, transparent:true, bgCover:false, lowerThirdSchema:2,
             splitMode:'auto', splitChars:100, splitByLines:true,
             blocks:{
-                title:{visible:true,x:50,y:88,w:70,h:10,fontSize:20,font:'Poppins',weight:600,color:'#94a3b8',align:'center',letterSpacing:1,shadow:1},
-                section:{visible:true,x:18,y:30,w:28,h:24,fontSize:20,font:'Poppins',weight:700,color:'#fff',align:'center',bg:'#8b5cf6'},
-                text:{visible:true,x:50,y:60,w:86,h:60,fontSize:40,font:'Poppins',weight:600,color:'#ffffff',align:'center',letterSpacing:0,shadow:4,lineHeight:1.4}
+                title:{visible:false,x:50,y:88,w:70,h:10,fontSize:20,font:'Poppins',weight:600,color:'#94a3b8',align:'center',letterSpacing:1,shadow:1},
+                section:{visible:false,x:18,y:30,w:28,h:24,fontSize:20,font:'Poppins',weight:700,color:'#fff',align:'center',bg:'#8b5cf6'},
+                text:{visible:true,x:50,y:66,w:92,h:64,fontSize:40,font:'Poppins',weight:600,color:'#ffffff',align:'center',letterSpacing:0,shadow:0,lineHeight:1.25}
             }
         };
         case 'bottom-right': return {
@@ -1073,8 +1082,22 @@ function lyricsSplitSmart(text,maxChars){
 }
 function pickLyricsTemplate(mode) {
     const saved=(displaySettings.templates&&displaySettings.templates[mode])||null;
-    if(saved)return JSON.parse(JSON.stringify(saved));
-    return defaultLyricsTemplateFor(mode);
+    const template=saved?JSON.parse(JSON.stringify(saved)):defaultLyricsTemplateFor(mode);
+    if(mode==='bottom'){
+        const defaults=defaultLyricsTemplateFor('bottom');
+        const oldBlocks=template.blocks||{};
+        template.blocks={
+            ...defaults.blocks,
+            ...oldBlocks,
+            title:{...defaults.blocks.title,...(oldBlocks.title||{}),visible:false},
+            section:{...defaults.blocks.section,...(oldBlocks.section||{}),visible:false},
+            text:{...defaults.blocks.text,...(oldBlocks.text||{})}
+        };
+        // La sortie bas-centre ne contient que les paroles, sur fond transparent.
+        template.transparent=true;
+        template.lowerThirdSchema=2;
+    }
+    return template;
 }
 function renderLyricsSceneHTML(config,scalePx){
     scalePx=scalePx||1;
@@ -1118,9 +1141,10 @@ function renderLyricsSceneHTML(config,scalePx){
     const rawLines=displayText.split('\n').filter(l=>l.trim()!=='');
     const lines=rawLines.length>1?rawLines:(tpl&&tpl.splitByLines?lyricsSplitSmart(displayText,Math.round((tpl.splitChars||120)*0.7)):[displayText]);
     textInner=lines.map(l=>`<span class="lyric-line">${l}</span>`).join('');
-    const titleHtml=(blocks.title&&blocks.title.visible&&!hideTitle)
+    const showMetadata=mode!=='bottom';
+    const titleHtml=(showMetadata&&blocks.title&&blocks.title.visible&&!hideTitle)
         ?`<div class="blk blk-title blk-align-${blocks.title.align||'center'}" style="${blockStyle(blocks.title)}">🎵 ${config.reference||''}</div>`:'';
-    const sectionHtml=(blocks.section&&blocks.section.visible&&config.sectionLabel&&!hideTitle)
+    const sectionHtml=(showMetadata&&blocks.section&&blocks.section.visible&&config.sectionLabel&&!hideTitle)
         ?`<div class="blk blk-section blk-align-${blocks.section.align||'center'}" style="${blockStyle(blocks.section)}">${config.sectionLabel||''}</div>`:'';
     const textHtml=(blocks.text&&blocks.text.visible)
         ?`<div class="blk blk-text blk-align-${tb.align||'center'}" style="${blockStyle(tb)}">${textInner}</div>`:'';
@@ -1152,7 +1176,7 @@ function initLyricsTemplateEditor() {
     }
     let currentEditMode='full';let selected=null;let state=null;let history=[];let historyIdx=-1;let sample=sampleVerse();
     let dragging=null,resizing=null,startData=null,canvasRect=null;
-    function loadTemplate(mode){const saved=(displaySettings.templates&&displaySettings.templates[mode])||null;state=saved?JSON.parse(JSON.stringify(saved)):defaultLyricsTemplateFor(mode);state.mode=mode;}
+    function loadTemplate(mode){state=pickLyricsTemplate(mode);state.mode=mode;}
     function pushHistory(){history=history.slice(0,historyIdx+1);history.push(JSON.parse(JSON.stringify(state)));historyIdx=history.length-1;if(history.length>50){history.shift();historyIdx--;}}
     function undo(){if(historyIdx<=0)return;historyIdx--;state=JSON.parse(JSON.stringify(history[historyIdx]));rebuildCanvas();updatePropsPanel();}
     function rgbToHex(col){if(!col)return'#0f172a';if(col.startsWith('#'))return col;const m=col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(!m)return '#0f172a';return '#'+[m[1],m[2],m[3]].map(n=>{const h=parseInt(n).toString(16);return h.length===1?'0'+h:h;}).join('');}
@@ -1160,6 +1184,7 @@ function initLyricsTemplateEditor() {
     function clamp(v,mn,mx){return Math.max(mn,Math.min(mx,v));}
     function rebuildCanvas(){
         const fakeConfig={reference:sample.reference,sectionLabel:sample.sectionLabel,text:sample.text,mode:currentEditMode,bgColor:state.bgColor,accentColor:state.accentColor,textColor:state.textColor,fontFamily:'Poppins',shapeRadius:state.shapeRadius,transparent:!!state.transparent,bgCover:!!state.bgCover};
+        if(!displaySettings.templates)displaySettings.templates={};
         const bak=displaySettings.templates[currentEditMode];displaySettings.templates[currentEditMode]=state;
         const r=document.getElementById('tpl-lyr-canvas').getBoundingClientRect();const scale=r.width/1920;
         canvasRoot.innerHTML=renderLyricsSceneHTML(fakeConfig,scale);
@@ -1180,7 +1205,7 @@ function initLyricsTemplateEditor() {
         });
         const lab=document.createElement('div');
         lab.style.cssText=`position:absolute;left:-1px;top:-22px;background:#8b5cf6;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px 3px 0 0;font-family:Inter;pointer-events:none;`;
-        lab.textContent={title:'Titre',section:'Section',text:'Paroles'}[selected];sel.appendChild(lab);
+        lab.textContent={title:'Titre',section:'Section',text:'Chants'}[selected];sel.appendChild(lab);
     }
     overlay.addEventListener('mousedown',onOverlayDown);overlay.addEventListener('touchstart',onOverlayDown,{passive:false});
     function onOverlayDown(e){const t=e.target;const act=t.dataset.action;if(!act)return;e.preventDefault();e.stopPropagation();
@@ -1204,9 +1229,22 @@ function initLyricsTemplateEditor() {
         const bgOpacity=state.bgOpacity!=null?state.bgOpacity:92;
         document.getElementById('tpl-lyr-bg-color').value=rgbToHex(state.bgColor);document.getElementById('tpl-lyr-bg-opacity').value=bgOpacity;document.getElementById('tpl-lyr-bg-opacity-v').innerText=bgOpacity+'%';
         document.getElementById('tpl-lyr-accent-color').value=state.accentColor||'#8b5cf6';document.getElementById('tpl-lyr-text-color').value=state.textColor||'#ffffff';
-        document.getElementById('tpl-lyr-radius').value=state.shapeRadius||0;document.getElementById('tpl-lyr-transparent').checked=!!state.transparent;document.getElementById('tpl-lyr-bg-cover').checked=!!state.bgCover;
+        document.getElementById('tpl-lyr-radius').value=state.shapeRadius||0;
+        const transparentToggle=document.getElementById('tpl-lyr-transparent');
+        transparentToggle.checked=!!state.transparent;
+        transparentToggle.disabled=currentEditMode==='bottom';
+        transparentToggle.title=currentEditMode==='bottom'?'Le fond reste transparent en bas-centre pour ne laisser apparaître que les bandeaux de chant.':'';
+        document.getElementById('tpl-lyr-bg-cover').checked=!!state.bgCover;
         const splitEl=document.getElementById('tpl-lyr-split-mode');if(splitEl){splitEl.value=state.splitMode||'none';const sc=document.getElementById('tpl-lyr-split-chars');sc.value=state.splitChars||120;sc.disabled=(state.splitMode==='none');document.getElementById('tpl-lyr-split-chars-v').innerText=state.splitChars||120;document.getElementById('tpl-lyr-split-lines').checked=!!state.splitByLines;}
         const noBlock=document.getElementById('tpl-lyr-no-block');const props=document.getElementById('tpl-lyr-block-props');
+        document.querySelectorAll('#tpl-lyr-block-picker button').forEach(btn=>{
+            const k=btn.dataset.block;const v=!!(state.blocks[k]&&state.blocks[k].visible);
+            const bottomMetadata=currentEditMode==='bottom'&&k!=='text';
+            btn.disabled=bottomMetadata;
+            btn.title=bottomMetadata?'Les métadonnées sont masquées en bas-centre.':'';
+            btn.style.opacity=bottomMetadata?'.45':'';
+            btn.classList.toggle('active',v&&selected===k);const d=btn.querySelector('.dot');if(d)d.style.background=v?'#c4b5fd':'#475569';
+        });
         if(!selected||!state.blocks[selected]||!state.blocks[selected].visible){noBlock.style.display='block';props.style.display='none';return;}
         noBlock.style.display='none';props.style.display='flex';const b=state.blocks[selected];
         document.getElementById('tpl-lyr-block-color').value=rgbToHex(b.color||'#ffffff');document.getElementById('tpl-lyr-block-font').value=b.font||'Poppins';
@@ -1219,7 +1257,6 @@ function initLyricsTemplateEditor() {
         document.querySelector('#tpl-editor-lyr [data-cmd=italic]').classList.toggle('active',!!b.italic);
         document.querySelector('#tpl-editor-lyr [data-cmd=underline]').classList.toggle('active',!!b.underline);
         document.querySelector('#tpl-editor-lyr [data-cmd=strikeThrough]').classList.toggle('active',!!b.strike);
-        document.querySelectorAll('#tpl-lyr-block-picker button').forEach(btn=>{const k=btn.dataset.block;const v=!!(state.blocks[k]&&state.blocks[k].visible);btn.classList.toggle('active',v&&selected===k);const d=btn.querySelector('.dot');if(d)d.style.background=v?'#c4b5fd':'#475569';});
     }
     function bindProp(id,setter){const el=document.getElementById(id);if(!el)return;const evt=(el.type==='color'||el.type==='range'||el.tagName==='SELECT')?'input':'change';el.addEventListener(evt,()=>{const v=el.type==='checkbox'?el.checked:(el.type==='number'?parseFloat(el.value):el.value);setter(v);rebuildCanvas();updatePropsPanel();});}
     bindProp('tpl-lyr-block-color',v=>{if(!selected)return;state.blocks[selected].color=v;});
@@ -1368,13 +1405,12 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
                 `;
             } else if (config.mode === 'bottom') {
                 modeClass = 'obs-bottom';
-                // Les paroles sont centrées dans le bandeau ; la méta est épinglée tout en bas,
-                // centrée et très petite (buildMetaFooter), pour ne pas gêner la lecture.
+                // En bas-centre, seules les paroles sont rendues : aucun titre, artiste,
+                // nom de chant ou libellé de section ne doit apparaître.
                 html = `
                     <div class="w-full h-full flex flex-col items-center justify-center">
                         <div class="w-full flex flex-col items-center justify-center">${textHtml}</div>
                     </div>
-                    ${buildMetaFooter(config)}
                 `;
             } else if (config.mode === 'bottom-right') {
                 modeClass = 'obs-bottom-right';
@@ -1607,7 +1643,13 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
         async function initControllerMode() {
             loadDisplaySettingsJSON();
             initSettingsPanel();
-            initLyricsTemplateEditor();
+            // L'éditeur WYSIWYG est marqué dans le HTML après ce script :
+            // attendre la fin du parsing pour pouvoir l'initialiser sans null.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initLyricsTemplateEditor, { once: true });
+            } else {
+                initLyricsTemplateEditor();
+            }
             initLyricsKeyboardShortcuts();
 
             try {
@@ -2260,7 +2302,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
 
 <div id="tpl-editor-lyr">
   <div class="tpl-topbar">
-    <h3>🎼 Editeur visuel Paroles <span>Mode : <b id="tpl-lyr-current-mode-label">—</b> · WYSIWYG 1:1 avec OBS</span></h3>
+    <h3>🎼 Éditeur visuel Chants <span>Mode : <b id="tpl-lyr-current-mode-label">—</b> · WYSIWYG 1:1 avec OBS</span></h3>
     <div class="tpl-mode-tabs" id="tpl-lyr-mode-tabs"></div>
     <div class="tpl-topbar-btns">
       <button class="tpl-btn ghost" id="tpl-lyr-btn-undo" title="Ctrl+Z">↶ Annuler</button>
@@ -2276,7 +2318,7 @@ function highlightSection(id){document.querySelectorAll('.section-item').forEach
         <div class="tpl-block-picker" id="tpl-lyr-block-picker">
           <button data-block="title"><span class="dot"></span>Titre chant</button>
           <button data-block="section"><span class="dot"></span>Section</button>
-          <button data-block="text"><span class="dot"></span>Paroles</button>
+          <button data-block="text"><span class="dot"></span>Chants</button>
         </div>
       </div>
       <div class="tpl-section">

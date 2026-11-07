@@ -1,6 +1,6 @@
-# REA + FreeShow — reconnaissance initiale
+# REA + FreeShow — sources amont exactes
 
-État au 7 novembre 2026. Les deux dépôts sont conservés comme **sous-modules séparés** : aucun code FreeShow n’a été copié dans l’application OpenPresenter.
+État au 7 novembre 2026. REA et FreeShow sont les dépôts amont eux-mêmes, conservés comme **sous-modules séparés et épinglés**. FreeShow n’est pas à réimplémenter approximativement : sa source canonique complète est `research/freeshow`, sans modification locale. L’application OpenPresenter reste séparée tant qu’elle n’a pas été basculée explicitement sur cette source; ne pas présenter une fonctionnalité partielle comme une copie exacte.
 
 ## Clones amont
 
@@ -46,9 +46,11 @@ Les répertoires source montrent notamment :
 
 C’est une carte issue de l’arborescence source, pas une preuve que chaque parcours fonctionne à l’exécution.
 
-## Limites à garder en tête
+## Aperçu exact et limites
 
-- L’analyse est **statique** : FreeShow n’a pas été construit ni lancé et aucun parcours utilisateur n’a été testé.
+- L’aperçu navigateur actuellement servi utilise directement `public/index.html` et les modules de ce checkout FreeShow — pas une interface réécrite. Il s’agit du frontend Vite en développement, avec un petit override local de l’hôte autorisé pour Arena; aucun fichier source suivi du sous-module n’a été modifié.
+- Le lancement complet Electron n’a pas été construit ni exécuté, et aucun parcours OBS/CEF réel n’a été validé. L’aperçu frontend seul ne prouve donc pas que les services Electron fonctionnent.
+- `npm ci` reste bloqué sur `UNABLE_TO_VERIFY_LEAF_SIGNATURE` pour les archives de dépendances GitHub. La vérification TLS n’a pas été désactivée; les dépendances du frontend de l’aperçu ont été préparées temporairement à partir des commits Git exacts et du registre npm, sans modifier `package.json` ni `package-lock.json` du sous-module.
 - Le point d’entrée compilé déclaré par `package.json` (`build/electron/index.js`) n’existe pas dans le checkout source non compilé; REA ne peut donc pas confirmer toute la chaîne Electron.
 - REA indique que les canaux IPC dynamiques restent non résolus et que la couverture du graphe est incomplète. Les observations ne doivent pas être interprétées comme une spécification exhaustive.
 - Le sous-module REA contient lui-même des sous-modules tiers non initialisés. L’analyse ci-dessus utilise le CLI npm publié, et non une compilation du dépôt REA.

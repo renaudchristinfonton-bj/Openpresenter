@@ -1,0 +1,6 @@
+[submodule "research/rea"]
+	path = research/rea
+	url = https://github.com/morluto/rea.git
+[submodule "research/freeshow"]
+	path = research/freeshow
+	url = https://github.com/ChurchApps/FreeShow.git
